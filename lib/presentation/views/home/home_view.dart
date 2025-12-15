@@ -7,6 +7,7 @@ import '../../widgets/stats_card_widget.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
 import '../../../data/models/lead_model.dart';
+import '../../../data/models/shop_model.dart';
 import '../../../app/routes/app_routes.dart';
 import '../leads/leads_list_view.dart';
 import '../categories/categories_view.dart';
@@ -23,10 +24,10 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   int _currentIndex = 0;
-  bool _hasInitialized = false;
   final NotchBottomBarController _notchController = NotchBottomBarController(
     index: 0,
   );
+  Worker? _shopWorker;
 
   @override
   void initState() {
@@ -39,12 +40,22 @@ class _HomeViewState extends State<HomeView> {
       _checkAndLoadStats(authController, dashboardController);
     });
 
-    // Use a worker to listen to shop changes
-    // We'll check periodically or on user interaction
+    // Use a worker to listen to shop changes and load stats when shop becomes available
+    _shopWorker = ever(authController.shopRx, (ShopModel? shop) {
+      if (shop != null && mounted) {
+        // Small delay to ensure controller is ready
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _checkAndLoadStats(authController, dashboardController);
+          }
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _shopWorker?.dispose();
     _notchController.dispose();
     super.dispose();
   }
@@ -54,11 +65,9 @@ class _HomeViewState extends State<HomeView> {
     DashboardController dashboardController,
   ) {
     if (mounted &&
-        !_hasInitialized &&
         authController.shop != null &&
         dashboardController.stats == null &&
         !dashboardController.isLoading) {
-      _hasInitialized = true;
       dashboardController.loadStats();
     }
   }
@@ -330,12 +339,22 @@ class _HomeViewState extends State<HomeView> {
     return Obx(() {
       final stats = dashboardController.stats;
       final isLoading = dashboardController.isLoading;
+      final shop = authController.shop;
+
+      // Trigger load when shop becomes available and stats are null
+      if (shop != null && stats == null && !isLoading) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            dashboardController.loadStats();
+          }
+        });
+      }
 
       if (authController.isLoading || (isLoading && stats == null)) {
         return const LoadingWidget();
       }
 
-      if (authController.user == null || authController.shop == null) {
+      if (authController.user == null || shop == null) {
         return error_widget.ErrorDisplayWidget(
           message: 'Not authorized to access this page.',
           onRetry: () => authController.checkAuthStatus(),
@@ -345,9 +364,7 @@ class _HomeViewState extends State<HomeView> {
       return RefreshIndicator(
         onRefresh: () async {
           if (authController.shop != null) {
-            _hasInitialized = false; // Reset flag to allow reload
             await dashboardController.loadStats();
-            _hasInitialized = true;
           }
         },
         child: SingleChildScrollView(

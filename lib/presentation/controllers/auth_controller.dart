@@ -21,6 +21,7 @@ class AuthController extends GetxController {
   String get errorMessage => _errorMessage.value;
   UserModel? get user => _user.value;
   ShopModel? get shop => _shop.value;
+  Rxn<ShopModel> get shopRx => _shop;
 
   @override
   void onInit() {
@@ -68,7 +69,7 @@ class AuthController extends GetxController {
       }
 
       final result = await _viewModel.signIn(email, password);
-      
+
       if (result != null) {
         _user.value = result['user'] as UserModel;
         _shop.value = result['shop'] as ShopModel;
@@ -101,8 +102,9 @@ class AuthController extends GetxController {
       }
 
       await _viewModel.signUp(email, password, name);
-      _errorMessage.value = 'Registration successful! Please check your email to verify your account.';
-      
+      _errorMessage.value =
+          'Registration successful! Please check your email to verify your account.';
+
       // Navigate back to login after a short delay
       Future.delayed(const Duration(seconds: 2), () {
         Get.offNamed(AppRoutes.LOGIN);
@@ -130,4 +132,3 @@ class AuthController extends GetxController {
     }
   }
 }
-
