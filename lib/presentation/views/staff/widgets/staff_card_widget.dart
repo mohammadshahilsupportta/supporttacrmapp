@@ -64,69 +64,114 @@ class StaffCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final roleColor = _getRoleColor(staff.role);
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.25)),
+      ),
       child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Container(
+                    width: 8,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: roleColor.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 24,
-                          child: Text(
-                            staff.name
-                                .split(' ')
-                                .map((n) => n.isNotEmpty ? n[0] : '')
-                                .join('')
-                                .toUpperCase()
-                                .substring(
-                                  0,
-                                  staff.name.split(' ').length > 1 ? 2 : 1,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: roleColor.withOpacity(0.12),
+                              child: Text(
+                                staff.name
+                                    .split(' ')
+                                    .map((n) => n.isNotEmpty ? n[0] : '')
+                                    .join('')
+                                    .toUpperCase()
+                                    .substring(
+                                      0,
+                                      staff.name.split(' ').length > 1 ? 2 : 1,
+                                    ),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: roleColor,
                                 ),
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                staff.name,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                staff.email,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Colors.grey,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    staff.name,
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
                                     ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    staff.email,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      _pill(
+                                        theme,
+                                        icon: _getRoleIcon(staff.role),
+                                        label: UserModel.roleDisplayName(staff.role),
+                                        color: roleColor,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _pill(
+                                        theme,
+                                        icon: staff.isActive
+                                            ? Icons.check_circle
+                                            : Icons.cancel,
+                                        label: staff.isActive ? 'Active' : 'Inactive',
+                                        color: staff.isActive
+                                            ? Colors.green
+                                            : Colors.red,
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                   if (canManage)
                     PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert),
+                      icon: Icon(Icons.more_vert,
+                          color: theme.colorScheme.onSurfaceVariant),
                       onSelected: (value) {
                         switch (value) {
                           case 'toggle':
@@ -152,9 +197,7 @@ class StaffCardWidget extends StatelessWidget {
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                staff.isActive ? 'Deactivate' : 'Activate',
-                              ),
+                              Text(staff.isActive ? 'Deactivate' : 'Activate'),
                             ],
                           ),
                         ),
@@ -188,87 +231,77 @@ class StaffCardWidget extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Chip(
-                    avatar: Icon(
-                      _getRoleIcon(staff.role),
-                      size: 16,
-                      color: _getRoleColor(staff.role),
-                    ),
-                    label: Text(
-                      UserModel.roleDisplayName(staff.role),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    backgroundColor: _getRoleColor(staff.role).withOpacity(0.2),
-                    labelStyle: TextStyle(
-                      color: _getRoleColor(staff.role),
-                    ),
-                    padding: EdgeInsets.zero,
-                  ),
-                  const SizedBox(width: 8),
-                  Switch(
-                    value: staff.isActive,
-                    onChanged: canManage ? (value) => onToggleActive?.call() : null,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    staff.isActive ? 'Active' : 'Inactive',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
               if (staff.categoryPermissions.isNotEmpty) ...[
                 Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: staff.categoryPermissions.take(3).map((category) {
+                    final catColor = category.color != null
+                        ? Color(
+                            int.parse(category.color!.replaceFirst('#', '0xFF')))
+                        : theme.colorScheme.primary;
                     return Chip(
                       label: Text(
                         category.name,
-                        style: const TextStyle(fontSize: 10),
+                        style: const TextStyle(fontSize: 11),
                       ),
-                      padding: EdgeInsets.zero,
-                      backgroundColor: category.color != null
-                          ? Color(int.parse(
-                                  category.color!.replaceFirst('#', '0xFF')))
-                              .withOpacity(0.2)
-                          : Colors.grey.withOpacity(0.2),
-                      side: category.color != null
-                          ? BorderSide(
-                              color: Color(int.parse(
-                                  category.color!.replaceFirst('#', '0xFF'))),
-                            )
-                          : null,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      backgroundColor: catColor.withOpacity(0.14),
+                      side: BorderSide(color: catColor.withOpacity(0.35)),
                     );
                   }).toList(),
                 ),
                 if (staff.categoryPermissions.length > 3)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Chip(
-                      label: Text(
-                        '+${staff.categoryPermissions.length - 3} more',
-                        style: const TextStyle(fontSize: 10),
+                    child: Text(
+                      '+${staff.categoryPermissions.length - 3} more',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      padding: EdgeInsets.zero,
-                      backgroundColor: Colors.grey.withOpacity(0.2),
                     ),
                   ),
               ] else ...[
                 Text(
                   _getCategoryAccessText(),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey,
-                      ),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _pill(
+    ThemeData theme, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
