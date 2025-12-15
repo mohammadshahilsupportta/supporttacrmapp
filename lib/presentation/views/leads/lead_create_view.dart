@@ -172,178 +172,210 @@ class _LeadCreateViewState extends State<LeadCreateView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name *',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Name is required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _whatsappController,
-                  decoration: const InputDecoration(
-                    labelText: 'WhatsApp',
-                    prefixIcon: Icon(Icons.chat_outlined),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _companyController,
-                  decoration: const InputDecoration(
-                    labelText: 'Company',
-                    prefixIcon: Icon(Icons.business_outlined),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _occupationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Occupation',
-                    prefixIcon: Icon(Icons.work_outline),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _fieldOfWorkController,
-                  decoration: const InputDecoration(
-                    labelText: 'Field of Work',
-                    prefixIcon: Icon(Icons.engineering_outlined),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<LeadSource>(
-                  value: _selectedSource,
-                  decoration: const InputDecoration(
-                    labelText: 'Source',
-                    prefixIcon: Icon(Icons.filter_alt_outlined),
-                  ),
-                  isExpanded: true,
-                  items: [
-                    const DropdownMenuItem<LeadSource>(
-                      value: null,
-                      child: Text('Select source'),
+                _buildSection(
+                  title: 'Contact',
+                  children: [
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name *',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Name is required' : null,
                     ),
-                    ...LeadSource.values.map(
-                      (s) => DropdownMenuItem<LeadSource>(
-                        value: s,
-                        child: Text(_sourceLabel(s)),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _whatsappController,
+                      decoration: const InputDecoration(
+                        labelText: 'WhatsApp',
+                        prefixIcon: Icon(Icons.chat_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: 'Company & Work',
+                  children: [
+                    TextFormField(
+                      controller: _companyController,
+                      decoration: const InputDecoration(
+                        labelText: 'Company',
+                        prefixIcon: Icon(Icons.business_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _addressController,
+                      decoration: const InputDecoration(
+                        labelText: 'Address',
+                        prefixIcon: Icon(Icons.location_on_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _occupationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Occupation',
+                        prefixIcon: Icon(Icons.work_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _fieldOfWorkController,
+                      decoration: const InputDecoration(
+                        labelText: 'Field of Work',
+                        prefixIcon: Icon(Icons.engineering_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _productsController,
+                      decoration: const InputDecoration(
+                        labelText: 'Products (comma separated)',
+                        prefixIcon: Icon(Icons.shopping_bag_outlined),
                       ),
                     ),
                   ],
-                  onChanged: (val) => setState(() => _selectedSource = val),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<LeadStatus>(
-                  value: _selectedStatus,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    prefixIcon: Icon(Icons.flag_outlined),
-                  ),
-                  isExpanded: true,
-                  items: LeadStatus.values
-                      .map(
-                        (s) => DropdownMenuItem<LeadStatus>(
-                          value: s,
-                          child: Text(_statusLabel(s)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _selectedStatus = val);
-                    }
-                  },
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'Categories',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: categories
-                      .map(
-                        (CategoryModel cat) => FilterChip(
-                          label: Text(cat.name),
-                          selected: _selectedCategoryIds.contains(cat.id),
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedCategoryIds.add(cat.id);
-                              } else {
-                                _selectedCategoryIds.remove(cat.id);
-                              }
-                            });
-                          },
+                _buildSection(
+                  title: 'Status & Categories',
+                  children: [
+                    DropdownButtonFormField<LeadSource>(
+                      value: _selectedSource,
+                      decoration: const InputDecoration(
+                        labelText: 'Source',
+                        prefixIcon: Icon(Icons.filter_alt_outlined),
+                      ),
+                      isExpanded: true,
+                      items: [
+                        const DropdownMenuItem<LeadSource>(
+                          value: null,
+                          child: Text('Select source'),
                         ),
-                      )
-                      .toList(),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _productsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Products (comma separated)',
-                    prefixIcon: Icon(Icons.shopping_bag_outlined),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes',
-                    prefixIcon: Icon(Icons.notes_outlined),
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _submitting ? null : _handleSubmit,
-                    icon: _submitting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                        ...LeadSource.values.map(
+                          (s) => DropdownMenuItem<LeadSource>(
+                            value: s,
+                            child: Text(_sourceLabel(s)),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) => setState(() => _selectedSource = val),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<LeadStatus>(
+                      value: _selectedStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                        prefixIcon: Icon(Icons.flag_outlined),
+                      ),
+                      isExpanded: true,
+                      items: LeadStatus.values
+                          .map(
+                            (s) => DropdownMenuItem<LeadStatus>(
+                              value: s,
+                              child: Text(_statusLabel(s)),
+                            ),
                           )
-                        : const Icon(Icons.check),
-                    label: Text(_submitting ? 'Submitting...' : 'Create Lead'),
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedStatus = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Categories',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: categories
+                          .map(
+                            (CategoryModel cat) => FilterChip(
+                              label: Text(cat.name),
+                              selected: _selectedCategoryIds.contains(cat.id),
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _selectedCategoryIds.add(cat.id);
+                                  } else {
+                                    _selectedCategoryIds.remove(cat.id);
+                                  }
+                                });
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Notes',
+                        prefixIcon: Icon(Icons.notes_outlined),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SafeArea(
+                  top: false,
+                  minimum: const EdgeInsets.only(bottom: 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: _submitting ? null : _handleSubmit,
+                      icon: _submitting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check),
+                      label: Text(
+                        _submitting ? 'Submitting...' : 'Create Lead',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -387,5 +419,37 @@ class _LeadCreateViewState extends State<LeadCreateView> {
         return 'Lost';
     }
   }
+}
+
+Widget _buildSection({
+  required String title,
+  required List<Widget> children,
+}) {
+  return Card(
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(
+        color: Colors.grey.shade300,
+      ),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    ),
+  );
 }
 
