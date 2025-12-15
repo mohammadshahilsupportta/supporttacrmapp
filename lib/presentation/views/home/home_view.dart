@@ -130,37 +130,53 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Widget _buildCustomBottomNavBar() {
+    final theme = Theme.of(context);
     return AnimatedNotchBottomBar(
       notchBottomBarController: _notchController,
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       showLabel: true,
-      notchColor: Theme.of(context).primaryColor,
+      notchColor: theme.colorScheme.primary,
       kIconSize: 24.0,
       kBottomRadius: 30.0,
       bottomBarItems: [
-        const BottomBarItem(
-          inActiveItem: Icon(Icons.dashboard_outlined, color: Colors.grey),
-          activeItem: Icon(Icons.dashboard, color: Colors.white),
+        BottomBarItem(
+          inActiveItem: Icon(
+            Icons.dashboard_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          activeItem: Icon(Icons.dashboard, color: theme.colorScheme.onPrimary),
           itemLabel: 'Dashboard',
         ),
-        const BottomBarItem(
-          inActiveItem: Icon(Icons.people_outline, color: Colors.grey),
-          activeItem: Icon(Icons.people, color: Colors.white),
+        BottomBarItem(
+          inActiveItem: Icon(
+            Icons.people_outline,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          activeItem: Icon(Icons.people, color: theme.colorScheme.onPrimary),
           itemLabel: 'Leads',
         ),
-        const BottomBarItem(
-          inActiveItem: Icon(Icons.group_outlined, color: Colors.grey),
-          activeItem: Icon(Icons.group, color: Colors.white),
+        BottomBarItem(
+          inActiveItem: Icon(
+            Icons.group_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          activeItem: Icon(Icons.group, color: theme.colorScheme.onPrimary),
           itemLabel: 'Staff',
         ),
-        const BottomBarItem(
-          inActiveItem: Icon(Icons.category_outlined, color: Colors.grey),
-          activeItem: Icon(Icons.category, color: Colors.white),
+        BottomBarItem(
+          inActiveItem: Icon(
+            Icons.category_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          activeItem: Icon(Icons.category, color: theme.colorScheme.onPrimary),
           itemLabel: 'Categories',
         ),
-        const BottomBarItem(
-          inActiveItem: Icon(Icons.settings_outlined, color: Colors.grey),
-          activeItem: Icon(Icons.settings, color: Colors.white),
+        BottomBarItem(
+          inActiveItem: Icon(
+            Icons.settings_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          activeItem: Icon(Icons.settings, color: theme.colorScheme.onPrimary),
           itemLabel: 'Settings',
         ),
       ],
