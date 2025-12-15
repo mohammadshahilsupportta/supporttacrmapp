@@ -21,14 +21,20 @@ class StaffController extends GetxController {
 
   // Load all staff
   Future<void> loadStaff(String shopId) async {
+    if (_isLoading.value) return; // Prevent duplicate loads
+    
     _isLoading.value = true;
     _errorMessage.value = '';
 
     try {
       final staff = await _viewModel.getStaff(shopId);
       _staffList.value = staff;
-    } catch (e) {
+      print('Loaded ${staff.length} staff members'); // Debug
+    } catch (e, stackTrace) {
       _errorMessage.value = Helpers.handleError(e);
+      print('Error loading staff: ${_errorMessage.value}'); // Debug
+      print('Error details: $e'); // Debug
+      print('Stack trace: $stackTrace'); // Debug
     } finally {
       _isLoading.value = false;
     }
@@ -107,10 +113,25 @@ class StaffController extends GetxController {
       await _viewModel.updateStaff(input);
       final index = _staffList.indexWhere((s) => s.id == input.id);
       if (index != -1) {
-        // Reload staff with permissions to get updated category permissions
+        // Reload staff with permissions to get updated data
         final withPermissions = await _viewModel.getStaffWithPermissions(input.id);
         if (withPermissions != null) {
           _staffList[index] = withPermissions;
+        } else {
+          // If reload fails, update locally
+          final current = _staffList[index];
+          _staffList[index] = StaffWithPermissionsModel(
+            id: current.id,
+            shopId: current.shopId,
+            email: input.email ?? current.email,
+            name: input.name ?? current.name,
+            role: input.role ?? current.role,
+            isActive: input.isActive ?? current.isActive,
+            authUserId: current.authUserId,
+            createdAt: current.createdAt,
+            updatedAt: DateTime.now(),
+            categoryPermissions: current.categoryPermissions,
+          );
         }
       }
       return true;

@@ -3,22 +3,58 @@ import '../../core/services/supabase_service.dart';
 import '../../core/utils/helpers.dart';
 
 class StaffRepository {
+  // Check if staff table exists by trying to query it
+  Future<bool> _staffTableExists() async {
+    try {
+      await SupabaseService.from('staff').select('id').limit(1);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Get all staff members in a shop
   Future<List<StaffWithPermissionsModel>> findAll(String shopId) async {
     try {
-      final data = await SupabaseService.from('users')
-          .select('''
-            *,
-            staff_category_permissions(
-              category:categories(id, name, color)
-            )
-          ''')
-          .eq('shop_id', shopId)
-          .neq('role', 'shop_owner')
-          .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      final hasStaffTable = await _staffTableExists();
+      List<dynamic> data;
+
+      if (hasStaffTable) {
+        // Use staff table (new schema)
+        data = await SupabaseService.from('staff')
+            .select('''
+              *,
+              staff_category_permissions(
+                category:categories(*)
+              )
+            ''')
+            .eq('shop_id', shopId)
+            .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      } else {
+        // Fallback to users table (old schema)
+        data = await SupabaseService.from('users')
+            .select('''
+              *,
+              staff_category_permissions(
+                category:categories(*)
+              )
+            ''')
+            .eq('shop_id', shopId)
+            .neq('role', 'shop_owner')
+            .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      }
+
       return data
-          .map((json) =>
-              StaffWithPermissionsModel.fromJson(json as Map<String, dynamic>))
+          .map((json) {
+            try {
+              return StaffWithPermissionsModel.fromJson(
+                  json as Map<String, dynamic>);
+            } catch (e) {
+              print('Error parsing staff member: $e');
+              print('JSON data: $json');
+              rethrow;
+            }
+          })
           .toList();
     } catch (e) {
       throw Helpers.handleError(e);
@@ -28,10 +64,20 @@ class StaffRepository {
   // Get a single staff member by ID
   Future<StaffModel?> findById(String userId) async {
     try {
-      final data = await SupabaseService.from('users')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
+      final hasStaffTable = await _staffTableExists();
+      Map<String, dynamic>? data;
+
+      if (hasStaffTable) {
+        data = await SupabaseService.from('staff')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+      } else {
+        data = await SupabaseService.from('users')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+      }
 
       if (data == null) return null;
       return StaffModel.fromJson(data);
@@ -44,15 +90,30 @@ class StaffRepository {
   Future<StaffWithPermissionsModel?> findWithPermissions(
       String userId) async {
     try {
-      final data = await SupabaseService.from('users')
-          .select('''
-            *,
-            staff_category_permissions(
-              category:categories(id, name, color)
-            )
-          ''')
-          .eq('id', userId)
-          .maybeSingle();
+      final hasStaffTable = await _staffTableExists();
+      Map<String, dynamic>? data;
+
+      if (hasStaffTable) {
+        data = await SupabaseService.from('staff')
+            .select('''
+              *,
+              staff_category_permissions(
+                category:categories(*)
+              )
+            ''')
+            .eq('id', userId)
+            .maybeSingle();
+      } else {
+        data = await SupabaseService.from('users')
+            .select('''
+              *,
+              staff_category_permissions(
+                category:categories(*)
+              )
+            ''')
+            .eq('id', userId)
+            .maybeSingle();
+      }
 
       if (data == null) return null;
       return StaffWithPermissionsModel.fromJson(data);
@@ -69,19 +130,33 @@ class StaffRepository {
     String authUserId,
   ) async {
     try {
+      final hasStaffTable = await _staffTableExists();
       final userData = input.toJson();
       userData.remove('password'); // Remove password from user data
       userData.remove('category_ids'); // Remove category_ids
 
-      final data = await SupabaseService.from('users')
-          .insert({
-            ...userData,
-            'shop_id': shopId,
-            'auth_user_id': authUserId,
-            'is_active': true,
-          })
-          .select()
-          .single();
+      Map<String, dynamic> data;
+      if (hasStaffTable) {
+        data = await SupabaseService.from('staff')
+            .insert({
+              ...userData,
+              'shop_id': shopId,
+              'auth_user_id': authUserId,
+              'is_active': true,
+            })
+            .select()
+            .single();
+      } else {
+        data = await SupabaseService.from('users')
+            .insert({
+              ...userData,
+              'shop_id': shopId,
+              'auth_user_id': authUserId,
+              'is_active': true,
+            })
+            .select()
+            .single();
+      }
 
       final staff = StaffModel.fromJson(data);
 
@@ -99,6 +174,7 @@ class StaffRepository {
   // Update a staff member
   Future<StaffModel> update(UpdateStaffInput input) async {
     try {
+      final hasStaffTable = await _staffTableExists();
       // Get the staff's shop_id for permission assignment
       final existingStaff = await findById(input.id);
       if (existingStaff == null) {
@@ -108,14 +184,26 @@ class StaffRepository {
       final updateData = input.toJson();
       updateData.remove('category_ids'); // Remove category_ids from update
 
-      final data = await SupabaseService.from('users')
-          .update({
-            ...updateData,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', input.id)
-          .select()
-          .single();
+      Map<String, dynamic> data;
+      if (hasStaffTable) {
+        data = await SupabaseService.from('staff')
+            .update({
+              ...updateData,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', input.id)
+            .select()
+            .single();
+      } else {
+        data = await SupabaseService.from('users')
+            .update({
+              ...updateData,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', input.id)
+            .select()
+            .single();
+      }
 
       final staff = StaffModel.fromJson(data);
 
@@ -133,12 +221,22 @@ class StaffRepository {
   // Deactivate a staff member (soft delete)
   Future<void> deactivate(String userId) async {
     try {
-      await SupabaseService.from('users')
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', userId);
+      final hasStaffTable = await _staffTableExists();
+      if (hasStaffTable) {
+        await SupabaseService.from('staff')
+            .update({
+              'is_active': false,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', userId);
+      } else {
+        await SupabaseService.from('users')
+            .update({
+              'is_active': false,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', userId);
+      }
     } catch (e) {
       throw Helpers.handleError(e);
     }
@@ -147,13 +245,18 @@ class StaffRepository {
   // Hard delete a staff member
   Future<void> delete(String userId) async {
     try {
+      final hasStaffTable = await _staffTableExists();
       // First remove all category permissions
       await SupabaseService.from('staff_category_permissions')
           .delete()
-          .eq('staff_id', userId);
+          .eq(hasStaffTable ? 'staff_id' : 'user_id', userId);
 
-      // Then delete the user
-      await SupabaseService.from('users').delete().eq('id', userId);
+      // Then delete the staff/user
+      if (hasStaffTable) {
+        await SupabaseService.from('staff').delete().eq('id', userId);
+      } else {
+        await SupabaseService.from('users').delete().eq('id', userId);
+      }
     } catch (e) {
       throw Helpers.handleError(e);
     }
@@ -167,19 +270,26 @@ class StaffRepository {
     List<String> categoryIds,
   ) async {
     try {
+      final hasStaffTable = await _staffTableExists();
       // Remove existing permissions
       await SupabaseService.from('staff_category_permissions')
           .delete()
-          .eq('staff_id', staffId);
+          .eq(hasStaffTable ? 'staff_id' : 'user_id', staffId);
 
       // Add new permissions
       if (categoryIds.isNotEmpty) {
         final permissions = categoryIds
-            .map((categoryId) => {
-                  'staff_id': staffId,
-                  'category_id': categoryId,
-                  'shop_id': shopId,
-                })
+            .map((categoryId) => hasStaffTable
+                ? {
+                    'staff_id': staffId,
+                    'category_id': categoryId,
+                    'shop_id': shopId,
+                  }
+                : {
+                    'user_id': staffId,
+                    'category_id': categoryId,
+                    'shop_id': shopId,
+                  })
             .toList();
 
         await SupabaseService.from('staff_category_permissions')
@@ -193,13 +303,13 @@ class StaffRepository {
   // Get category IDs assigned to a staff member
   Future<List<String>> getCategoryIds(String staffId) async {
     try {
+      final hasStaffTable = await _staffTableExists();
       final data = await SupabaseService.from('staff_category_permissions')
           .select('category_id')
-          .eq('staff_id', staffId) as List<dynamic>? ?? [];
+          .eq(hasStaffTable ? 'staff_id' : 'user_id', staffId) as List<dynamic>? ?? [];
       return data.map((p) => p['category_id'] as String).toList();
     } catch (e) {
       throw Helpers.handleError(e);
     }
   }
 }
-

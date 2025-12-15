@@ -184,7 +184,7 @@ class _HomeViewState extends State<HomeView> {
       case 2: // Staff
         return FloatingActionButton.extended(
           onPressed: () {
-            Get.snackbar('Add Staff', 'Add staff functionality coming soon!');
+            Get.toNamed(AppRoutes.STAFF_CREATE);
           },
           icon: const Icon(Icons.add),
           label: const Text('Add Staff'),

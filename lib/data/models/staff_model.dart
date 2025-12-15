@@ -16,15 +16,19 @@ class StaffModel extends UserModel {
 
   factory StaffModel.fromJson(Map<String, dynamic> json) {
     return StaffModel(
-      id: json['id'] ?? '',
-      shopId: json['shop_id'] ?? '',
-      email: json['email'] ?? '',
-      name: json['name'] ?? '',
-      role: UserModel.roleFromString(json['role'] ?? 'office_staff'),
+      id: json['id']?.toString() ?? '',
+      shopId: json['shop_id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      role: UserModel.roleFromString(json['role']?.toString() ?? 'office_staff'),
       isActive: json['is_active'] ?? false,
-      authUserId: json['auth_user_id'] ?? '',
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      authUserId: json['auth_user_id']?.toString() ?? '',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'].toString())
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'].toString())
+          : DateTime.now(),
     );
   }
 }
@@ -48,7 +52,9 @@ class StaffWithPermissionsModel extends StaffModel {
   factory StaffWithPermissionsModel.fromJson(Map<String, dynamic> json) {
     final categories = (json['staff_category_permissions'] as List<dynamic>?)
             ?.map((scp) {
-              final cat = (scp as Map<String, dynamic>)['category'];
+              final scpMap = scp as Map<String, dynamic>?;
+              if (scpMap == null) return null;
+              final cat = scpMap['category'] as Map<String, dynamic>?;
               return cat != null ? CategoryModel.fromJson(cat) : null;
             })
             .whereType<CategoryModel>()
@@ -56,15 +62,19 @@ class StaffWithPermissionsModel extends StaffModel {
         [];
 
     return StaffWithPermissionsModel(
-      id: json['id'] ?? '',
-      shopId: json['shop_id'] ?? '',
-      email: json['email'] ?? '',
-      name: json['name'] ?? '',
-      role: UserModel.roleFromString(json['role'] ?? 'office_staff'),
+      id: json['id']?.toString() ?? '',
+      shopId: json['shop_id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      role: UserModel.roleFromString(json['role']?.toString() ?? 'office_staff'),
       isActive: json['is_active'] ?? false,
-      authUserId: json['auth_user_id'] ?? '',
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      authUserId: json['auth_user_id']?.toString() ?? '',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'].toString())
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'].toString())
+          : DateTime.now(),
       categoryPermissions: categories,
     );
   }
