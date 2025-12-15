@@ -281,15 +281,12 @@ class _CategoriesViewState extends State<CategoriesView> {
                   ],
                 ),
               )
-            : GridView.builder(
+            : ListView.separated(
                 padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.2,
-                ),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: categoryController.categories.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final category = categoryController.categories[index];
                   return CategoryCardWidget(
