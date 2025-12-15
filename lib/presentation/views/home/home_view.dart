@@ -14,6 +14,8 @@ import '../categories/categories_view.dart';
 import '../settings/settings_view.dart';
 import '../staff/staff_list_view.dart';
 import '../../widgets/shop_card_widget.dart';
+import '../categories/widgets/category_form_dialog.dart';
+import '../../controllers/category_controller.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -192,9 +194,61 @@ class _HomeViewState extends State<HomeView> {
       case 3: // Categories
         return FloatingActionButton.extended(
           onPressed: () {
-            Get.snackbar(
-              'Add Category',
-              'Add category functionality coming soon!',
+            // Open category form dialog
+            final categoryController = Get.put(CategoryController());
+            showDialog(
+              context: context,
+              builder: (context) => CategoryFormDialog(
+                onCreate: (input) async {
+                  if (authController.shop != null) {
+                    final success = await categoryController.createCategory(
+                      authController.shop!.id,
+                      input,
+                    );
+                    if (success) {
+                      Get.back();
+                      Get.snackbar(
+                        'Success',
+                        'Category created successfully',
+                        snackPosition: SnackPosition.BOTTOM,
+                        backgroundColor: Colors.green,
+                        colorText: Colors.white,
+                      );
+                    } else {
+                      Get.snackbar(
+                        'Error',
+                        categoryController.errorMessage,
+                        snackPosition: SnackPosition.BOTTOM,
+                        backgroundColor: Colors.red,
+                        colorText: Colors.white,
+                      );
+                    }
+                  }
+                },
+                onUpdate: (input) async {
+                  final success = await categoryController.updateCategory(
+                    input,
+                  );
+                  if (success) {
+                    Get.back();
+                    Get.snackbar(
+                      'Success',
+                      'Category updated successfully',
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: Colors.green,
+                      colorText: Colors.white,
+                    );
+                  } else {
+                    Get.snackbar(
+                      'Error',
+                      categoryController.errorMessage,
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: Colors.red,
+                      colorText: Colors.white,
+                    );
+                  }
+                },
+              ),
             );
           },
           icon: const Icon(Icons.add),

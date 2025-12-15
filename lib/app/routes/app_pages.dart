@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:supportacrm/app/bindings/category_binding.dart';
 import 'app_routes.dart';
 import '../bindings/initial_binding.dart';
 import '../bindings/auth_binding.dart';
@@ -68,15 +69,10 @@ class AppPages {
     GetPage(
       name: AppRoutes.CATEGORIES,
       page: () => const CategoriesView(),
+      binding: CategoryBinding(),
     ),
-    GetPage(
-      name: AppRoutes.SETTINGS,
-      page: () => const SettingsView(),
-    ),
-    GetPage(
-      name: AppRoutes.PROFILE,
-      page: () => const ProfileView(),
-    ),
+    GetPage(name: AppRoutes.SETTINGS, page: () => const SettingsView()),
+    GetPage(name: AppRoutes.PROFILE, page: () => const ProfileView()),
     // Add more routes here as needed
   ];
 }
