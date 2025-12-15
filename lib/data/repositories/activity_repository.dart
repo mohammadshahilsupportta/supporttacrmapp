@@ -116,7 +116,7 @@ class ActivityRepository {
           ''')
           .eq('lead_id', leadId)
           .eq('activity_type', 'task')
-          .inFilter('task_status', ['pending', 'in_progress'])
+          .filter('task_status', 'in', '("pending","in_progress")')
           .order('due_date', ascending: true)
           .order('priority', ascending: false) as List<dynamic>? ?? [];
       return data
@@ -142,7 +142,7 @@ class ActivityRepository {
             assigned_to_user:users!lead_activities_assigned_to_fkey(id, name, email)
           ''')
           .eq('lead_id', leadId)
-          .inFilter('activity_type', ['task', 'meeting'])
+          .filter('activity_type', 'in', '("task","meeting")')
           .or('due_date.gte.$now,scheduled_at.gte.$now')
           .order('scheduled_at', ascending: true)
           .order('due_date', ascending: true)

@@ -8,11 +8,11 @@ import 'core/constants/app_constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     // Initialize GetStorage
     await GetStorage.init();
-    
+
     // Initialize Supabase
     await Supabase.initialize(
       url: AppConstants.supabaseUrl,
@@ -23,7 +23,7 @@ void main() async {
     // The app will show network errors when trying to use Supabase
     debugPrint('Supabase initialization error: $e');
   }
-  
+
   runApp(const MyApp());
 }
 

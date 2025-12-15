@@ -10,7 +10,8 @@ class LeadRepository {
     LeadFilters? filters,
   }) async {
     try {
-      dynamic query = SupabaseService.from('leads')
+      // Fetch all leads for the shop (filter client-side to avoid API method issues)
+      final data = await SupabaseService.from('leads')
           .select('''
             *,
             assigned_user:users!leads_assigned_to_fkey(id, name, email),
@@ -21,37 +22,7 @@ class LeadRepository {
           ''')
           .eq('shop_id', shopId)
           .isFilter('deleted_at', null)
-          .order('created_at', ascending: false);
-
-      // Apply filters
-      if (filters != null) {
-        if (filters.status != null && filters.status!.isNotEmpty) {
-          final statusStrings = filters.status!
-              .map((s) => LeadModel.statusToString(s))
-              .toList();
-          query = (query as dynamic).inFilter('status', statusStrings);
-        }
-        if (filters.assignedTo != null) {
-          query = query.eq('assigned_to', filters.assignedTo);
-        }
-        if (filters.source != null) {
-          query = query.eq('source', LeadModel.sourceToString(filters.source!));
-        }
-        if (filters.dateFrom != null) {
-          query = query.gte('created_at', filters.dateFrom!.toIso8601String());
-        }
-        if (filters.dateTo != null) {
-          query = query.lte('created_at', filters.dateTo!.toIso8601String());
-        }
-        if (filters.search != null && filters.search!.isNotEmpty) {
-          final searchTerm = '%${filters.search}%';
-          query = query.or(
-            'name.ilike.$searchTerm,email.ilike.$searchTerm,phone.ilike.$searchTerm,company.ilike.$searchTerm',
-          );
-        }
-      }
-
-      final data = await query as List<dynamic>? ?? [];
+          .order('created_at', ascending: false) as List<dynamic>? ?? [];
 
       // Transform the nested structure
       List<LeadWithRelationsModel> leads = data.map((leadJson) {
@@ -73,13 +44,34 @@ class LeadRepository {
         });
       }).toList();
 
-      // Filter by categories client-side if needed
-      if (filters?.categoryIds != null && filters!.categoryIds!.isNotEmpty) {
-        leads = leads.where((lead) {
-          return lead.categories.any(
-            (cat) => filters.categoryIds!.contains(cat.id),
-          );
-        }).toList();
+      // Apply client-side filters (status, categories, search fallback)
+      if (filters != null) {
+        // Filter by status client-side
+        if (filters.status != null && filters.status!.isNotEmpty) {
+          leads = leads.where((lead) {
+            return filters.status!.contains(lead.status);
+          }).toList();
+        }
+
+        // Filter by categories client-side
+        if (filters.categoryIds != null && filters.categoryIds!.isNotEmpty) {
+          leads = leads.where((lead) {
+            return lead.categories.any(
+              (cat) => filters.categoryIds!.contains(cat.id),
+            );
+          }).toList();
+        }
+
+        // Filter by search client-side if or() didn't work
+        if (filters.search != null && filters.search!.isNotEmpty) {
+          final searchLower = filters.search!.toLowerCase();
+          leads = leads.where((lead) {
+            return (lead.name.toLowerCase().contains(searchLower)) ||
+                (lead.email?.toLowerCase().contains(searchLower) ?? false) ||
+                (lead.phone?.toLowerCase().contains(searchLower) ?? false) ||
+                (lead.company?.toLowerCase().contains(searchLower) ?? false);
+          }).toList();
+        }
       }
 
       return leads;
