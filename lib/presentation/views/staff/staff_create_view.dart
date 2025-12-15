@@ -88,65 +88,6 @@ class _StaffCreateViewState extends State<StaffCreateView> {
     }
   }
 
-  void _showCategoryDialog() {
-    final categoryController = Get.find<CategoryController>();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Categories'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: categoryController.categories.length,
-            itemBuilder: (context, index) {
-              final category = categoryController.categories[index];
-              final isSelected = _selectedCategoryIds.contains(category.id);
-
-              return CheckboxListTile(
-                title: Row(
-                  children: [
-                    if (category.color != null)
-                      Container(
-                        width: 16,
-                        height: 16,
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: Color(
-                            int.parse(
-                              category.color!.replaceFirst('#', '0xFF'),
-                            ),
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    Expanded(child: Text(category.name)),
-                  ],
-                ),
-                value: isSelected,
-                onChanged: (value) {
-                  setState(() {
-                    if (value == true) {
-                      _selectedCategoryIds.add(category.id);
-                    } else {
-                      _selectedCategoryIds.remove(category.id);
-                    }
-                  });
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
@@ -170,6 +111,8 @@ class _StaffCreateViewState extends State<StaffCreateView> {
           return const LoadingWidget();
         }
 
+        final categories = categoryController.categories;
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Form(
@@ -177,173 +120,188 @@ class _StaffCreateViewState extends State<StaffCreateView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name *',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email *',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter an email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: InputDecoration(
-                    labelText: 'Password *',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                _buildSection(
+                  title: 'Account',
+                  children: [
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name *',
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a name';
+                        }
+                        return null;
                       },
                     ),
-                  ),
-                  obscureText: _obscurePassword,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone (Optional)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<UserRole>(
-                  value: _selectedRole,
-                  decoration: const InputDecoration(
-                    labelText: 'Role *',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.badge),
-                  ),
-                  items: [
-                    UserRole.admin,
-                    UserRole.marketingManager,
-                    UserRole.officeStaff,
-                    UserRole.freelance,
-                  ].map((role) {
-                    return DropdownMenuItem(
-                      value: role,
-                      child: Text(UserModel.roleDisplayName(role)),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedRole = value;
-                        // Clear category selection if role has full access
-                        if (value == UserRole.admin ||
-                            value == UserRole.marketingManager) {
-                          _selectedCategoryIds.clear();
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email *',
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter an email';
                         }
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                if (_selectedRole != UserRole.admin &&
-                    _selectedRole != UserRole.marketingManager) ...[
-                  OutlinedButton.icon(
-                    onPressed: _showCategoryDialog,
-                    icon: const Icon(Icons.folder_open),
-                    label: Text(
-                      _selectedCategoryIds.isEmpty
-                          ? 'Select Categories'
-                          : '${_selectedCategoryIds.length} category${_selectedCategoryIds.length != 1 ? 's' : ''} selected',
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_selectedCategoryIds.isNotEmpty)
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: _selectedCategoryIds.map((categoryId) {
-                        final category = categoryController.categories
-                            .firstWhere((c) => c.id == categoryId);
-                        return Chip(
-                          label: Text(
-                            category.name,
-                            style: const TextStyle(fontSize: 12),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _passwordController,
+                      decoration: InputDecoration(
+                        labelText: 'Password *',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                           ),
-                          onDeleted: () {
+                          onPressed: () {
                             setState(() {
-                              _selectedCategoryIds.remove(categoryId);
+                              _obscurePassword = !_obscurePassword;
                             });
                           },
+                        ),
+                      ),
+                      obscureText: _obscurePassword,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a password';
+                        }
+                        if (value.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: 'Contact & Role',
+                  children: [
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone (Optional)',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<UserRole>(
+                      value: _selectedRole,
+                      decoration: const InputDecoration(
+                        labelText: 'Role *',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                      items: [
+                        UserRole.admin,
+                        UserRole.marketingManager,
+                        UserRole.officeStaff,
+                        UserRole.freelance,
+                      ].map((role) {
+                        return DropdownMenuItem(
+                          value: role,
+                          child: Text(UserModel.roleDisplayName(role)),
                         );
                       }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedRole = value;
+                            if (value == UserRole.admin ||
+                                value == UserRole.marketingManager) {
+                              _selectedCategoryIds.clear();
+                            }
+                          });
+                        }
+                      },
                     ),
-                ] else ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.blue.shade700),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'This role has access to all categories',
-                            style: TextStyle(color: Colors.blue.shade700),
-                          ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: 'Category permissions',
+                  children: [
+                    if (_selectedRole != UserRole.admin &&
+                        _selectedRole != UserRole.marketingManager) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: categories.map((category) {
+                          final selected =
+                              _selectedCategoryIds.contains(category.id);
+                          return FilterChip(
+                            label: Text(category.name),
+                            selected: selected,
+                            onSelected: (value) {
+                              setState(() {
+                                if (value) {
+                                  _selectedCategoryIds.add(category.id);
+                                } else {
+                                  _selectedCategoryIds.remove(category.id);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.blue.shade700),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text('This role has access to all categories'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SafeArea(
+                  top: false,
+                  minimum: const EdgeInsets.only(bottom: 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: _handleSubmit,
+                      icon: const Icon(Icons.check),
+                      label: const Text(
+                        'Create Staff Member',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _handleSubmit,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('Create Staff Member'),
                 ),
               ],
             ),
@@ -352,5 +310,37 @@ class _StaffCreateViewState extends State<StaffCreateView> {
       }),
     );
   }
+}
+
+Widget _buildSection({
+  required String title,
+  required List<Widget> children,
+}) {
+  return Card(
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(
+        color: Colors.grey.shade300,
+      ),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    ),
+  );
 }
 
