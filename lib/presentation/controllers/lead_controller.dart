@@ -1,0 +1,126 @@
+import 'package:get/get.dart';
+import '../../viewmodels/lead_viewmodel.dart';
+import '../../data/models/lead_model.dart';
+import '../../core/utils/helpers.dart';
+
+class LeadController extends GetxController {
+  final LeadViewModel _viewModel = LeadViewModel();
+
+  // Observables
+  final _leads = <LeadWithRelationsModel>[].obs;
+  final _isLoading = false.obs;
+  final _errorMessage = ''.obs;
+  final _selectedLead = Rxn<LeadWithRelationsModel>();
+  final _filters = Rxn<LeadFilters>();
+  final _stats = Rxn<LeadStats>();
+
+  // Getters
+  List<LeadWithRelationsModel> get leads => _leads;
+  bool get isLoading => _isLoading.value;
+  String get errorMessage => _errorMessage.value;
+  LeadWithRelationsModel? get selectedLead => _selectedLead.value;
+  LeadFilters? get filters => _filters.value;
+  LeadStats? get stats => _stats.value;
+
+  // Set filters
+  void setFilters(LeadFilters? filters) {
+    _filters.value = filters;
+  }
+
+  // Load leads
+  Future<void> loadLeads(String shopId) async {
+    _isLoading.value = true;
+    _errorMessage.value = '';
+
+    try {
+      final result = await _viewModel.getLeads(shopId, filters: _filters.value);
+      _leads.value = result;
+    } catch (e) {
+      _errorMessage.value = Helpers.handleError(e);
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  // Load lead by ID
+  Future<void> loadLeadById(String leadId) async {
+    _isLoading.value = true;
+    _errorMessage.value = '';
+
+    try {
+      final result = await _viewModel.getLeadById(leadId);
+      _selectedLead.value = result;
+    } catch (e) {
+      _errorMessage.value = Helpers.handleError(e);
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  // Create lead
+  Future<bool> createLead(
+    String shopId,
+    CreateLeadInput input,
+    String userId,
+  ) async {
+    _isLoading.value = true;
+    _errorMessage.value = '';
+
+    try {
+      await _viewModel.createLead(shopId, input, userId);
+      await loadLeads(shopId);
+      return true;
+    } catch (e) {
+      _errorMessage.value = Helpers.handleError(e);
+      return false;
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  // Update lead
+  Future<bool> updateLead(String leadId, CreateLeadInput input) async {
+    _isLoading.value = true;
+    _errorMessage.value = '';
+
+    try {
+      await _viewModel.updateLead(leadId, input);
+      await loadLeadById(leadId);
+      return true;
+    } catch (e) {
+      _errorMessage.value = Helpers.handleError(e);
+      return false;
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  // Delete lead
+  Future<bool> deleteLead(String leadId, String shopId) async {
+    _isLoading.value = true;
+    _errorMessage.value = '';
+
+    try {
+      await _viewModel.deleteLead(leadId);
+      await loadLeads(shopId);
+      return true;
+    } catch (e) {
+      _errorMessage.value = Helpers.handleError(e);
+      return false;
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  // Load statistics
+  Future<void> loadStats(String shopId) async {
+    try {
+      final result = await _viewModel.getStats(shopId);
+      _stats.value = result;
+    } catch (e) {
+      _errorMessage.value = Helpers.handleError(e);
+    }
+  }
+}
+
+

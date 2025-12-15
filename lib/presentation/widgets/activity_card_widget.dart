@@ -1,0 +1,199 @@
+import 'package:flutter/material.dart';
+import '../../data/models/activity_model.dart';
+import 'package:intl/intl.dart';
+
+class ActivityCardWidget extends StatelessWidget {
+  final LeadActivity activity;
+  final VoidCallback? onTap;
+  final VoidCallback? onDelete;
+
+  const ActivityCardWidget({
+    super.key,
+    required this.activity,
+    this.onTap,
+    this.onDelete,
+  });
+
+  IconData _getActivityIcon(ActivityType type) {
+    switch (type) {
+      case ActivityType.task:
+      case ActivityType.taskCompleted:
+        return Icons.task;
+      case ActivityType.meeting:
+      case ActivityType.meetingCompleted:
+        return Icons.event;
+      case ActivityType.call:
+        return Icons.phone;
+      case ActivityType.email:
+        return Icons.email;
+      case ActivityType.note:
+        return Icons.note;
+      case ActivityType.statusChange:
+        return Icons.change_circle;
+      case ActivityType.assignment:
+        return Icons.person_add;
+      case ActivityType.categoryChange:
+        return Icons.category;
+      case ActivityType.fieldUpdate:
+        return Icons.edit;
+    }
+  }
+
+  Color _getActivityColor(ActivityType type) {
+    switch (type) {
+      case ActivityType.task:
+        return Colors.blue;
+      case ActivityType.taskCompleted:
+        return Colors.green;
+      case ActivityType.meeting:
+        return Colors.purple;
+      case ActivityType.meetingCompleted:
+        return Colors.green;
+      case ActivityType.call:
+        return Colors.orange;
+      case ActivityType.email:
+        return Colors.teal;
+      case ActivityType.note:
+        return Colors.grey;
+      case ActivityType.statusChange:
+        return Colors.indigo;
+      case ActivityType.assignment:
+        return Colors.pink;
+      case ActivityType.categoryChange:
+        return Colors.cyan;
+      case ActivityType.fieldUpdate:
+        return Colors.amber;
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return DateFormat('MMM dd, yyyy HH:mm').format(date);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final iconColor = _getActivityColor(activity.activityType);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _getActivityIcon(activity.activityType),
+                  color: iconColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (activity.title != null) ...[
+                      Text(
+                        activity.title!,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    if (activity.description != null) ...[
+                      Text(
+                        activity.description!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    if (activity.noteContent != null) ...[
+                      Text(
+                        activity.noteContent!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    Row(
+                      children: [
+                        if (activity.performedByUser != null) ...[
+                          Icon(Icons.person, size: 12, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            activity.performedByUser!.name,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey,
+                                ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Icon(Icons.access_time, size: 12, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatDate(activity.createdAt),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey,
+                              ),
+                        ),
+                      ],
+                    ),
+                    if (activity.priority != null || activity.taskStatus != null) ...[
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 4,
+                        children: [
+                          if (activity.priority != null)
+                            Chip(
+                              label: Text(
+                                activity.priorityString!.toUpperCase(),
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                              padding: EdgeInsets.zero,
+                              backgroundColor: activity.priority == TaskPriority.high
+                                  ? Colors.red.withOpacity(0.2)
+                                  : activity.priority == TaskPriority.medium
+                                      ? Colors.orange.withOpacity(0.2)
+                                      : Colors.green.withOpacity(0.2),
+                            ),
+                          if (activity.taskStatus != null)
+                            Chip(
+                              label: Text(
+                                activity.taskStatusString!.replaceAll('_', ' ').toUpperCase(),
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (onDelete != null)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  onPressed: onDelete,
+                  color: Colors.red,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
