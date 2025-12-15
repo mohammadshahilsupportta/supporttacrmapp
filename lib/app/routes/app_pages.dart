@@ -11,6 +11,7 @@ import '../../presentation/views/register/register_view.dart';
 import '../../presentation/views/home/home_view.dart';
 import '../../presentation/views/leads/leads_list_view.dart';
 import '../../presentation/views/leads/lead_detail_view.dart';
+import '../../presentation/views/leads/lead_create_view.dart';
 import '../../presentation/views/staff/staff_list_view.dart';
 import '../../presentation/views/staff/staff_create_view.dart';
 import '../../presentation/views/categories/categories_view.dart';
@@ -46,6 +47,11 @@ class AppPages {
     GetPage(
       name: AppRoutes.LEADS,
       page: () => const LeadsListView(),
+      binding: LeadBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.LEAD_CREATE,
+      page: () => const LeadCreateView(),
       binding: LeadBinding(),
     ),
     GetPage(
