@@ -242,26 +242,29 @@ class _HomeViewState extends State<HomeView> {
                   }
                 },
                 onUpdate: (input) async {
-                  final success = await categoryController.updateCategory(
-                    input,
-                  );
-                  if (success) {
-                    Get.back();
-                    Get.snackbar(
-                      'Success',
-                      'Category updated successfully',
-                      snackPosition: SnackPosition.BOTTOM,
-                      backgroundColor: Colors.green,
-                      colorText: Colors.white,
+                  if (authController.shop != null) {
+                    final success = await categoryController.updateCategory(
+                      input,
+                      shopId: authController.shop!.id,
                     );
-                  } else {
-                    Get.snackbar(
-                      'Error',
-                      categoryController.errorMessage,
-                      snackPosition: SnackPosition.BOTTOM,
-                      backgroundColor: Colors.red,
-                      colorText: Colors.white,
-                    );
+                    if (success) {
+                      Get.back();
+                      Get.snackbar(
+                        'Success',
+                        'Category updated successfully',
+                        snackPosition: SnackPosition.BOTTOM,
+                        backgroundColor: Colors.green,
+                        colorText: Colors.white,
+                      );
+                    } else {
+                      Get.snackbar(
+                        'Error',
+                        categoryController.errorMessage,
+                        snackPosition: SnackPosition.BOTTOM,
+                        backgroundColor: Colors.red,
+                        colorText: Colors.white,
+                      );
+                    }
                   }
                 },
               ),

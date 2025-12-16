@@ -66,13 +66,26 @@ class CategoryController extends GetxController {
   }
 
   // Update category
-  Future<bool> updateCategory(UpdateCategoryInput input) async {
+  Future<bool> updateCategory(UpdateCategoryInput input, {String? shopId}) async {
     _isLoading.value = true;
     _errorMessage.value = '';
 
     try {
       await _viewModel.updateCategory(input);
-      await loadCategoryById(input.id);
+      // Reload the categories list to refresh the UI
+      if (shopId != null) {
+        await loadCategories(shopId);
+      } else {
+        // If shopId not provided, update the category in the list manually
+        final index = _categories.indexWhere((c) => c.id == input.id);
+        if (index != -1) {
+          await loadCategoryById(input.id);
+          final updated = _selectedCategory.value;
+          if (updated != null) {
+            _categories[index] = updated;
+          }
+        }
+      }
       return true;
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);

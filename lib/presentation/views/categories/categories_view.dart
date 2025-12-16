@@ -113,9 +113,24 @@ class _CategoriesViewState extends State<CategoriesView> {
   }
 
   Future<void> _handleUpdate(UpdateCategoryInput input) async {
+    final authController = Get.find<AuthController>();
     final categoryController = Get.find<CategoryController>();
 
-    final success = await categoryController.updateCategory(input);
+    if (authController.shop == null) {
+      Get.snackbar(
+        'Error',
+        'Shop information not available',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final success = await categoryController.updateCategory(
+      input,
+      shopId: authController.shop!.id,
+    );
 
     if (success) {
       Get.back();
