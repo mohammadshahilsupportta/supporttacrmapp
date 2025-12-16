@@ -54,6 +54,12 @@ class ActivityRepository {
       activityData['shop_id'] = shopId;
       activityData['performed_by'] = performedBy;
 
+      // For tasks, set task_status to 'pending' by default if not provided
+      if (input.activityType == ActivityType.task && 
+          !activityData.containsKey('task_status')) {
+        activityData['task_status'] = 'pending';
+      }
+
       final data = await SupabaseService.from('lead_activities')
           .insert(activityData)
           .select('''
@@ -117,8 +123,7 @@ class ActivityRepository {
           .eq('lead_id', leadId)
           .eq('activity_type', 'task')
           .filter('task_status', 'in', '("pending","in_progress")')
-          .order('due_date', ascending: true)
-          .order('priority', ascending: false) as List<dynamic>? ?? [];
+          .order('created_at', ascending: false) as List<dynamic>? ?? [];
       return data
           .map((json) => LeadActivity.fromJson(json as Map<String, dynamic>))
           .toList();

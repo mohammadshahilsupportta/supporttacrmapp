@@ -73,6 +73,15 @@ class ActivityController extends GetxController {
         performedBy,
       );
       _activities.insert(0, activity);
+      
+      // If it's a task, add to pending tasks list at the top
+      if (activity.activityType == ActivityType.task &&
+          (activity.taskStatus == TaskStatus.pending ||
+           activity.taskStatus == TaskStatus.inProgress)) {
+        // Insert at the top to show newest first
+        _pendingTasks.insert(0, activity);
+      }
+      
       return true;
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
@@ -88,11 +97,27 @@ class ActivityController extends GetxController {
     _errorMessage.value = '';
 
     try {
-      final updated = await _viewModel.updateActivity(id, input);
       final index = _activities.indexWhere((a) => a.id == id);
+      LeadActivity? oldActivity;
+      if (index != -1) {
+        oldActivity = _activities[index];
+      }
+      
+      final updated = await _viewModel.updateActivity(id, input);
       if (index != -1) {
         _activities[index] = updated;
       }
+      
+      // If task status changed, refresh pending tasks
+      if (oldActivity != null &&
+          oldActivity.activityType == ActivityType.task &&
+          updated.activityType == ActivityType.task &&
+          (oldActivity.taskStatus != updated.taskStatus ||
+           updated.taskStatus == TaskStatus.pending ||
+           updated.taskStatus == TaskStatus.inProgress)) {
+        await loadPendingTasks(updated.leadId);
+      }
+      
       return true;
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);

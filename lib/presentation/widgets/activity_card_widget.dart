@@ -66,9 +66,57 @@ class ActivityCardWidget extends StatelessWidget {
     }
   }
 
-  String _formatDate(DateTime? date) {
+  String _formatTime(DateTime? date) {
     if (date == null) return '';
-    return DateFormat('MMM dd, yyyy HH:mm').format(date);
+    return DateFormat('MMM dd, HH:mm').format(date);
+  }
+
+  Color _getPriorityColor(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.high:
+        return Colors.red;
+      case TaskPriority.medium:
+        return Colors.orange;
+      case TaskPriority.low:
+        return Colors.blue;
+    }
+  }
+
+  Widget _buildPriorityBadge(TaskPriority priority) {
+    final color = _getPriorityColor(priority);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.flag,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            priority.toString().split('.').last.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -128,26 +176,68 @@ class ActivityCardWidget extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                     ],
-                    Row(
-                      children: [
-                        if (activity.performedByUser != null) ...[
-                          Icon(Icons.person, size: 12, color: Colors.grey),
+                    // Location (for meetings)
+                    if (activity.meetingLocation != null &&
+                        activity.meetingLocation!.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, size: 12, color: Colors.grey),
                           const SizedBox(width: 4),
-                          Text(
-                            activity.performedByUser!.name,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey,
-                                ),
+                          Expanded(
+                            child: Text(
+                              activity.meetingLocation!,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          const SizedBox(width: 12),
                         ],
-                        Icon(Icons.access_time, size: 12, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatDate(activity.createdAt),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey,
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    // Metadata row: User and Time
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (activity.performedByUser != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.person, size: 12, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Text(
+                                activity.performedByUser!.name,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey,
+                                      fontSize: 11,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
+                            ],
+                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.access_time, size: 12, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              activity.scheduledAt != null
+                                  ? _formatTime(activity.scheduledAt)
+                                  : _formatTime(activity.createdAt),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -157,18 +247,7 @@ class ActivityCardWidget extends StatelessWidget {
                         spacing: 4,
                         children: [
                           if (activity.priority != null)
-                            Chip(
-                              label: Text(
-                                activity.priorityString!.toUpperCase(),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                              padding: EdgeInsets.zero,
-                              backgroundColor: activity.priority == TaskPriority.high
-                                  ? Colors.red.withOpacity(0.2)
-                                  : activity.priority == TaskPriority.medium
-                                      ? Colors.orange.withOpacity(0.2)
-                                      : Colors.green.withOpacity(0.2),
-                            ),
+                            _buildPriorityBadge(activity.priority!),
                           if (activity.taskStatus != null)
                             Chip(
                               label: Text(
