@@ -6,6 +6,7 @@ import '../../controllers/category_controller.dart';
 import '../../../data/models/staff_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/widgets/loading_widget.dart';
+import '../../../core/utils/helpers.dart';
 
 class StaffCreateView extends StatefulWidget {
   const StaffCreateView({super.key});
@@ -52,9 +53,12 @@ class _StaffCreateViewState extends State<StaffCreateView> {
       return;
     }
 
+    // Normalize email (lowercase and trim)
+    final email = _emailController.text.trim().toLowerCase();
+    
     final input = CreateStaffInput(
       name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
+      email: email,
       password: _passwordController.text,
       role: _selectedRole,
       categoryIds: _selectedCategoryIds.isNotEmpty ? _selectedCategoryIds : null,
@@ -69,22 +73,72 @@ class _StaffCreateViewState extends State<StaffCreateView> {
     );
 
     if (success) {
-      Get.snackbar(
-        'Success',
-        'Staff member created successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
+      // Navigate back first
       Get.back();
+      
+      // Show success message after navigation completes
+      Future.delayed(const Duration(milliseconds: 500), () {
+        Get.snackbar(
+          'Success',
+          'Staff member created successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.all(16),
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+          shouldIconPulse: false,
+        );
+      });
     } else {
-      Get.snackbar(
-        'Error',
-        staffController.errorMessage,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      // Show error message with more details for email validation errors
+      final errorMessage = staffController.errorMessage;
+      final isEmailError = errorMessage.toLowerCase().contains('email validation');
+      
+      // Show a dialog for email validation errors with more context
+      if (isEmailError) {
+        Get.dialog(
+          AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.email, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Email Validation Error'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(errorMessage),
+                const SizedBox(height: 16),
+                const Text(
+                  'Note: Some email addresses are rejected by Supabase\'s client-side validation. The website uses Admin API which bypasses this restriction.',
+                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        Get.snackbar(
+          'Error',
+          errorMessage,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.all(16),
+          icon: const Icon(Icons.error, color: Colors.white),
+          shouldIconPulse: false,
+        );
+      }
     }
   }
 
@@ -144,12 +198,14 @@ class _StaffCreateViewState extends State<StaffCreateView> {
                         prefixIcon: Icon(Icons.email_outlined),
                       ),
                       keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Please enter an email';
                         }
-                        if (!value.contains('@')) {
-                          return 'Please enter a valid email';
+                        final email = value.trim().toLowerCase();
+                        if (!Helpers.isValidEmail(email)) {
+                          return 'Please enter a valid email address';
                         }
                         return null;
                       },

@@ -1,7 +1,9 @@
 import 'package:get/get.dart';
 import '../../viewmodels/staff_viewmodel.dart';
 import '../../data/models/staff_model.dart';
+import '../../data/models/user_model.dart';
 import '../../core/utils/helpers.dart';
+import '../../core/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class StaffController extends GetxController {
@@ -20,8 +22,8 @@ class StaffController extends GetxController {
   StaffWithPermissionsModel? get selectedStaff => _selectedStaff.value;
 
   // Load all staff
-  Future<void> loadStaff(String shopId) async {
-    if (_isLoading.value) return; // Prevent duplicate loads
+  Future<void> loadStaff(String shopId, {bool force = false}) async {
+    if (!force && _isLoading.value) return; // Prevent duplicate loads unless forced
     
     _isLoading.value = true;
     _errorMessage.value = '';
@@ -64,39 +66,156 @@ class StaffController extends GetxController {
     _errorMessage.value = '';
 
     try {
-      // First create auth user
-      final authResponse = await Supabase.instance.client.auth.signUp(
-        email: input.email,
-        password: input.password,
-      );
-
-      if (authResponse.user == null) {
-        _errorMessage.value = 'Failed to create authentication user';
+      // Normalize and validate email
+      final normalizedEmail = input.email.trim().toLowerCase();
+      
+      if (!Helpers.isValidEmail(normalizedEmail)) {
+        _errorMessage.value = 'Please enter a valid email address';
         return false;
       }
 
-      // Then create staff record
-      final staff = await _viewModel.createStaff(
-        shopId,
-        input,
-        authResponse.user!.id,
-      );
+      // The website likely uses Admin API or a backend function
+      // Since we can't use Admin API from client, we need to use signUp
+      // But Supabase is rejecting the email validation
+      // Try signUp with the email as-is (no normalization) first
+      String? userId;
+      AuthResponse? authResponse;
+      
+      // Try using Edge Function first (uses Admin API, bypasses email validation)
+      bool edgeFunctionSucceeded = false;
+      try {
+        print('Attempting to create staff via Edge Function (Admin API)');
+        
+        final functionResult = await SupabaseService.invokeFunction(
+          'create_staff',
+          body: {
+            'email': normalizedEmail,
+            'password': input.password,
+            'name': input.name,
+            'role': input.role != null 
+                ? UserModel.roleToString(input.role!)
+                : 'office_staff',
+            'shop_id': shopId,
+            'phone': input.phone,
+            'category_ids': input.categoryIds,
+          },
+        );
+        
+        if (functionResult['success'] == true && functionResult['auth_user_id'] != null) {
+          userId = functionResult['auth_user_id'] as String;
+          print('Successfully created staff via Edge Function with auth_user_id: $userId');
+          
+          // Staff record is already created by the Edge Function
+          // Just reload the staff list
+          await loadStaff(shopId, force: true);
+          edgeFunctionSucceeded = true;
+          return true;
+        } else {
+          // Edge Function returned an error, fall back to direct signUp
+          final errorMsg = functionResult['error']?.toString() ?? 
+              'Failed to create staff via Edge Function';
+          print('Edge Function error: $errorMsg');
+        }
+      } catch (functionError) {
+        // Edge Function doesn't exist or failed, fall back to direct signUp
+        print('Edge Function not available or failed, falling back to direct signUp: $functionError');
+      }
+      
+      // Fall back to direct signUp if Edge Function failed or doesn't exist
+      if (!edgeFunctionSucceeded) {
+        // Try creating auth user directly
+        try {
+          print('Attempting to create user with email: $normalizedEmail');
+          authResponse = await SupabaseService.auth.signUp(
+            email: normalizedEmail,
+            password: input.password,
+            data: {
+              'name': input.name,
+              'role': input.role != null 
+                  ? UserModel.roleToString(input.role!)
+                  : 'office_staff',
+            },
+          );
+          
+          if (authResponse.user == null) {
+            // User might be created but email confirmation required
+            if (authResponse.session == null) {
+              _errorMessage.value = 'User creation may require email confirmation. Please check your email.';
+            } else {
+              _errorMessage.value = 'Failed to create authentication user';
+            }
+            return false;
+          }
+          
+          userId = authResponse.user!.id;
+          print('Successfully created auth user with ID: $userId');
+        } catch (e) {
+          final errorString = e.toString().toLowerCase();
+          
+          // Check if user already exists
+          if (errorString.contains('user already registered') ||
+              errorString.contains('already registered') ||
+              errorString.contains('email already') ||
+              errorString.contains('already exists')) {
+            _errorMessage.value = 'A user with this email already exists. Please use a different email.';
+            return false;
+          }
+          
+          // Check for email validation errors
+          if (errorString.contains('email_address_invalid') ||
+              (errorString.contains('email address') && errorString.contains('invalid'))) {
+            _errorMessage.value = 'Email validation failed: "${input.email}" is being rejected by Supabase\'s email validation. Please deploy the Edge Function to use Admin API, or use the website to create staff members.';
+            print('Email validation error: $e');
+            print('Email attempted: $normalizedEmail');
+            return false;
+          }
+          
+          // Re-throw other errors
+          print('Auth error: $e');
+          rethrow;
+        }
+        
+        // Verify we have a valid user ID
+        if (userId.isEmpty) {
+          _errorMessage.value = 'Failed to get user ID from authentication response';
+          return false;
+        }
 
-      _staffList.add(StaffWithPermissionsModel(
-        id: staff.id,
-        shopId: staff.shopId,
-        email: staff.email,
-        name: staff.name,
-        role: staff.role,
-        isActive: staff.isActive,
-        authUserId: staff.authUserId,
-        createdAt: staff.createdAt,
-        updatedAt: staff.updatedAt,
-        categoryPermissions: [],
-      ));
+        // Create input with normalized email for staff record
+        final normalizedInput = CreateStaffInput(
+          name: input.name,
+          email: normalizedEmail,
+          password: input.password,
+          role: input.role,
+          categoryIds: input.categoryIds,
+          phone: input.phone,
+        );
 
-      return true;
+        // Then create staff record
+        try {
+          await _viewModel.createStaff(
+            shopId,
+            normalizedInput,
+            userId,
+          );
+
+          // Reload staff list to get the complete data with permissions
+          await loadStaff(shopId, force: true);
+
+          return true;
+        } catch (staffError) {
+          // If staff creation fails, log the error
+          print('Staff record creation failed: $staffError');
+          print('Auth user was created with ID: $userId');
+          rethrow;
+        }
+      }
+      
+      // This should never be reached, but satisfies the analyzer
+      // All code paths above should return true or false
+      return false;
     } catch (e) {
+      print('Error creating staff: $e'); // Debug log
       _errorMessage.value = Helpers.handleError(e);
       return false;
     } finally {

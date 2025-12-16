@@ -18,7 +18,7 @@ class StaffListView extends StatefulWidget {
   State<StaffListView> createState() => _StaffListViewState();
 }
 
-class _StaffListViewState extends State<StaffListView> {
+class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserver {
   bool _hasInitialized = false;
   Worker? _shopWorker;
 
@@ -30,11 +30,12 @@ class _StaffListViewState extends State<StaffListView> {
   void _loadDataIfNeeded(
     AuthController authController,
     StaffController staffController,
-    CategoryController categoryController,
-  ) {
+    CategoryController categoryController, {
+    bool force = false,
+  }) {
     if (authController.shop != null) {
-      if (staffController.staffList.isEmpty && !staffController.isLoading) {
-        staffController.loadStaff(authController.shop!.id);
+      if (force || (staffController.staffList.isEmpty && !staffController.isLoading)) {
+        staffController.loadStaff(authController.shop!.id, force: force);
       }
       if (categoryController.categories.isEmpty && !categoryController.isLoading) {
         categoryController.loadCategories(authController.shop!.id);
@@ -45,6 +46,8 @@ class _StaffListViewState extends State<StaffListView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
     final authController = Get.find<AuthController>();
     final staffController = Get.put(StaffController());
     final categoryController = Get.put(CategoryController());
@@ -73,7 +76,20 @@ class _StaffListViewState extends State<StaffListView> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      final authController = Get.find<AuthController>();
+      final staffController = Get.find<StaffController>();
+      final categoryController = Get.find<CategoryController>();
+      _loadDataIfNeeded(authController, staffController, categoryController, force: true);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _shopWorker?.dispose();
     super.dispose();
   }

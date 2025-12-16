@@ -22,6 +22,34 @@ class SupabaseService {
     return _client.channel(name);
   }
 
+  // RPC methods
+  static PostgrestFilterBuilder rpc(String functionName, {Map<String, dynamic>? params}) {
+    return _client.rpc(functionName, params: params);
+  }
+
+  // Edge Function methods
+  static Future<Map<String, dynamic>> invokeFunction(
+    String functionName, {
+    Map<String, dynamic>? body,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        functionName,
+        body: body,
+      );
+      
+      if (response.data != null) {
+        return response.data as Map<String, dynamic>;
+      }
+      
+      // If no data, return empty map (function might have succeeded without returning data)
+      return {};
+    } catch (e) {
+      // Re-throw with better error message
+      throw Exception('Failed to invoke Edge Function $functionName: $e');
+    }
+  }
+
   // Check if user is authenticated
   static bool get isAuthenticated => _client.auth.currentUser != null;
 

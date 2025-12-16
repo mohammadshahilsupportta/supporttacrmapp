@@ -21,6 +21,10 @@ class Helpers {
         errorString.contains('already registered')) {
       return 'This email is already registered';
     }
+    if (errorString.contains('email_address_invalid') ||
+        errorString.contains('email address') && errorString.contains('invalid')) {
+      return 'Please enter a valid email address';
+    }
     if (errorString.contains('email not confirmed') ||
         errorString.contains('email not verified')) {
       return 'Please verify your email address';
@@ -61,9 +65,42 @@ class Helpers {
     return date.toString().substring(0, 10);
   }
 
-  // Validate email
+  // Validate email (basic validation, Supabase will do final validation)
   static bool isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    if (email.isEmpty) return false;
+    
+    // Trim whitespace
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty) return false;
+    
+    // Basic structure check: must contain exactly one @
+    final atIndex = trimmedEmail.indexOf('@');
+    if (atIndex <= 0 || atIndex >= trimmedEmail.length - 1) return false;
+    
+    // Split by @
+    final parts = trimmedEmail.split('@');
+    if (parts.length != 2) return false;
+    
+    final localPart = parts[0].trim();
+    final domainPart = parts[1].trim();
+    
+    // Local part checks
+    if (localPart.isEmpty) return false;
+    
+    // Domain part checks
+    if (domainPart.isEmpty) return false;
+    if (!domainPart.contains('.')) return false;
+    
+    // Domain must have TLD (at least 2 chars after last dot)
+    final lastDotIndex = domainPart.lastIndexOf('.');
+    if (lastDotIndex < 0 || lastDotIndex >= domainPart.length - 2) return false;
+    
+    // Basic character check - allow common email characters
+    // This is permissive - let Supabase do the strict validation
+    final hasValidChars = RegExp(r'^[a-zA-Z0-9@._+\-]+$').hasMatch(trimmedEmail);
+    if (!hasValidChars) return false;
+    
+    return true;
   }
 
   // Validate phone number
