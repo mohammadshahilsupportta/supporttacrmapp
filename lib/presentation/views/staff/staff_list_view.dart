@@ -21,6 +21,7 @@ class StaffListView extends StatefulWidget {
 class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserver {
   bool _hasInitialized = false;
   Worker? _shopWorker;
+  final TextEditingController _searchController = TextEditingController();
 
   bool _canManageStaff(UserModel? user) {
     if (user == null) return false;
@@ -91,7 +92,27 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _shopWorker?.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  List<StaffWithPermissionsModel> _filterStaff(
+    List<StaffWithPermissionsModel> staffList,
+    String query,
+  ) {
+    if (query.trim().isEmpty) {
+      return staffList;
+    }
+
+    final searchLower = query.toLowerCase().trim();
+    return staffList.where((staff) {
+      final nameMatch = staff.name.toLowerCase().contains(searchLower);
+      final emailMatch = staff.email.toLowerCase().contains(searchLower);
+      final roleMatch = UserModel.roleDisplayName(staff.role)
+          .toLowerCase()
+          .contains(searchLower);
+      return nameMatch || emailMatch || roleMatch;
+    }).toList();
   }
 
   @override
@@ -153,6 +174,11 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
         );
       }
 
+      final filteredStaff = _filterStaff(
+        staffController.staffList,
+        _searchController.text,
+      );
+
       return RefreshIndicator(
         onRefresh: () async {
           if (authController.shop != null) {
@@ -160,11 +186,79 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
             await categoryController.loadCategories(authController.shop!.id);
           }
         },
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: staffController.staffList.length,
-          itemBuilder: (context, index) {
-            final staff = staffController.staffList[index];
+        child: Column(
+          children: [
+            // Search field
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search by name, email, or role',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            setState(() => _searchController.clear());
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            // Staff list
+            Expanded(
+              child: filteredStaff.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.search_off, size: 64, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No staff found',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.grey,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try adjusting your search',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey,
+                                ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      itemCount: filteredStaff.length,
+                      itemBuilder: (context, index) {
+                        final staff = filteredStaff[index];
             return StaffCardWidget(
               staff: staff,
               canManage: canManage,
@@ -285,7 +379,10 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
                 );
               },
             );
-          },
+                      },
+                    ),
+            ),
+          ],
         ),
       );
     });
