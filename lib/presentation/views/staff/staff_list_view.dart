@@ -264,7 +264,7 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
               canManage: canManage,
               onTap: () {
                 // Navigate to staff detail page
-                // Get.toNamed(AppRoutes.STAFF_DETAIL.replaceAll(':id', staff.id));
+                Get.toNamed(AppRoutes.STAFF_DETAIL.replaceAll(':id', staff.id));
               },
               onToggleActive: () async {
                 final newStatus = !staff.isActive;

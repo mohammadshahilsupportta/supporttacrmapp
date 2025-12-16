@@ -14,6 +14,7 @@ import '../../presentation/views/leads/lead_detail_view.dart';
 import '../../presentation/views/leads/lead_create_view.dart';
 import '../../presentation/views/staff/staff_list_view.dart';
 import '../../presentation/views/staff/staff_create_view.dart';
+import '../../presentation/views/staff/staff_detail_view.dart';
 import '../../presentation/views/categories/categories_view.dart';
 import '../../presentation/views/settings/settings_view.dart';
 import '../../presentation/views/profile/profile_view.dart';
@@ -70,6 +71,14 @@ class AppPages {
     GetPage(
       name: AppRoutes.STAFF_CREATE,
       page: () => const StaffCreateView(),
+      binding: StaffBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.STAFF_DETAIL,
+      page: () {
+        final staffId = Get.parameters['id'] ?? '';
+        return StaffDetailView(staffId: staffId);
+      },
       binding: StaffBinding(),
     ),
     GetPage(
