@@ -129,14 +129,23 @@ class _LeadCreateViewState extends State<LeadCreateView> {
     setState(() => _submitting = false);
 
     if (ok) {
-      Get.snackbar(
-        'Success',
-        'Lead created successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
+      // Navigate back to previous screen
       Get.back();
+      
+      // Show success message after navigation completes
+      Future.delayed(const Duration(milliseconds: 500), () {
+        Get.snackbar(
+          'Success',
+          'Lead created successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.all(16),
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+          shouldIconPulse: false,
+        );
+      });
     } else {
       Get.snackbar(
         'Error',
@@ -146,6 +155,10 @@ class _LeadCreateViewState extends State<LeadCreateView> {
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+        icon: const Icon(Icons.error, color: Colors.white),
+        shouldIconPulse: false,
       );
     }
   }
