@@ -27,30 +27,29 @@ class _LeadsListViewState extends State<LeadsListView> {
   final Set<LeadStatus> _selectedStatuses = <LeadStatus>{};
   final Set<String> _selectedScoreCategories = <String>{};
   Timer? _searchDebounceTimer;
+  bool _initialLoadAttempted = false;
 
   @override
   void initState() {
     super.initState();
     final authController = Get.find<AuthController>();
-    Get.put(LeadController());
-    final categoryController = Get.put(CategoryController());
-    final staffController = Get.put(StaffController());
+    // Initialize controllers only if they don't exist
+    if (!Get.isRegistered<LeadController>()) {
+      Get.put(LeadController());
+    }
+    if (!Get.isRegistered<CategoryController>()) {
+      Get.put(CategoryController());
+    }
+    if (!Get.isRegistered<StaffController>()) {
+      Get.put(StaffController());
+    }
 
     // Setup scroll listener for pagination
     _scrollController.addListener(_onScroll);
 
-    // Load data on first frame
+    // Load data on first frame - always attempt load on first mount
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (authController.shop != null) {
-        _applyFiltersAndLoad();
-        if (categoryController.categories.isEmpty) {
-          categoryController.loadCategories(authController.shop!.id);
-        }
-        // Load staff for assignment dropdown
-        if (staffController.staffList.isEmpty) {
-          staffController.loadStaff(authController.shop!.id);
-        }
-      }
+      _attemptInitialLoad(authController);
     });
   }
 
@@ -60,6 +59,24 @@ class _LeadsListViewState extends State<LeadsListView> {
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _attemptInitialLoad(AuthController authController) {
+    if (authController.shop != null && !_initialLoadAttempted) {
+      // Always load on first mount, regardless of current state
+      _applyFiltersAndLoad(silent: false); // Use non-silent for initial load to show loading
+      _initialLoadAttempted = true;
+      
+      final categoryController = Get.find<CategoryController>();
+      if (categoryController.categories.isEmpty) {
+        categoryController.loadCategories(authController.shop!.id);
+      }
+      // Load staff for assignment dropdown
+      final staffController = Get.find<StaffController>();
+      if (staffController.staffList.isEmpty) {
+        staffController.loadStaff(authController.shop!.id);
+      }
+    }
   }
 
   void _onScroll() {
@@ -163,11 +180,32 @@ class _LeadsListViewState extends State<LeadsListView> {
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
-    Get.put(LeadController());
-    final categoryController = Get.put(CategoryController());
+    final categoryController = Get.find<CategoryController>();
+    
+    // Ensure data loads when widget becomes visible (for IndexedStack)
+    // This handles the case where widget is created before shop is available
+    if (authController.shop != null && !_initialLoadAttempted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _attemptInitialLoad(authController);
+        }
+      });
+    }
 
     return Obx(() {
       final leadController = Get.find<LeadController>();
+      
+      // Ensure data loads if shop is available and leads are empty
+      if (authController.shop != null && 
+          leadController.leads.isEmpty && 
+          !leadController.isLoading && 
+          !_initialLoadAttempted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _attemptInitialLoad(authController);
+          }
+        });
+      }
       
       // Only show loading widget on initial load, not during search
       final isSearching = _searchController.text.trim().isNotEmpty;

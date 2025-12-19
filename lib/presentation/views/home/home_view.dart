@@ -114,20 +114,17 @@ class _HomeViewState extends State<HomeView> {
     AuthController authController,
     DashboardController dashboardController,
   ) {
-    switch (index) {
-      case 0:
-        return _buildDashboardContent(authController, dashboardController);
-      case 1:
-        return const LeadsListView();
-      case 2:
-        return const StaffListView();
-      case 3:
-        return const CategoriesView();
-      case 4:
-        return const SettingsView();
-      default:
-        return _buildDashboardContent(authController, dashboardController);
-    }
+    // Use IndexedStack to preserve state of all tabs
+    return IndexedStack(
+      index: index,
+      children: [
+        _buildDashboardContent(authController, dashboardController),
+        const LeadsListView(),
+        const StaffListView(),
+        const CategoriesView(),
+        const SettingsView(),
+      ],
+    );
   }
 
   Widget _buildCustomBottomNavBar() {
