@@ -8,6 +8,7 @@ abstract class AppRoutes {
   static const LEADS = '/leads';
   static const LEAD_DETAIL = '/leads/:id';
   static const LEAD_CREATE = '/leads/create';
+  static const LEAD_EDIT = '/leads/:id/edit';
   static const CATEGORIES = '/categories';
   static const STAFF = '/staff';
   static const STAFF_CREATE = '/staff/create';
@@ -15,4 +16,3 @@ abstract class AppRoutes {
   static const PROFILE = '/profile';
   static const SETTINGS = '/settings';
 }
-

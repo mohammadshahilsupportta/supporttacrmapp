@@ -13,6 +13,7 @@ import '../../../data/models/lead_model.dart';
 import '../../../data/models/activity_model.dart';
 import 'package:intl/intl.dart';
 import 'widgets/activity_form_dialog.dart';
+import '../../../app/routes/app_routes.dart';
 
 class LeadDetailView extends StatefulWidget {
   final String leadId;
@@ -2049,11 +2050,20 @@ class _LeadDetailViewState extends State<LeadDetailView>
   }
 
   void _showEditLeadDialog() {
-    // Navigate to edit screen or show edit dialog
-    Get.snackbar(
-      'Edit Lead',
-      'Edit functionality coming soon',
-      snackPosition: SnackPosition.BOTTOM,
+    final lead = _leadController.selectedLead;
+    if (lead == null) {
+      Get.snackbar(
+        'Error',
+        'Lead data not available',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    
+    Get.toNamed(
+      AppRoutes.LEAD_EDIT.replaceAll(':id', lead.id),
     );
   }
 
