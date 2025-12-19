@@ -122,7 +122,8 @@ class _LeadsListViewState extends State<LeadsListView> {
       _selectedStatuses.clear();
       _selectedScoreCategories.clear();
     });
-    _applyFiltersAndLoad();
+    // Use silent loading for filter clearing
+    _applyFiltersAndLoad(silent: true);
   }
 
   String _sourceLabel(LeadSource source) {
@@ -388,8 +389,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                           _selectedStatuses.remove(status);
                         }
                       });
-                      // Use Future.microtask to ensure setState completes first
-                      Future.microtask(() => _applyFiltersAndLoad());
+                      // Use Future.microtask to ensure setState completes first, use silent loading
+                      Future.microtask(() => _applyFiltersAndLoad(silent: true));
                     },
                     selectedColor: color.withOpacity(0.2),
                     labelStyle: TextStyle(
@@ -438,8 +439,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                 ],
                 onChanged: (value) {
                   setState(() => _selectedCategoryId = value);
-                  // Use Future.microtask to ensure setState completes first
-                  Future.microtask(() => _applyFiltersAndLoad());
+                  // Use Future.microtask to ensure setState completes first, use silent loading
+                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
                 },
               ),
             ),
@@ -468,8 +469,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                 ],
                 onChanged: (value) {
                   setState(() => _selectedSource = value);
-                  // Use Future.microtask to ensure setState completes first
-                  Future.microtask(() => _applyFiltersAndLoad());
+                  // Use Future.microtask to ensure setState completes first, use silent loading
+                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
                 },
               ),
             ),
@@ -496,8 +497,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                         setState(() {
                           _selectedStatuses.remove(status);
                         });
-                        // Use Future.microtask to ensure setState completes first
-                        Future.microtask(() => _applyFiltersAndLoad());
+                        // Use Future.microtask to ensure setState completes first, use silent loading
+                        Future.microtask(() => _applyFiltersAndLoad(silent: true));
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -516,8 +517,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                       ),
                       onDeleted: () {
                         setState(() => _selectedCategoryId = null);
-                        // Use Future.microtask to ensure setState completes first
-                        Future.microtask(() => _applyFiltersAndLoad());
+                        // Use Future.microtask to ensure setState completes first, use silent loading
+                        Future.microtask(() => _applyFiltersAndLoad(silent: true));
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -535,8 +536,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                       ),
                       onDeleted: () {
                         setState(() => _selectedSource = null);
-                        // Use Future.microtask to ensure setState completes first
-                        Future.microtask(() => _applyFiltersAndLoad());
+                        // Use Future.microtask to ensure setState completes first, use silent loading
+                        Future.microtask(() => _applyFiltersAndLoad(silent: true));
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -556,8 +557,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                         setState(() {
                           _selectedScoreCategories.remove(category);
                         });
-                        // Use Future.microtask to ensure setState completes first
-                        Future.microtask(() => _applyFiltersAndLoad());
+                        // Use Future.microtask to ensure setState completes first, use silent loading
+                        Future.microtask(() => _applyFiltersAndLoad(silent: true));
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

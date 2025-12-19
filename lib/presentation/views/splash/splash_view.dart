@@ -23,7 +23,7 @@ class SplashView extends StatelessWidget {
             const SizedBox(height: 24),
             // App Name
             Text(
-              'Supporta CRM',
+              'Supportta CRM',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
