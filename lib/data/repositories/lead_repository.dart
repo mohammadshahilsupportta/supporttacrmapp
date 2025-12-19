@@ -2,58 +2,184 @@ import '../models/lead_model.dart';
 import '../models/category_model.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/helpers.dart';
+import 'lead_repository_helper.dart';
 
 class LeadRepository {
-  // Get all leads with filters
+  // Get all leads with filters (server-side filtering and pagination)
   Future<List<LeadWithRelationsModel>> findAll(
     String shopId, {
     LeadFilters? filters,
   }) async {
     try {
-      // Fetch all leads for the shop (filter client-side to avoid API method issues)
-      // Try multiple approaches to fetch assigned user data
+      // Build query with server-side filters
+      var queryBuilder = SupabaseService.from('leads')
+          .select('''
+            *,
+            assigned_user:staff!assigned_to(id, name, email),
+            created_by_user:users!created_by(id, name),
+            lead_categories(
+              category:categories(*)
+            )
+          ''')
+          .eq('shop_id', shopId)
+          .isFilter('deleted_at', null);
+
+      // Apply server-side filters
+      if (filters != null) {
+        // Filter by status
+        if (filters.status != null && filters.status!.isNotEmpty) {
+          final statusStrings = filters.status!
+              .map((s) {
+                // Convert enum to database format: newLead -> 'new', contacted -> 'contacted', etc.
+                switch (s) {
+                  case LeadStatus.newLead:
+                    return 'new';
+                  case LeadStatus.contacted:
+                    return 'contacted';
+                  case LeadStatus.qualified:
+                    return 'qualified';
+                  case LeadStatus.converted:
+                    return 'converted';
+                  case LeadStatus.lost:
+                    return 'lost';
+                }
+              })
+              .toList();
+          queryBuilder = queryBuilder.inFilter('status', statusStrings);
+        }
+
+        // Filter by source
+        if (filters.source != null) {
+          // Convert enum to database format
+          String sourceString;
+          switch (filters.source!) {
+            case LeadSource.website:
+              sourceString = 'website';
+              break;
+            case LeadSource.phone:
+              sourceString = 'phone';
+              break;
+            case LeadSource.walkIn:
+              sourceString = 'walk-in';
+              break;
+            case LeadSource.referral:
+              sourceString = 'referral';
+              break;
+            case LeadSource.socialMedia:
+              sourceString = 'social-media';
+              break;
+            case LeadSource.email:
+              sourceString = 'email';
+              break;
+            case LeadSource.other:
+              sourceString = 'other';
+              break;
+          }
+          queryBuilder = queryBuilder.eq('source', sourceString);
+        }
+
+        // Filter by assigned to
+        if (filters.assignedTo != null) {
+          queryBuilder = queryBuilder.eq('assigned_to', filters.assignedTo!);
+        }
+
+        // Filter by search (name, email, phone, company)
+        if (filters.search != null && filters.search!.isNotEmpty) {
+          final searchTerm = '%${filters.search!.trim()}%';
+          // Use or() with proper syntax for multiple field search
+          // Format: field1.operator.value,field2.operator.value
+          queryBuilder = queryBuilder.or(
+            'name.ilike.$searchTerm,email.ilike.$searchTerm,phone.ilike.$searchTerm,company.ilike.$searchTerm',
+          );
+        }
+
+        // Filter by date range
+        if (filters.dateFrom != null) {
+          queryBuilder = queryBuilder.gte('created_at', filters.dateFrom!.toIso8601String());
+        }
+        if (filters.dateTo != null) {
+          queryBuilder = queryBuilder.lte('created_at', filters.dateTo!.toIso8601String());
+        }
+
+        // Filter by score category
+        if (filters.scoreCategories != null && filters.scoreCategories!.isNotEmpty) {
+          if (filters.scoreCategories!.contains('unscored')) {
+            queryBuilder = queryBuilder.isFilter('score_category', null);
+          } else {
+            final categories = filters.scoreCategories!
+                .map((c) => c.toLowerCase())
+                .toList();
+            queryBuilder = queryBuilder.inFilter('score_category', categories);
+          }
+        }
+      }
+
+      // Apply sorting (must be after filters, before pagination)
+      String orderColumn = 'created_at';
+      bool ascending = false;
+      if (filters?.sortBy != null) {
+        switch (filters!.sortBy!) {
+          case LeadSortBy.name:
+            orderColumn = 'name';
+            break;
+          case LeadSortBy.createdAt:
+            orderColumn = 'created_at';
+            break;
+          case LeadSortBy.updatedAt:
+            orderColumn = 'updated_at';
+            break;
+          case LeadSortBy.score:
+            orderColumn = 'score';
+            break;
+          case LeadSortBy.status:
+            orderColumn = 'status';
+            break;
+        }
+        ascending = filters.sortOrder == LeadSortOrder.asc;
+      }
+      var orderedQuery = queryBuilder.order(orderColumn, ascending: ascending);
+
+      // Apply pagination
+      final limit = filters?.limit ?? 20;
+      final offset = filters?.offset ?? 0;
+      var paginatedQuery = orderedQuery.range(offset, offset + limit - 1);
+
+      // Execute query
       List<dynamic> data;
       try {
-        // First try: Join with staff table (most likely scenario)
-        data = await SupabaseService.from('leads')
-            .select('''
+        data = await paginatedQuery as List<dynamic>? ?? [];
+      } catch (e) {
+        // If main query fails, rebuild with filters in fallback
+        try {
+          // Second try: Join with users table, rebuild query with filters
+          var fallbackQuery = LeadRepositoryHelper.buildFilteredQuery(
+            shopId,
+            filters,
+            '''
               *,
-              assigned_user:staff!assigned_to(id, name, email),
+              assigned_user:users!assigned_to(id, name, email),
               created_by_user:users!created_by(id, name),
               lead_categories(
                 category:categories(*)
               )
-            ''')
-            .eq('shop_id', shopId)
-            .isFilter('deleted_at', null)
-            .order('created_at', ascending: false) as List<dynamic>? ?? [];
-      } catch (e) {
-        try {
-          // Second try: Join with users table
-          data = await SupabaseService.from('leads')
-              .select('''
-                *,
-                assigned_user:users!assigned_to(id, name, email),
-                created_by_user:users!created_by(id, name),
-                lead_categories(
-                  category:categories(*)
-                )
-              ''')
-              .eq('shop_id', shopId)
-              .isFilter('deleted_at', null)
-              .order('created_at', ascending: false) as List<dynamic>? ?? [];
+            ''',
+          );
+          fallbackQuery = LeadRepositoryHelper.applySortingAndPagination(fallbackQuery, filters);
+          data = await fallbackQuery as List<dynamic>? ?? [];
         } catch (e2) {
-          // Fallback: query without user relationships, fetch them separately
-          data = await SupabaseService.from('leads')
-              .select('''
-                *,
-                lead_categories(
-                  category:categories(*)
-                )
-              ''')
-              .eq('shop_id', shopId)
-              .isFilter('deleted_at', null)
-              .order('created_at', ascending: false) as List<dynamic>? ?? [];
+          // Final fallback: query without user relationships, but still apply filters
+          var finalQuery = LeadRepositoryHelper.buildFilteredQuery(
+            shopId,
+            filters,
+            '''
+              *,
+              lead_categories(
+                category:categories(*)
+              )
+            ''',
+          );
+          finalQuery = LeadRepositoryHelper.applySortingAndPagination(finalQuery, filters);
+          data = await finalQuery as List<dynamic>? ?? [];
           
           // Fetch user data separately for assigned_to and created_by
           final assignedToIds = data
@@ -146,44 +272,14 @@ class LeadRepository {
         });
       }).toList();
 
-      // Apply client-side filters (status, categories, search fallback)
-      if (filters != null) {
-        // Filter by status client-side
-        if (filters.status != null && filters.status!.isNotEmpty) {
-          leads = leads.where((lead) {
-            return filters.status!.contains(lead.status);
-          }).toList();
-        }
-
-        // Filter by categories client-side
-        if (filters.categoryIds != null && filters.categoryIds!.isNotEmpty) {
-          leads = leads.where((lead) {
-            return lead.categories.any(
-              (cat) => filters.categoryIds!.contains(cat.id),
-            );
-          }).toList();
-        }
-
-        // Filter by search client-side if or() didn't work
-        if (filters.search != null && filters.search!.isNotEmpty) {
-          final searchLower = filters.search!.toLowerCase();
-          leads = leads.where((lead) {
-            return (lead.name.toLowerCase().contains(searchLower)) ||
-                (lead.email?.toLowerCase().contains(searchLower) ?? false) ||
-                (lead.phone?.toLowerCase().contains(searchLower) ?? false) ||
-                (lead.company?.toLowerCase().contains(searchLower) ?? false);
-          }).toList();
-        }
-
-        // Filter by score category client-side
-        if (filters.scoreCategories != null && filters.scoreCategories!.isNotEmpty) {
-          leads = leads.where((lead) {
-            if (lead.scoreCategory == null) {
-              return filters.scoreCategories!.contains('unscored');
-            }
-            return filters.scoreCategories!.contains(lead.scoreCategory!.toLowerCase());
-          }).toList();
-        }
+      // Filter by categories server-side (if categoryIds filter is provided)
+      // Note: This requires a join, so we filter client-side after fetching
+      if (filters != null && filters.categoryIds != null && filters.categoryIds!.isNotEmpty) {
+        leads = leads.where((lead) {
+          return lead.categories.any(
+            (cat) => filters.categoryIds!.contains(cat.id),
+          );
+        }).toList();
       }
 
       return leads;

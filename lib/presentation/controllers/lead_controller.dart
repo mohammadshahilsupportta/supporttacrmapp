@@ -9,76 +9,121 @@ class LeadController extends GetxController {
   // Observables
   final _leads = <LeadWithRelationsModel>[].obs;
   final _isLoading = false.obs;
+  final _isLoadingMore = false.obs;
   final _errorMessage = ''.obs;
   final _selectedLead = Rxn<LeadWithRelationsModel>();
   final _filters = Rxn<LeadFilters>();
   final _stats = Rxn<LeadStats>();
+  final _hasMore = true.obs;
+  final _currentOffset = 0.obs;
+  static const int _pageSize = 20;
 
   // Getters
   List<LeadWithRelationsModel> get leads => _leads;
   bool get isLoading => _isLoading.value;
+  bool get isLoadingMore => _isLoadingMore.value;
+  bool get hasMore => _hasMore.value;
   String get errorMessage => _errorMessage.value;
   LeadWithRelationsModel? get selectedLead => _selectedLead.value;
   LeadFilters? get filters => _filters.value;
   LeadStats? get stats => _stats.value;
 
-  // Set filters
+  // Set filters (resets pagination)
   void setFilters(LeadFilters? filters) {
     _filters.value = filters;
+    _currentOffset.value = 0;
+    _hasMore.value = true;
+    _leads.clear();
   }
 
-  // Load leads
-  Future<void> loadLeads(String shopId) async {
-    _isLoading.value = true;
+  // Load leads (initial load or refresh)
+  Future<void> loadLeads(String shopId, {bool reset = true, bool silent = false}) async {
+    if (reset) {
+      _currentOffset.value = 0;
+      _hasMore.value = true;
+      _leads.clear();
+    }
+    
+    if (!silent) {
+      _isLoading.value = true;
+    }
     _errorMessage.value = '';
 
     try {
-      final result = await _viewModel.getLeads(shopId, filters: _filters.value);
-      // Apply client-side sorting if specified
-      var sortedLeads = List<LeadWithRelationsModel>.from(result);
-      if (_filters.value?.sortBy != null) {
-        sortedLeads = _sortLeads(sortedLeads, _filters.value!.sortBy!, _filters.value!.sortOrder ?? LeadSortOrder.desc);
+      final filtersWithPagination = LeadFilters(
+        status: _filters.value?.status,
+        categoryIds: _filters.value?.categoryIds,
+        assignedTo: _filters.value?.assignedTo,
+        source: _filters.value?.source,
+        search: _filters.value?.search,
+        dateFrom: _filters.value?.dateFrom,
+        dateTo: _filters.value?.dateTo,
+        scoreCategories: _filters.value?.scoreCategories,
+        sortBy: _filters.value?.sortBy,
+        sortOrder: _filters.value?.sortOrder,
+        limit: _pageSize,
+        offset: _currentOffset.value,
+      );
+
+      final result = await _viewModel.getLeads(shopId, filters: filtersWithPagination);
+      
+      if (reset) {
+        _leads.value = result;
+      } else {
+        _leads.addAll(result);
       }
-      _leads.value = sortedLeads;
+      
+      // Check if there are more results
+      _hasMore.value = result.length >= _pageSize;
+      _currentOffset.value = _leads.length;
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
     } finally {
-      _isLoading.value = false;
+      if (!silent) {
+        _isLoading.value = false;
+      }
     }
   }
 
-  // Sort leads client-side
-  List<LeadWithRelationsModel> _sortLeads(
-    List<LeadWithRelationsModel> leads,
-    LeadSortBy sortBy,
-    LeadSortOrder order,
-  ) {
-    final sorted = List<LeadWithRelationsModel>.from(leads);
-    sorted.sort((a, b) {
-      int comparison = 0;
-      switch (sortBy) {
-        case LeadSortBy.name:
-          comparison = a.name.compareTo(b.name);
-          break;
-        case LeadSortBy.createdAt:
-          comparison = a.createdAt.compareTo(b.createdAt);
-          break;
-        case LeadSortBy.updatedAt:
-          comparison = a.updatedAt.compareTo(b.updatedAt);
-          break;
-        case LeadSortBy.score:
-          final scoreA = a.score ?? 0;
-          final scoreB = b.score ?? 0;
-          comparison = scoreA.compareTo(scoreB);
-          break;
-        case LeadSortBy.status:
-          comparison = a.status.index.compareTo(b.status.index);
-          break;
+  // Load more leads (pagination)
+  Future<void> loadMoreLeads(String shopId) async {
+    if (_isLoadingMore.value || !_hasMore.value) return;
+
+    _isLoadingMore.value = true;
+    _errorMessage.value = '';
+
+    try {
+      final filtersWithPagination = LeadFilters(
+        status: _filters.value?.status,
+        categoryIds: _filters.value?.categoryIds,
+        assignedTo: _filters.value?.assignedTo,
+        source: _filters.value?.source,
+        search: _filters.value?.search,
+        dateFrom: _filters.value?.dateFrom,
+        dateTo: _filters.value?.dateTo,
+        scoreCategories: _filters.value?.scoreCategories,
+        sortBy: _filters.value?.sortBy,
+        sortOrder: _filters.value?.sortOrder,
+        limit: _pageSize,
+        offset: _currentOffset.value,
+      );
+
+      final result = await _viewModel.getLeads(shopId, filters: filtersWithPagination);
+      
+      if (result.isEmpty) {
+        _hasMore.value = false;
+      } else {
+        _leads.addAll(result);
+        _currentOffset.value = _leads.length;
+        _hasMore.value = result.length >= _pageSize;
       }
-      return order == LeadSortOrder.asc ? comparison : -comparison;
-    });
-    return sorted;
+    } catch (e) {
+      _errorMessage.value = Helpers.handleError(e);
+    } finally {
+      _isLoadingMore.value = false;
+    }
   }
+
 
   // Load lead by ID
   Future<void> loadLeadById(String leadId) async {

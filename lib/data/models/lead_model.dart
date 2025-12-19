@@ -400,6 +400,8 @@ class LeadFilters {
   final List<String>? scoreCategories; // 'hot', 'warm', 'cold', 'unscored'
   final LeadSortBy? sortBy;
   final LeadSortOrder? sortOrder;
+  final int? limit;
+  final int? offset;
 
   LeadFilters({
     this.status,
@@ -412,6 +414,8 @@ class LeadFilters {
     this.scoreCategories,
     this.sortBy,
     this.sortOrder,
+    this.limit,
+    this.offset,
   });
 }
 

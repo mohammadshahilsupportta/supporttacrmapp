@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/lead_controller.dart';
@@ -20,10 +21,12 @@ class LeadsListView extends StatefulWidget {
 
 class _LeadsListViewState extends State<LeadsListView> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   LeadSource? _selectedSource;
   String? _selectedCategoryId;
-  final Set<LeadStatus> _selectedStatuses = {LeadStatus.newLead};
+  final Set<LeadStatus> _selectedStatuses = <LeadStatus>{};
   final Set<String> _selectedScoreCategories = <String>{};
+  Timer? _searchDebounceTimer;
 
   @override
   void initState() {
@@ -32,6 +35,9 @@ class _LeadsListViewState extends State<LeadsListView> {
     Get.put(LeadController());
     final categoryController = Get.put(CategoryController());
     final staffController = Get.put(StaffController());
+
+    // Setup scroll listener for pagination
+    _scrollController.addListener(_onScroll);
 
     // Load data on first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -50,11 +56,39 @@ class _LeadsListViewState extends State<LeadsListView> {
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  void _applyFiltersAndLoad() {
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
+      // Load more when 80% scrolled
+      final authController = Get.find<AuthController>();
+      final leadController = Get.find<LeadController>();
+      if (authController.shop != null && leadController.hasMore && !leadController.isLoadingMore) {
+        leadController.loadMoreLeads(authController.shop!.id);
+      }
+    }
+  }
+
+  void _applyFiltersAndLoad({bool debounce = false, bool silent = false}) {
+    if (debounce) {
+      // Cancel previous timer
+      _searchDebounceTimer?.cancel();
+      
+      // Create new timer with 500ms delay
+      _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+        _executeFiltersAndLoad(silent: true); // Silent mode for search
+      });
+    } else {
+      _executeFiltersAndLoad(silent: silent);
+    }
+  }
+
+  void _executeFiltersAndLoad({bool silent = false}) {
     final authController = Get.find<AuthController>();
     final leadController = Get.find<LeadController>();
     if (authController.shop == null) return;
@@ -73,8 +107,11 @@ class _LeadsListViewState extends State<LeadsListView> {
             : _selectedScoreCategories.toList(),
       ),
     );
-    leadController.loadLeads(authController.shop!.id);
-    leadController.loadStats(authController.shop!.id);
+    leadController.loadLeads(authController.shop!.id, reset: true, silent: silent);
+    // Only load stats if not silent (search doesn't need stats refresh)
+    if (!silent) {
+      leadController.loadStats(authController.shop!.id);
+    }
   }
 
   void _clearFilters() {
@@ -82,9 +119,7 @@ class _LeadsListViewState extends State<LeadsListView> {
       _searchController.clear();
       _selectedSource = null;
       _selectedCategoryId = null;
-      _selectedStatuses
-        ..clear()
-        ..add(LeadStatus.newLead);
+      _selectedStatuses.clear();
       _selectedScoreCategories.clear();
     });
     _applyFiltersAndLoad();
@@ -127,11 +162,15 @@ class _LeadsListViewState extends State<LeadsListView> {
   @override
   Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
-    final leadController = Get.put(LeadController());
+    Get.put(LeadController());
     final categoryController = Get.put(CategoryController());
 
     return Obx(() {
-      if (leadController.isLoading && leadController.leads.isEmpty) {
+      final leadController = Get.find<LeadController>();
+      
+      // Only show loading widget on initial load, not during search
+      final isSearching = _searchController.text.trim().isNotEmpty;
+      if (leadController.isLoading && leadController.leads.isEmpty && !isSearching) {
         return const LoadingWidget();
       }
 
@@ -140,7 +179,7 @@ class _LeadsListViewState extends State<LeadsListView> {
           message: leadController.errorMessage,
           onRetry: () {
             if (authController.shop != null) {
-              leadController.loadLeads(authController.shop!.id);
+              leadController.loadLeads(authController.shop!.id, reset: true);
             }
           },
         );
@@ -149,10 +188,11 @@ class _LeadsListViewState extends State<LeadsListView> {
       return RefreshIndicator(
         onRefresh: () async {
           if (authController.shop != null) {
-            await leadController.loadLeads(authController.shop!.id);
+            await leadController.loadLeads(authController.shop!.id, reset: true);
           }
         },
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
@@ -181,13 +221,13 @@ class _LeadsListViewState extends State<LeadsListView> {
                 ),
               )
             else
-              // Desktop: Table View
-              SliverToBoxAdapter(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth >= 768) {
-                      // Desktop - Table View
-                      return Padding(
+              // Content: Table for desktop, Cards for mobile
+              SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.crossAxisExtent >= 768) {
+                    // Desktop - Table View as Sliver
+                    return SliverToBoxAdapter(
+                      child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Card(
                           elevation: 0,
@@ -205,14 +245,29 @@ class _LeadsListViewState extends State<LeadsListView> {
                             isLoading: leadController.isLoading,
                           ),
                         ),
-                      );
-                    } else {
-                      // Mobile - Card View
-                      return Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: leadController.leads.map(
-                            (lead) => Padding(
+                      ),
+                    );
+                  } else {
+                    // Mobile - Card View with pagination as SliverList
+                    return SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            if (index >= leadController.leads.length) {
+                              // Loading more indicator
+                              if (leadController.isLoadingMore) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            }
+                            final lead = leadController.leads[index];
+                            return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: LeadCardWidget(
                                 lead: lead,
@@ -222,13 +277,14 @@ class _LeadsListViewState extends State<LeadsListView> {
                                   );
                                 },
                               ),
-                            ),
-                          ).toList(),
+                            );
+                          },
+                          childCount: leadController.leads.length + (leadController.isLoadingMore ? 1 : 0),
                         ),
-                      );
-                    }
-                  },
-                ),
+                      ),
+                    );
+                  }
+                },
               ),
           ],
         ),
@@ -277,7 +333,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                 ),
                 onChanged: (_) {
                   setState(() {});
-                  _applyFiltersAndLoad();
+                  _applyFiltersAndLoad(debounce: true);
                 },
               ),
             ),
@@ -332,7 +388,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                           _selectedStatuses.remove(status);
                         }
                       });
-                      _applyFiltersAndLoad();
+                      // Use Future.microtask to ensure setState completes first
+                      Future.microtask(() => _applyFiltersAndLoad());
                     },
                     selectedColor: color.withOpacity(0.2),
                     labelStyle: TextStyle(
@@ -381,7 +438,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                 ],
                 onChanged: (value) {
                   setState(() => _selectedCategoryId = value);
-                  _applyFiltersAndLoad();
+                  // Use Future.microtask to ensure setState completes first
+                  Future.microtask(() => _applyFiltersAndLoad());
                 },
               ),
             ),
@@ -410,7 +468,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                 ],
                 onChanged: (value) {
                   setState(() => _selectedSource = value);
-                  _applyFiltersAndLoad();
+                  // Use Future.microtask to ensure setState completes first
+                  Future.microtask(() => _applyFiltersAndLoad());
                 },
               ),
             ),
@@ -437,7 +496,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                         setState(() {
                           _selectedStatuses.remove(status);
                         });
-                        _applyFiltersAndLoad();
+                        // Use Future.microtask to ensure setState completes first
+                        Future.microtask(() => _applyFiltersAndLoad());
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -456,7 +516,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                       ),
                       onDeleted: () {
                         setState(() => _selectedCategoryId = null);
-                        _applyFiltersAndLoad();
+                        // Use Future.microtask to ensure setState completes first
+                        Future.microtask(() => _applyFiltersAndLoad());
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -474,7 +535,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                       ),
                       onDeleted: () {
                         setState(() => _selectedSource = null);
-                        _applyFiltersAndLoad();
+                        // Use Future.microtask to ensure setState completes first
+                        Future.microtask(() => _applyFiltersAndLoad());
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -494,7 +556,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                         setState(() {
                           _selectedScoreCategories.remove(category);
                         });
-                        _applyFiltersAndLoad();
+                        // Use Future.microtask to ensure setState completes first
+                        Future.microtask(() => _applyFiltersAndLoad());
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

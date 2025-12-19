@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../controllers/lead_controller.dart';
 import '../controllers/staff_controller.dart';
 import '../../data/models/lead_model.dart';
@@ -212,7 +213,7 @@ class LeadCardWidget extends StatelessWidget {
                         ),
                       if (lead.whatsapp != null && lead.whatsapp!.isNotEmpty)
                         IconButton(
-                          icon: const Icon(Icons.chat, size: 20),
+                          icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 20),
                           color: Colors.green,
                           tooltip: 'WhatsApp ${lead.whatsapp}',
                           onPressed: () => _launchWhatsApp(lead.whatsapp!),
@@ -648,16 +649,75 @@ class LeadCardWidget extends StatelessWidget {
   }
 
   Future<void> _launchWhatsApp(String whatsappNumber) async {
-    // Remove all non-numeric characters
-    final cleanNumber = whatsappNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    final url = Uri.parse('https://wa.me/$cleanNumber');
-    
     try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
+      // Remove all non-numeric characters except + at the start
+      String cleanNumber = whatsappNumber.replaceAll(RegExp(r'[^\d+]'), '');
+      
+      // Check if number already has country code
+      bool hasCountryCode = cleanNumber.startsWith('+');
+      
+      if (hasCountryCode) {
+        // Remove + for URL (wa.me doesn't need +)
+        cleanNumber = cleanNumber.substring(1);
+      } else {
+        // Remove leading 0 if present
+        if (cleanNumber.startsWith('0')) {
+          cleanNumber = cleanNumber.substring(1);
+        }
+        // Add Indian country code +91
+        cleanNumber = '91$cleanNumber';
+      }
+      
+      // Ensure we have a valid number
+      if (cleanNumber.isEmpty || cleanNumber.length < 10) {
+        Get.snackbar(
+          'Error',
+          'Invalid WhatsApp number',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+        return;
+      }
+      
+      final url = Uri.parse('https://wa.me/$cleanNumber');
+      
+      // Try to launch directly - canLaunchUrl sometimes returns false even when app is installed
+      try {
+        await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (e) {
+        // If external application fails, try platformDefault
+        try {
+          await launchUrl(
+            url,
+            mode: LaunchMode.platformDefault,
+          );
+        } catch (e2) {
+          // If both fail, show error
+          Get.snackbar(
+            'Error',
+            'Could not open WhatsApp. Please make sure WhatsApp is installed.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3),
+          );
+          debugPrint('Error launching WhatsApp: $e2');
+        }
       }
     } catch (e) {
-      // Handle error silently or show a snackbar
+      Get.snackbar(
+        'Error',
+        'Could not open WhatsApp: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
       debugPrint('Error launching WhatsApp: $e');
     }
   }
