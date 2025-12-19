@@ -8,12 +8,17 @@ class LoginView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ensure AuthController is registered (from AuthBinding)
+    // If not registered, create it
+    if (!Get.isRegistered<AuthController>()) {
+      Get.put(AuthController());
+    }
+    
+    final authController = Get.find<AuthController>();
+    
     return Scaffold(
       body: SafeArea(
-        child: GetBuilder<AuthController>(
-          init: AuthController(),
-          builder: (controller) => LoginFormWidget(controller: controller),
-        ),
+        child: LoginFormWidget(controller: authController),
       ),
     );
   }

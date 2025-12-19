@@ -77,8 +77,10 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    final authController = Get.put(AuthController());
-    final dashboardController = Get.put(DashboardController());
+    // Controllers should already be registered via bindings
+    // Use find instead of put to avoid recreating them
+    final authController = Get.find<AuthController>();
+    final dashboardController = Get.find<DashboardController>();
 
     return Scaffold(
       appBar: AppBar(title: Text(_getAppBarTitle(_currentIndex))),
