@@ -34,6 +34,7 @@ class _HomeViewState extends State<HomeView> {
     index: 0,
   );
   Worker? _shopWorker;
+  Worker? _userWorker;
 
   @override
   void initState() {
@@ -57,11 +58,23 @@ class _HomeViewState extends State<HomeView> {
         });
       }
     });
+
+    // Listen to user changes and reset index if user becomes null (sign out)
+    _userWorker = ever(authController.userRx, (UserModel? user) {
+      if (user == null && mounted) {
+        // User signed out, reset to dashboard
+        setState(() {
+          _currentIndex = 0;
+        });
+        _notchController.jumpTo(0);
+      }
+    });
   }
 
   @override
   void dispose() {
     _shopWorker?.dispose();
+    _userWorker?.dispose();
     _notchController.dispose();
     super.dispose();
   }
@@ -370,6 +383,29 @@ class _HomeViewState extends State<HomeView> {
         itemLabel: 'Settings',
       ),
     );
+    
+    // Ensure current index is within bounds
+    final safeCurrentIndex = bottomBarItems.isNotEmpty && _currentIndex < bottomBarItems.length 
+        ? _currentIndex 
+        : 0;
+    
+    // Update state and controller if index is out of bounds (using post-frame to avoid setState during build)
+    if (_currentIndex != safeCurrentIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _currentIndex = safeCurrentIndex;
+          });
+          _notchController.jumpTo(safeCurrentIndex);
+        }
+      });
+    }
+    
+    // Ensure controller index is valid before building AnimatedNotchBottomBar
+    // This prevents the "Initial page index cannot be higher" error
+    if (bottomBarItems.isNotEmpty && _notchController.index >= bottomBarItems.length) {
+      _notchController.jumpTo(0);
+    }
     
     return AnimatedNotchBottomBar(
       notchBottomBarController: _notchController,
