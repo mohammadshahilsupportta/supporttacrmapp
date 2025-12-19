@@ -19,6 +19,7 @@ class CategoriesView extends StatefulWidget {
 class _CategoriesViewState extends State<CategoriesView> {
   bool _hasInitialized = false;
   Worker? _shopWorker;
+  final TextEditingController _searchController = TextEditingController();
 
   bool _canModifyCategories(UserModel? user) {
     // Only shop owner and admin can edit/delete categories
@@ -77,6 +78,7 @@ class _CategoriesViewState extends State<CategoriesView> {
   @override
   void dispose() {
     _shopWorker?.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -274,63 +276,118 @@ class _CategoriesViewState extends State<CategoriesView> {
         );
       }
 
+      // Filter categories based on search query
+      final searchQuery = _searchController.text.toLowerCase().trim();
+      final filteredCategories = searchQuery.isEmpty
+          ? categoryController.categories
+          : categoryController.categories.where((category) {
+              final nameMatch = category.name.toLowerCase().contains(
+                searchQuery,
+              );
+              final descMatch =
+                  category.description != null &&
+                  category.description!.toLowerCase().contains(searchQuery);
+              return nameMatch || descMatch;
+            }).toList();
+
       return RefreshIndicator(
         onRefresh: () async {
           if (authController.shop != null) {
             await categoryController.loadCategories(authController.shop!.id);
           }
         },
-        child: categoryController.categories.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.category_outlined,
-                      size: 64,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No categories yet',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Create your first category to organize your leads',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 24),
-                    if (canAdd)
-                      ElevatedButton.icon(
-                        onPressed: () => _openFormDialog(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Create Your First Category'),
-                      ),
-                  ],
+        child: Column(
+          children: [
+            // Search field
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search categories...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
                 ),
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: categoryController.categories.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final category = categoryController.categories[index];
-                  return CategoryCardWidget(
-                    category: category,
-                    onEdit: canModify
-                        ? () => _openFormDialog(category: category)
-                        : null,
-                    onDelete: canModify ? () => _handleDelete(category) : null,
-                  );
+                onChanged: (value) {
+                  setState(() {});
                 },
               ),
+            ),
+            // Categories list
+            Expanded(
+              child: filteredCategories.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            searchQuery.isEmpty
+                                ? Icons.category_outlined
+                                : Icons.search_off,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            searchQuery.isEmpty
+                                ? 'No categories yet'
+                                : 'No categories found',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(color: Colors.grey),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            searchQuery.isEmpty
+                                ? 'Create your first category to organize your leads'
+                                : 'Try a different search term',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey),
+                          ),
+                          if (searchQuery.isEmpty) ...[
+                            const SizedBox(height: 24),
+                            if (canAdd)
+                              ElevatedButton.icon(
+                                onPressed: () => _openFormDialog(),
+                                icon: const Icon(Icons.add),
+                                label: const Text('Create Your First Category'),
+                              ),
+                          ],
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredCategories.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final category = filteredCategories[index];
+                        return CategoryCardWidget(
+                          category: category,
+                          onEdit: canModify
+                              ? () => _openFormDialog(category: category)
+                              : null,
+                          onDelete: canModify
+                              ? () => _handleDelete(category)
+                              : null,
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       );
     });
   }
