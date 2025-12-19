@@ -134,17 +134,21 @@ class _HomeViewState extends State<HomeView> {
     
     if (isStaffRole) {
       if (index == 1) {
-        // Leads screen - clear assignedTo filter
+        // Leads screen - set createdBy to current user (only show leads they created)
         final currentFilters = leadController.filters;
-        if (currentFilters != null && currentFilters.assignedTo != null) {
+        final shouldHaveCreatedBy = authController.user?.id;
+        if (currentFilters == null || 
+            currentFilters.createdBy != shouldHaveCreatedBy ||
+            currentFilters.assignedTo != null) {
           leadController.setFilters(
             LeadFilters(
-              status: currentFilters.status,
-              source: currentFilters.source,
-              categoryIds: currentFilters.categoryIds,
-              search: currentFilters.search,
-              scoreCategories: currentFilters.scoreCategories,
+              status: currentFilters?.status,
+              source: currentFilters?.source,
+              categoryIds: currentFilters?.categoryIds,
+              search: currentFilters?.search,
+              scoreCategories: currentFilters?.scoreCategories,
               assignedTo: null, // Clear assignedTo for Leads
+              createdBy: shouldHaveCreatedBy, // Set createdBy for staff
             ),
           );
           leadController.loadLeads(authController.shop!.id, reset: true, silent: true);
@@ -154,11 +158,14 @@ class _HomeViewState extends State<HomeView> {
         if (authController.user != null) {
           final currentFilters = leadController.filters;
           final shouldHaveAssignedTo = authController.user!.id;
-          if (currentFilters == null || currentFilters.assignedTo != shouldHaveAssignedTo) {
+          if (currentFilters == null || 
+              currentFilters.assignedTo != shouldHaveAssignedTo ||
+              currentFilters.createdBy != null) {
             leadController.setFilters(
               LeadFilters(
                 assignedTo: shouldHaveAssignedTo,
                 search: currentFilters?.search,
+                createdBy: null, // Clear createdBy for My Tasks
               ),
             );
             leadController.loadLeads(authController.shop!.id, reset: true, silent: true);
@@ -166,10 +173,11 @@ class _HomeViewState extends State<HomeView> {
         }
       }
     } else {
-      // Admin/Owner - Leads screen should have no assignedTo filter
+      // Admin/Owner - Leads screen should have no filters
       if (index == 1) {
         final currentFilters = leadController.filters;
-        if (currentFilters != null && currentFilters.assignedTo != null) {
+        if (currentFilters != null && 
+            (currentFilters.assignedTo != null || currentFilters.createdBy != null)) {
           leadController.setFilters(
             LeadFilters(
               status: currentFilters.status,
@@ -178,6 +186,7 @@ class _HomeViewState extends State<HomeView> {
               search: currentFilters.search,
               scoreCategories: currentFilters.scoreCategories,
               assignedTo: null, // Clear assignedTo for Leads
+              createdBy: null, // Clear createdBy for Leads
             ),
           );
           leadController.loadLeads(authController.shop!.id, reset: true, silent: true);
@@ -389,10 +398,7 @@ class _HomeViewState extends State<HomeView> {
     
     switch (index) {
       case 1: // Leads
-        // Only admin/owner can create leads
-        if (isStaffRole) {
-          return null; // Staff can't create leads
-        }
+        // All users (including staff) can create leads
         return FloatingActionButton.extended(
           onPressed: () {
             Get.toNamed(AppRoutes.LEAD_CREATE);

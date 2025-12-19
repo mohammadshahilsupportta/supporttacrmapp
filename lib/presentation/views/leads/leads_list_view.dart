@@ -117,6 +117,12 @@ class _LeadsListViewState extends State<LeadsListView> {
     final leadController = Get.find<LeadController>();
     if (authController.shop == null) return;
 
+    // For staff role, filter by createdBy (only show leads they created)
+    final isStaffRole = _isStaffRole(authController);
+    final createdBy = isStaffRole && authController.user != null 
+        ? authController.user!.id 
+        : null;
+
     leadController.setFilters(
       LeadFilters(
         status: _selectedStatuses.isEmpty ? null : _selectedStatuses.toList(),
@@ -129,7 +135,8 @@ class _LeadsListViewState extends State<LeadsListView> {
         scoreCategories: _selectedScoreCategories.isEmpty
             ? null
             : _selectedScoreCategories.toList(),
-        assignedTo: null, // Always clear assignedTo filter in Leads screen (show all leads)
+        assignedTo: null, // Always clear assignedTo filter in Leads screen
+        createdBy: createdBy, // Filter by createdBy for staff role
       ),
     );
     leadController.loadLeads(authController.shop!.id, reset: true, silent: silent);
@@ -200,11 +207,18 @@ class _LeadsListViewState extends State<LeadsListView> {
       });
     }
     
-    // Always ensure filters are correct for Leads screen (no assignedTo filter)
+    // Always ensure filters are correct for Leads screen
     final leadController = Get.find<LeadController>();
     final currentFilters = leadController.filters;
-    if (currentFilters != null && currentFilters.assignedTo != null) {
-      // Filters have assignedTo set incorrectly, fix immediately
+    final isStaffRole = _isStaffRole(authController);
+    final shouldHaveCreatedBy = isStaffRole && authController.user != null 
+        ? authController.user!.id 
+        : null;
+    
+    if (currentFilters != null && 
+        (currentFilters.assignedTo != null || 
+         currentFilters.createdBy != shouldHaveCreatedBy)) {
+      // Filters are incorrect, fix immediately
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _executeFiltersAndLoad(silent: true);

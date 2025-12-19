@@ -71,6 +71,10 @@ class LeadRepositoryHelper {
         query = query.eq('assigned_to', filters.assignedTo!);
       }
 
+      if (filters.createdBy != null) {
+        query = query.eq('created_by', filters.createdBy!);
+      }
+
       // Filter by search
       if (filters.search != null && filters.search!.isNotEmpty) {
         final searchTerm = '%${filters.search!.trim()}%';

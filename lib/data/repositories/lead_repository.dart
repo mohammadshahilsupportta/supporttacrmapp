@@ -83,6 +83,11 @@ class LeadRepository {
           queryBuilder = queryBuilder.eq('assigned_to', filters.assignedTo!);
         }
 
+        // Filter by created by
+        if (filters.createdBy != null) {
+          queryBuilder = queryBuilder.eq('created_by', filters.createdBy!);
+        }
+
         // Filter by search (name, email, phone, company)
         if (filters.search != null && filters.search!.isNotEmpty) {
           final searchTerm = '%${filters.search!.trim()}%';

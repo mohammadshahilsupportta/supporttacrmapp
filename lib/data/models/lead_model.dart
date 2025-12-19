@@ -393,6 +393,7 @@ class LeadFilters {
   final List<LeadStatus>? status;
   final List<String>? categoryIds;
   final String? assignedTo;
+  final String? createdBy;
   final LeadSource? source;
   final String? search;
   final DateTime? dateFrom;
@@ -407,6 +408,7 @@ class LeadFilters {
     this.status,
     this.categoryIds,
     this.assignedTo,
+    this.createdBy,
     this.source,
     this.search,
     this.dateFrom,
