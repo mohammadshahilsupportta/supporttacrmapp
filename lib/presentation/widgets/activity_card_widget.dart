@@ -68,7 +68,7 @@ class ActivityCardWidget extends StatelessWidget {
 
   String _formatTime(DateTime? date) {
     if (date == null) return '';
-    return DateFormat('MMM dd, HH:mm').format(date);
+    return DateFormat('MMM dd, hh:mm a').format(date);
   }
 
   Color _getPriorityColor(TaskPriority priority) {
@@ -119,9 +119,53 @@ class ActivityCardWidget extends StatelessWidget {
     );
   }
 
+  String _getActivityDisplayText() {
+    // For notes, show note content
+    if (activity.activityType == ActivityType.note && activity.noteContent != null) {
+      return activity.noteContent!;
+    }
+    // For tasks, show title or description
+    if (activity.activityType == ActivityType.task || 
+        activity.activityType == ActivityType.taskCompleted) {
+      return activity.title ?? activity.description ?? '';
+    }
+    // For meetings, show title or description
+    if (activity.activityType == ActivityType.meeting || 
+        activity.activityType == ActivityType.meetingCompleted) {
+      return activity.title ?? activity.description ?? '';
+    }
+    // For calls, show description
+    if (activity.activityType == ActivityType.call) {
+      return activity.description ?? '';
+    }
+    // For emails, show description
+    if (activity.activityType == ActivityType.email) {
+      return activity.description ?? '';
+    }
+    // For status changes, show description or metadata
+    if (activity.activityType == ActivityType.statusChange) {
+      return activity.description ?? 'Status changed';
+    }
+    // For assignments, show description or metadata
+    if (activity.activityType == ActivityType.assignment) {
+      return activity.description ?? 'Assignment changed';
+    }
+    // For category changes, show description or metadata
+    if (activity.activityType == ActivityType.categoryChange) {
+      return activity.description ?? 'Category changed';
+    }
+    // For field updates, show description or metadata
+    if (activity.activityType == ActivityType.fieldUpdate) {
+      return activity.description ?? 'Field updated';
+    }
+    // Default: show title, description, or note content
+    return activity.title ?? activity.description ?? activity.noteContent ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final iconColor = _getActivityColor(activity.activityType);
+    final displayText = _getActivityDisplayText();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -149,116 +193,137 @@ class ActivityCardWidget extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (activity.title != null) ...[
+                    // Main content text
+                    if (displayText.isNotEmpty) ...[
                       Text(
-                        activity.title!,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                    if (activity.description != null) ...[
-                      Text(
-                        activity.description!,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 2,
+                        displayText,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                     ],
-                    if (activity.noteContent != null) ...[
-                      Text(
-                        activity.noteContent!,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                    // Location (for meetings)
-                    if (activity.meetingLocation != null &&
-                        activity.meetingLocation!.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          Icon(Icons.location_on, size: 12, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              activity.meetingLocation!,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey,
-                                    fontSize: 11,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                    // Metadata row: User and Time
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (activity.performedByUser != null)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.person, size: 12, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Text(
-                                activity.performedByUser!.name,
+                    // Additional details based on activity type
+                    if (activity.activityType == ActivityType.meeting || 
+                        activity.activityType == ActivityType.meetingCompleted) ...[
+                      if (activity.meetingLocation != null &&
+                          activity.meetingLocation!.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                activity.meetingLocation!,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Colors.grey,
-                                      fontSize: 11,
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
                                     ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.access_time, size: 12, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(
-                              activity.scheduledAt != null
-                                  ? _formatTime(activity.scheduledAt)
-                                  : _formatTime(activity.createdAt),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey,
-                                    fontSize: 11,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
+                        const SizedBox(height: 4),
                       ],
-                    ),
+                      if (activity.meetingType != null) ...[
+                        Text(
+                          _getMeetingTypeLabel(activity.meetingType!),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ],
+                    if (activity.activityType == ActivityType.task || 
+                        activity.activityType == ActivityType.taskCompleted) ...[
+                      if (activity.dueDate != null) ...[
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Due: ${DateFormat('MMM dd, hh:mm a').format(activity.dueDate!)}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ],
+                    // Priority and Status badges
                     if (activity.priority != null || activity.taskStatus != null) ...[
-                      const SizedBox(height: 4),
                       Wrap(
-                        spacing: 4,
+                        spacing: 6,
+                        runSpacing: 4,
                         children: [
                           if (activity.priority != null)
                             _buildPriorityBadge(activity.priority!),
                           if (activity.taskStatus != null)
-                            Chip(
-                              label: Text(
-                                activity.taskStatusString!.replaceAll('_', ' ').toUpperCase(),
-                                style: const TextStyle(fontSize: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
                               ),
-                              padding: EdgeInsets.zero,
+                              decoration: BoxDecoration(
+                                color: _getTaskStatusColor(activity.taskStatus!)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _getTaskStatusColor(activity.taskStatus!)
+                                      .withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                activity.taskStatusString!.replaceAll('_', ' ').toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: _getTaskStatusColor(activity.taskStatus!),
+                                ),
+                              ),
                             ),
                         ],
                       ),
+                      const SizedBox(height: 8),
                     ],
+                    // Metadata row: User and Time
+                    Row(
+                      children: [
+                        if (activity.performedByUser != null) ...[
+                          Icon(Icons.person, size: 12, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            activity.performedByUser!.name,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey[600],
+                                  fontSize: 11,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Icon(Icons.access_time, size: 12, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          activity.scheduledAt != null
+                              ? _formatTime(activity.scheduledAt)
+                              : _formatTime(activity.createdAt),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -273,6 +338,34 @@ class ActivityCardWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getMeetingTypeLabel(MeetingType type) {
+    switch (type) {
+      case MeetingType.inPerson:
+        return 'In Person';
+      case MeetingType.phone:
+        return 'Phone Call';
+      case MeetingType.video:
+        return 'Video Call';
+      case MeetingType.demo:
+        return 'Demo';
+      case MeetingType.siteVisit:
+        return 'Site Visit';
+    }
+  }
+
+  Color _getTaskStatusColor(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.pending:
+        return Colors.orange;
+      case TaskStatus.inProgress:
+        return Colors.blue;
+      case TaskStatus.completed:
+        return Colors.green;
+      case TaskStatus.cancelled:
+        return Colors.red;
+    }
   }
 }
 

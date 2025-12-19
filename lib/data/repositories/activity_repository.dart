@@ -6,14 +6,107 @@ class ActivityRepository {
   // Get all activities for a lead
   Future<List<LeadActivity>> findByLeadId(String leadId) async {
     try {
-      final data = await SupabaseService.from('lead_activities')
-          .select('''
-            *,
-            performed_by_user:users!lead_activities_performed_by_fkey(id, name, email),
-            assigned_to_user:users!lead_activities_assigned_to_fkey(id, name, email)
-          ''')
-          .eq('lead_id', leadId)
-          .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      List<dynamic> data;
+      try {
+        // First try: Join with staff table for performed_by and assigned_to
+        data = await SupabaseService.from('lead_activities')
+            .select('''
+              *,
+              performed_by_user:staff!performed_by(id, name, email),
+              assigned_to_user:staff!assigned_to(id, name, email)
+            ''')
+            .eq('lead_id', leadId)
+            .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      } catch (e) {
+        try {
+          // Second try: Join with users table
+          data = await SupabaseService.from('lead_activities')
+              .select('''
+                *,
+                performed_by_user:users!performed_by(id, name, email),
+                assigned_to_user:users!assigned_to(id, name, email)
+              ''')
+              .eq('lead_id', leadId)
+              .order('created_at', ascending: false) as List<dynamic>? ?? [];
+        } catch (e2) {
+          // Fallback: query without user relationships, fetch them separately
+          data = await SupabaseService.from('lead_activities')
+              .select('*')
+              .eq('lead_id', leadId)
+              .order('created_at', ascending: false) as List<dynamic>? ?? [];
+          
+          // Fetch user data separately for performed_by and assigned_to
+          final performedByIds = data
+              .map((a) => (a as Map<String, dynamic>)['performed_by'] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          final assignedToIds = data
+              .map((a) => (a as Map<String, dynamic>)['assigned_to'] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          
+          Map<String, Map<String, dynamic>> performedByUsersMap = {};
+          Map<String, Map<String, dynamic>> assignedToUsersMap = {};
+          
+          // Try fetching from staff table first, then fallback to users table
+          for (final userId in performedByIds) {
+            try {
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', userId)
+                  .maybeSingle();
+              if (user == null) {
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', userId)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                performedByUsersMap[userId] = Map<String, dynamic>.from(user);
+              }
+            } catch (e3) {
+              continue;
+            }
+          }
+          
+          for (final userId in assignedToIds) {
+            try {
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', userId)
+                  .maybeSingle();
+              if (user == null) {
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', userId)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                assignedToUsersMap[userId] = Map<String, dynamic>.from(user);
+              }
+            } catch (e4) {
+              continue;
+            }
+          }
+          
+          // Merge user data into activities
+          for (var activity in data) {
+            final activityMap = activity as Map<String, dynamic>;
+            final performedBy = activityMap['performed_by'] as String?;
+            final assignedTo = activityMap['assigned_to'] as String?;
+            
+            if (performedBy != null && performedByUsersMap.containsKey(performedBy)) {
+              activityMap['performed_by_user'] = performedByUsersMap[performedBy];
+            }
+            if (assignedTo != null && assignedToUsersMap.containsKey(assignedTo)) {
+              activityMap['assigned_to_user'] = assignedToUsersMap[assignedTo];
+            }
+          }
+        }
+      }
+      
       return data
           .map((json) => LeadActivity.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -25,14 +118,74 @@ class ActivityRepository {
   // Get a single activity by ID
   Future<LeadActivity?> findById(String id) async {
     try {
-      final data = await SupabaseService.from('lead_activities')
-          .select('''
-            *,
-            performed_by_user:users!lead_activities_performed_by_fkey(id, name, email),
-            assigned_to_user:users!lead_activities_assigned_to_fkey(id, name, email)
-          ''')
-          .eq('id', id)
-          .maybeSingle();
+      Map<String, dynamic>? data;
+      try {
+        // First try: Join with staff table
+        data = await SupabaseService.from('lead_activities')
+            .select('''
+              *,
+              performed_by_user:staff!performed_by(id, name, email),
+              assigned_to_user:staff!assigned_to(id, name, email)
+            ''')
+            .eq('id', id)
+            .maybeSingle();
+      } catch (e) {
+        try {
+          // Second try: Join with users table
+          data = await SupabaseService.from('lead_activities')
+              .select('''
+                *,
+                performed_by_user:users!performed_by(id, name, email),
+                assigned_to_user:users!assigned_to(id, name, email)
+              ''')
+              .eq('id', id)
+              .maybeSingle();
+        } catch (e2) {
+          // Fallback: query without user relationships
+          data = await SupabaseService.from('lead_activities')
+              .select('*')
+              .eq('id', id)
+              .maybeSingle();
+          
+          // Fetch user data separately if needed
+          if (data != null) {
+            final performedBy = data['performed_by'] as String?;
+            final assignedTo = data['assigned_to'] as String?;
+            
+            if (performedBy != null) {
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', performedBy)
+                  .maybeSingle();
+              if (user == null) {
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', performedBy)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                data['performed_by_user'] = user;
+              }
+            }
+            
+            if (assignedTo != null) {
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', assignedTo)
+                  .maybeSingle();
+              if (user == null) {
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', assignedTo)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                data['assigned_to_user'] = user;
+              }
+            }
+          }
+        }
+      }
 
       if (data == null) return null;
       return LeadActivity.fromJson(data);
@@ -60,14 +213,72 @@ class ActivityRepository {
         activityData['task_status'] = 'pending';
       }
 
-      final data = await SupabaseService.from('lead_activities')
-          .insert(activityData)
-          .select('''
-            *,
-            performed_by_user:users!lead_activities_performed_by_fkey(id, name, email),
-            assigned_to_user:users!lead_activities_assigned_to_fkey(id, name, email)
-          ''')
-          .single();
+      Map<String, dynamic> data;
+      try {
+        // First try: Join with staff table
+        data = await SupabaseService.from('lead_activities')
+            .insert(activityData)
+            .select('''
+              *,
+              performed_by_user:staff!performed_by(id, name, email),
+              assigned_to_user:staff!assigned_to(id, name, email)
+            ''')
+            .single();
+      } catch (e) {
+        try {
+          // Second try: Join with users table
+          data = await SupabaseService.from('lead_activities')
+              .insert(activityData)
+              .select('''
+                *,
+                performed_by_user:users!performed_by(id, name, email),
+                assigned_to_user:users!assigned_to(id, name, email)
+              ''')
+              .single();
+        } catch (e2) {
+          // Fallback: insert without user relationships, then fetch separately
+          data = await SupabaseService.from('lead_activities')
+              .insert(activityData)
+              .select('*')
+              .single();
+          
+          // Fetch user data separately
+          final performedBy = data['performed_by'] as String?;
+          final assignedTo = data['assigned_to'] as String?;
+          
+          if (performedBy != null) {
+            var user = await SupabaseService.from('staff')
+                .select('id, name, email')
+                .eq('id', performedBy)
+                .maybeSingle();
+            if (user == null) {
+              user = await SupabaseService.from('users')
+                  .select('id, name, email')
+                  .eq('id', performedBy)
+                  .maybeSingle();
+            }
+            if (user != null) {
+              data['performed_by_user'] = user;
+            }
+          }
+          
+          if (assignedTo != null) {
+            var user = await SupabaseService.from('staff')
+                .select('id, name, email')
+                .eq('id', assignedTo)
+                .maybeSingle();
+            if (user == null) {
+              user = await SupabaseService.from('users')
+                  .select('id, name, email')
+                  .eq('id', assignedTo)
+                  .maybeSingle();
+            }
+            if (user != null) {
+              data['assigned_to_user'] = user;
+            }
+          }
+        }
+      }
 
       return LeadActivity.fromJson(data);
     } catch (e) {
@@ -86,15 +297,75 @@ class ActivityRepository {
         updateData['completed_at'] = DateTime.now().toIso8601String();
       }
 
-      final data = await SupabaseService.from('lead_activities')
-          .update(updateData)
-          .eq('id', id)
-          .select('''
-            *,
-            performed_by_user:users!lead_activities_performed_by_fkey(id, name, email),
-            assigned_to_user:users!lead_activities_assigned_to_fkey(id, name, email)
-          ''')
-          .single();
+      Map<String, dynamic> data;
+      try {
+        // First try: Join with staff table
+        data = await SupabaseService.from('lead_activities')
+            .update(updateData)
+            .eq('id', id)
+            .select('''
+              *,
+              performed_by_user:staff!performed_by(id, name, email),
+              assigned_to_user:staff!assigned_to(id, name, email)
+            ''')
+            .single();
+      } catch (e) {
+        try {
+          // Second try: Join with users table
+          data = await SupabaseService.from('lead_activities')
+              .update(updateData)
+              .eq('id', id)
+              .select('''
+                *,
+                performed_by_user:users!performed_by(id, name, email),
+                assigned_to_user:users!assigned_to(id, name, email)
+              ''')
+              .single();
+        } catch (e2) {
+          // Fallback: update without user relationships, then fetch separately
+          data = await SupabaseService.from('lead_activities')
+              .update(updateData)
+              .eq('id', id)
+              .select('*')
+              .single();
+          
+          // Fetch user data separately
+          final performedBy = data['performed_by'] as String?;
+          final assignedTo = data['assigned_to'] as String?;
+          
+          if (performedBy != null) {
+            var user = await SupabaseService.from('staff')
+                .select('id, name, email')
+                .eq('id', performedBy)
+                .maybeSingle();
+            if (user == null) {
+              user = await SupabaseService.from('users')
+                  .select('id, name, email')
+                  .eq('id', performedBy)
+                  .maybeSingle();
+            }
+            if (user != null) {
+              data['performed_by_user'] = user;
+            }
+          }
+          
+          if (assignedTo != null) {
+            var user = await SupabaseService.from('staff')
+                .select('id, name, email')
+                .eq('id', assignedTo)
+                .maybeSingle();
+            if (user == null) {
+              user = await SupabaseService.from('users')
+                  .select('id, name, email')
+                  .eq('id', assignedTo)
+                  .maybeSingle();
+            }
+            if (user != null) {
+              data['assigned_to_user'] = user;
+            }
+          }
+        }
+      }
 
       return LeadActivity.fromJson(data);
     } catch (e) {
@@ -114,16 +385,111 @@ class ActivityRepository {
   // Get pending tasks for a lead
   Future<List<LeadActivity>> findPendingTasks(String leadId) async {
     try {
-      final data = await SupabaseService.from('lead_activities')
-          .select('''
-            *,
-            performed_by_user:users!lead_activities_performed_by_fkey(id, name, email),
-            assigned_to_user:users!lead_activities_assigned_to_fkey(id, name, email)
-          ''')
-          .eq('lead_id', leadId)
-          .eq('activity_type', 'task')
-          .filter('task_status', 'in', '("pending","in_progress")')
-          .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      List<dynamic> data;
+      try {
+        // First try: Join with staff table
+        data = await SupabaseService.from('lead_activities')
+            .select('''
+              *,
+              performed_by_user:staff!performed_by(id, name, email),
+              assigned_to_user:staff!assigned_to(id, name, email)
+            ''')
+            .eq('lead_id', leadId)
+            .eq('activity_type', 'task')
+            .filter('task_status', 'in', '("pending","in_progress")')
+            .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      } catch (e) {
+        try {
+          // Second try: Join with users table
+          data = await SupabaseService.from('lead_activities')
+              .select('''
+                *,
+                performed_by_user:users!performed_by(id, name, email),
+                assigned_to_user:users!assigned_to(id, name, email)
+              ''')
+              .eq('lead_id', leadId)
+              .eq('activity_type', 'task')
+              .filter('task_status', 'in', '("pending","in_progress")')
+              .order('created_at', ascending: false) as List<dynamic>? ?? [];
+        } catch (e2) {
+          // Fallback: query without user relationships
+          data = await SupabaseService.from('lead_activities')
+              .select('*')
+              .eq('lead_id', leadId)
+              .eq('activity_type', 'task')
+              .filter('task_status', 'in', '("pending","in_progress")')
+              .order('created_at', ascending: false) as List<dynamic>? ?? [];
+          
+          // Fetch user data separately (similar to findByLeadId)
+          final performedByIds = data
+              .map((a) => (a as Map<String, dynamic>)['performed_by'] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          final assignedToIds = data
+              .map((a) => (a as Map<String, dynamic>)['assigned_to'] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          
+          Map<String, Map<String, dynamic>> performedByUsersMap = {};
+          Map<String, Map<String, dynamic>> assignedToUsersMap = {};
+          
+          for (final userId in performedByIds) {
+            try {
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', userId)
+                  .maybeSingle();
+              if (user == null) {
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', userId)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                performedByUsersMap[userId] = Map<String, dynamic>.from(user);
+              }
+            } catch (e3) {
+              continue;
+            }
+          }
+          
+          for (final userId in assignedToIds) {
+            try {
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', userId)
+                  .maybeSingle();
+              if (user == null) {
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', userId)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                assignedToUsersMap[userId] = Map<String, dynamic>.from(user);
+              }
+            } catch (e4) {
+              continue;
+            }
+          }
+          
+          for (var activity in data) {
+            final activityMap = activity as Map<String, dynamic>;
+            final performedBy = activityMap['performed_by'] as String?;
+            final assignedTo = activityMap['assigned_to'] as String?;
+            
+            if (performedBy != null && performedByUsersMap.containsKey(performedBy)) {
+              activityMap['performed_by_user'] = performedByUsersMap[performedBy];
+            }
+            if (assignedTo != null && assignedToUsersMap.containsKey(assignedTo)) {
+              activityMap['assigned_to_user'] = assignedToUsersMap[assignedTo];
+            }
+          }
+        }
+      }
+      
       return data
           .map((json) => LeadActivity.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -139,19 +505,118 @@ class ActivityRepository {
   }) async {
     try {
       final now = DateTime.now().toIso8601String();
-
-      final data = await SupabaseService.from('lead_activities')
-          .select('''
-            *,
-            performed_by_user:users!lead_activities_performed_by_fkey(id, name, email),
-            assigned_to_user:users!lead_activities_assigned_to_fkey(id, name, email)
-          ''')
-          .eq('lead_id', leadId)
-          .filter('activity_type', 'in', '("task","meeting")')
-          .or('due_date.gte.$now,scheduled_at.gte.$now')
-          .order('scheduled_at', ascending: true)
-          .order('due_date', ascending: true)
-          .limit(limit) as List<dynamic>? ?? [];
+      List<dynamic> data;
+      
+      try {
+        // First try: Join with staff table
+        data = await SupabaseService.from('lead_activities')
+            .select('''
+              *,
+              performed_by_user:staff!performed_by(id, name, email),
+              assigned_to_user:staff!assigned_to(id, name, email)
+            ''')
+            .eq('lead_id', leadId)
+            .filter('activity_type', 'in', '("task","meeting")')
+            .or('due_date.gte.$now,scheduled_at.gte.$now')
+            .order('scheduled_at', ascending: true)
+            .order('due_date', ascending: true)
+            .limit(limit) as List<dynamic>? ?? [];
+      } catch (e) {
+        try {
+          // Second try: Join with users table
+          data = await SupabaseService.from('lead_activities')
+              .select('''
+                *,
+                performed_by_user:users!performed_by(id, name, email),
+                assigned_to_user:users!assigned_to(id, name, email)
+              ''')
+              .eq('lead_id', leadId)
+              .filter('activity_type', 'in', '("task","meeting")')
+              .or('due_date.gte.$now,scheduled_at.gte.$now')
+              .order('scheduled_at', ascending: true)
+              .order('due_date', ascending: true)
+              .limit(limit) as List<dynamic>? ?? [];
+        } catch (e2) {
+          // Fallback: query without user relationships
+          data = await SupabaseService.from('lead_activities')
+              .select('*')
+              .eq('lead_id', leadId)
+              .filter('activity_type', 'in', '("task","meeting")')
+              .or('due_date.gte.$now,scheduled_at.gte.$now')
+              .order('scheduled_at', ascending: true)
+              .order('due_date', ascending: true)
+              .limit(limit) as List<dynamic>? ?? [];
+          
+          // Fetch user data separately (similar to findByLeadId)
+          final performedByIds = data
+              .map((a) => (a as Map<String, dynamic>)['performed_by'] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          final assignedToIds = data
+              .map((a) => (a as Map<String, dynamic>)['assigned_to'] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          
+          Map<String, Map<String, dynamic>> performedByUsersMap = {};
+          Map<String, Map<String, dynamic>> assignedToUsersMap = {};
+          
+          for (final userId in performedByIds) {
+            try {
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', userId)
+                  .maybeSingle();
+              if (user == null) {
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', userId)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                performedByUsersMap[userId] = Map<String, dynamic>.from(user);
+              }
+            } catch (e3) {
+              continue;
+            }
+          }
+          
+          for (final userId in assignedToIds) {
+            try {
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', userId)
+                  .maybeSingle();
+              if (user == null) {
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', userId)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                assignedToUsersMap[userId] = Map<String, dynamic>.from(user);
+              }
+            } catch (e4) {
+              continue;
+            }
+          }
+          
+          for (var activity in data) {
+            final activityMap = activity as Map<String, dynamic>;
+            final performedBy = activityMap['performed_by'] as String?;
+            final assignedTo = activityMap['assigned_to'] as String?;
+            
+            if (performedBy != null && performedByUsersMap.containsKey(performedBy)) {
+              activityMap['performed_by_user'] = performedByUsersMap[performedBy];
+            }
+            if (assignedTo != null && assignedToUsersMap.containsKey(assignedTo)) {
+              activityMap['assigned_to_user'] = assignedToUsersMap[assignedTo];
+            }
+          }
+        }
+      }
+      
       return data
           .map((json) => LeadActivity.fromJson(json as Map<String, dynamic>))
           .toList();

@@ -913,33 +913,9 @@ class _LeadDetailViewState extends State<LeadDetailView>
 
       final activities = _getFilteredActivities();
 
-      if (activities.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.history, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text(
-                'No activities yet',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => _showAddActivityDialog(),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Activity'),
-              ),
-            ],
-          ),
-        );
-      }
-
       return Column(
         children: [
-          // Filter Chips
+          // Filter Chips - Always visible
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -967,7 +943,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               ),
             ),
           ),
-          // Add Activity Button
+          // Add Activity Button - Always visible
           Padding(
             padding: const EdgeInsets.all(16),
             child: ElevatedButton.icon(
@@ -979,21 +955,61 @@ class _LeadDetailViewState extends State<LeadDetailView>
               ),
             ),
           ),
-          // Timeline
+          // Timeline - Shows activities or empty state
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: activities.length,
-              itemBuilder: (context, index) {
-                final activity = activities[index];
-                final isLast = index == activities.length - 1;
-                return _buildTimelineItem(activity, isLast);
-              },
-            ),
+            child: activities.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.history, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          _activityController.activities.isEmpty
+                              ? 'No activities yet'
+                              : 'No ${_getFilterLabel()} found',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: Colors.grey,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_activityController.activities.isEmpty)
+                          ElevatedButton.icon(
+                            onPressed: () => _showAddActivityDialog(),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Activity'),
+                          ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: activities.length,
+                    itemBuilder: (context, index) {
+                      final activity = activities[index];
+                      final isLast = index == activities.length - 1;
+                      return _buildTimelineItem(activity, isLast);
+                    },
+                  ),
           ),
         ],
       );
     });
+  }
+
+  String _getFilterLabel() {
+    switch (_activityFilter) {
+      case 'tasks':
+        return 'tasks';
+      case 'meetings':
+        return 'meetings';
+      case 'calls':
+        return 'calls';
+      case 'notes':
+        return 'notes';
+      default:
+        return 'activities';
+    }
   }
 
   Widget _buildFilterChip(String value, String label) {
