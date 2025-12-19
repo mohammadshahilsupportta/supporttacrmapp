@@ -14,6 +14,7 @@ import '../categories/categories_view.dart';
 import '../settings/settings_view.dart';
 import '../staff/staff_list_view.dart';
 import '../../widgets/shop_card_widget.dart';
+import '../../widgets/user_card_widget.dart';
 import '../categories/widgets/category_form_dialog.dart';
 import '../../controllers/category_controller.dart';
 
@@ -657,8 +658,23 @@ class _HomeViewState extends State<HomeView> {
               }),
               const SizedBox(height: 24),
 
-              // Shop Information
-              ShopCardWidget(shop: authController.shop!),
+              // Shop and User Information
+              Obx(() {
+                final user = authController.user;
+                final shop = authController.shop;
+                
+                if (user == null || shop == null) {
+                  return const SizedBox.shrink();
+                }
+                
+                return Column(
+                  children: [
+                    ShopCardWidget(shop: shop),
+                    const SizedBox(height: 16),
+                    UserCardWidget(user: user),
+                  ],
+                );
+              }),
             ],
           ),
         ),

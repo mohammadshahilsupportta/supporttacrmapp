@@ -24,6 +24,9 @@ class LeadModel {
   final DateTime updatedAt;
   final String? createdBy;
   final DateTime? deletedAt;
+  final int? score;
+  final String? scoreCategory;
+  final DateTime? scoreUpdatedAt;
 
   LeadModel({
     required this.id,
@@ -45,6 +48,9 @@ class LeadModel {
     required this.updatedAt,
     this.createdBy,
     this.deletedAt,
+    this.score,
+    this.scoreCategory,
+    this.scoreUpdatedAt,
   });
 
   factory LeadModel.fromJson(Map<String, dynamic> json) {
@@ -71,6 +77,11 @@ class LeadModel {
       createdBy: json['created_by'],
       deletedAt: json['deleted_at'] != null
           ? DateTime.parse(json['deleted_at'])
+          : null,
+      score: json['score'] != null ? json['score'] as int : null,
+      scoreCategory: json['score_category'] as String?,
+      scoreUpdatedAt: json['score_updated_at'] != null
+          ? DateTime.parse(json['score_updated_at'])
           : null,
     );
   }
@@ -199,6 +210,9 @@ class LeadModel {
       'updated_at': updatedAt.toIso8601String(),
       'created_by': createdBy,
       'deleted_at': deletedAt?.toIso8601String(),
+      'score': score,
+      'score_category': scoreCategory,
+      'score_updated_at': scoreUpdatedAt?.toIso8601String(),
     };
   }
 }
@@ -228,6 +242,9 @@ class LeadWithRelationsModel extends LeadModel {
     required super.updatedAt,
     super.createdBy,
     super.deletedAt,
+    super.score,
+    super.scoreCategory,
+    super.scoreUpdatedAt,
     this.assignedUser,
     this.createdByUser,
     this.categories = const [],
@@ -259,6 +276,11 @@ class LeadWithRelationsModel extends LeadModel {
       createdBy: json['created_by'],
       deletedAt: json['deleted_at'] != null
           ? DateTime.parse(json['deleted_at'])
+          : null,
+      score: json['score'] != null ? json['score'] as int : null,
+      scoreCategory: json['score_category'] as String?,
+      scoreUpdatedAt: json['score_updated_at'] != null
+          ? DateTime.parse(json['score_updated_at'])
           : null,
       assignedUser: json['assigned_user'] != null
           ? AssignedUser.fromJson(json['assigned_user'])
@@ -354,6 +376,19 @@ class CreateLeadInput {
   }
 }
 
+enum LeadSortBy {
+  name,
+  createdAt,
+  updatedAt,
+  score,
+  status,
+}
+
+enum LeadSortOrder {
+  asc,
+  desc,
+}
+
 class LeadFilters {
   final List<LeadStatus>? status;
   final List<String>? categoryIds;
@@ -362,6 +397,9 @@ class LeadFilters {
   final String? search;
   final DateTime? dateFrom;
   final DateTime? dateTo;
+  final List<String>? scoreCategories; // 'hot', 'warm', 'cold', 'unscored'
+  final LeadSortBy? sortBy;
+  final LeadSortOrder? sortOrder;
 
   LeadFilters({
     this.status,
@@ -371,6 +409,9 @@ class LeadFilters {
     this.search,
     this.dateFrom,
     this.dateTo,
+    this.scoreCategories,
+    this.sortBy,
+    this.sortOrder,
   });
 }
 

@@ -34,12 +34,50 @@ class LeadController extends GetxController {
 
     try {
       final result = await _viewModel.getLeads(shopId, filters: _filters.value);
-      _leads.value = result;
+      // Apply client-side sorting if specified
+      var sortedLeads = List<LeadWithRelationsModel>.from(result);
+      if (_filters.value?.sortBy != null) {
+        sortedLeads = _sortLeads(sortedLeads, _filters.value!.sortBy!, _filters.value!.sortOrder ?? LeadSortOrder.desc);
+      }
+      _leads.value = sortedLeads;
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
     } finally {
       _isLoading.value = false;
     }
+  }
+
+  // Sort leads client-side
+  List<LeadWithRelationsModel> _sortLeads(
+    List<LeadWithRelationsModel> leads,
+    LeadSortBy sortBy,
+    LeadSortOrder order,
+  ) {
+    final sorted = List<LeadWithRelationsModel>.from(leads);
+    sorted.sort((a, b) {
+      int comparison = 0;
+      switch (sortBy) {
+        case LeadSortBy.name:
+          comparison = a.name.compareTo(b.name);
+          break;
+        case LeadSortBy.createdAt:
+          comparison = a.createdAt.compareTo(b.createdAt);
+          break;
+        case LeadSortBy.updatedAt:
+          comparison = a.updatedAt.compareTo(b.updatedAt);
+          break;
+        case LeadSortBy.score:
+          final scoreA = a.score ?? 0;
+          final scoreB = b.score ?? 0;
+          comparison = scoreA.compareTo(scoreB);
+          break;
+        case LeadSortBy.status:
+          comparison = a.status.index.compareTo(b.status.index);
+          break;
+      }
+      return order == LeadSortOrder.asc ? comparison : -comparison;
+    });
+    return sorted;
   }
 
   // Load lead by ID

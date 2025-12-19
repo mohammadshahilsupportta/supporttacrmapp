@@ -235,6 +235,17 @@ class _LeadDetailViewState extends State<LeadDetailView>
   }
 
   Widget _buildOverviewTab(LeadWithRelationsModel lead, ThemeData theme) {
+    // Extract requirement from notes
+    String? requirement;
+    if (lead.notes != null && lead.notes!.isNotEmpty) {
+      final requirementMatch = RegExp(r'REQUIREMENT:\n([\s\S]*?)(?:\n\n|$)')
+          .firstMatch(lead.notes!);
+      requirement = requirementMatch?.group(1)?.trim();
+      if (requirement != null && requirement.isEmpty) {
+        requirement = null;
+      }
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -617,6 +628,41 @@ class _LeadDetailViewState extends State<LeadDetailView>
             const SizedBox(height: 16),
           ],
 
+          // Requirement (extracted from notes)
+          if (requirement != null && requirement.isNotEmpty) ...[
+            _buildSectionHeader('Requirement'),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'What the lead is looking for',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      requirement,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // Products
           if (lead.products != null && lead.products!.isNotEmpty) ...[
             _buildSectionHeader('Products'),
@@ -715,42 +761,101 @@ class _LeadDetailViewState extends State<LeadDetailView>
       final pendingTasks = _activityController.pendingTasks;
       final lastActivity = activities.isNotEmpty ? activities.first : null;
 
-      return Row(
+      final lead = _leadController.selectedLead;
+      final score = lead?.score;
+      final scoreCategory = lead?.scoreCategory;
+
+      return Column(
         children: [
-          Expanded(
-            child: _buildStatCard(
-              Theme.of(context),
-              'Total Activities',
-              activities.length.toString(),
-              Icons.history,
-              Colors.blue,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  Theme.of(context),
+                  'Total Activities',
+                  activities.length.toString(),
+                  Icons.history,
+                  Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  Theme.of(context),
+                  'Pending Tasks',
+                  pendingTasks.length.toString(),
+                  Icons.task_outlined,
+                  Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  Theme.of(context),
+                  'Last Activity',
+                  lastActivity != null
+                      ? DateFormat('MMM dd').format(lastActivity.createdAt)
+                      : 'None',
+                  Icons.access_time,
+                  Colors.purple,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              Theme.of(context),
-              'Pending Tasks',
-              pendingTasks.length.toString(),
-              Icons.task_outlined,
-              Colors.orange,
+          if (score != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    Theme.of(context),
+                    'Lead Score',
+                    '$score',
+                    _getScoreIcon(scoreCategory),
+                    _getScoreColor(score, scoreCategory),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              Theme.of(context),
-              'Last Activity',
-              lastActivity != null
-                  ? DateFormat('MMM dd').format(lastActivity.createdAt)
-                  : 'None',
-              Icons.access_time,
-              Colors.purple,
-            ),
-          ),
+          ],
         ],
       );
     });
+  }
+
+  Color _getScoreColor(int score, String? category) {
+    if (category != null) {
+      switch (category.toLowerCase()) {
+        case 'hot':
+          return Colors.red;
+        case 'warm':
+          return Colors.orange;
+        case 'cold':
+          return Colors.blue;
+        default:
+          return Colors.grey;
+      }
+    }
+    if (score >= 75) return Colors.red;
+    if (score >= 50) return Colors.orange;
+    if (score >= 25) return Colors.blue;
+    return Colors.grey;
+  }
+
+  IconData _getScoreIcon(String? category) {
+    if (category != null) {
+      switch (category.toLowerCase()) {
+        case 'hot':
+          return Icons.local_fire_department;
+        case 'warm':
+          return Icons.wb_sunny;
+        case 'cold':
+          return Icons.ac_unit;
+        default:
+          return Icons.star;
+      }
+    }
+    return Icons.star;
   }
 
   Widget _buildStatCard(

@@ -11,18 +11,120 @@ class LeadRepository {
   }) async {
     try {
       // Fetch all leads for the shop (filter client-side to avoid API method issues)
-      final data = await SupabaseService.from('leads')
-          .select('''
-            *,
-            assigned_user:users!leads_assigned_to_fkey(id, name, email),
-            created_by_user:users!leads_created_by_fkey(id, name),
-            lead_categories(
-              category:categories(*)
-            )
-          ''')
-          .eq('shop_id', shopId)
-          .isFilter('deleted_at', null)
-          .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      // Try multiple approaches to fetch assigned user data
+      List<dynamic> data;
+      try {
+        // First try: Join with staff table (most likely scenario)
+        data = await SupabaseService.from('leads')
+            .select('''
+              *,
+              assigned_user:staff!assigned_to(id, name, email),
+              created_by_user:users!created_by(id, name),
+              lead_categories(
+                category:categories(*)
+              )
+            ''')
+            .eq('shop_id', shopId)
+            .isFilter('deleted_at', null)
+            .order('created_at', ascending: false) as List<dynamic>? ?? [];
+      } catch (e) {
+        try {
+          // Second try: Join with users table
+          data = await SupabaseService.from('leads')
+              .select('''
+                *,
+                assigned_user:users!assigned_to(id, name, email),
+                created_by_user:users!created_by(id, name),
+                lead_categories(
+                  category:categories(*)
+                )
+              ''')
+              .eq('shop_id', shopId)
+              .isFilter('deleted_at', null)
+              .order('created_at', ascending: false) as List<dynamic>? ?? [];
+        } catch (e2) {
+          // Fallback: query without user relationships, fetch them separately
+          data = await SupabaseService.from('leads')
+              .select('''
+                *,
+                lead_categories(
+                  category:categories(*)
+                )
+              ''')
+              .eq('shop_id', shopId)
+              .isFilter('deleted_at', null)
+              .order('created_at', ascending: false) as List<dynamic>? ?? [];
+          
+          // Fetch user data separately for assigned_to and created_by
+          final assignedToIds = data
+              .map((l) => (l as Map<String, dynamic>)['assigned_to'] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          final createdByIds = data
+              .map((l) => (l as Map<String, dynamic>)['created_by'] as String?)
+              .whereType<String>()
+              .toSet()
+              .toList();
+          
+          Map<String, Map<String, dynamic>> assignedUsersMap = {};
+          Map<String, Map<String, dynamic>> createdByUsersMap = {};
+          
+          // Try fetching from staff table first, then fallback to users table
+          for (final userId in assignedToIds) {
+            try {
+              // Try staff table first
+              var user = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', userId)
+                  .maybeSingle();
+              if (user == null) {
+                // Fallback to users table
+                user = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', userId)
+                    .maybeSingle();
+              }
+              if (user != null) {
+                assignedUsersMap[userId] = Map<String, dynamic>.from(user);
+              }
+            } catch (e3) {
+              // Skip if user not found
+              continue;
+            }
+          }
+          
+          // Fetch created by users
+          for (final userId in createdByIds) {
+            try {
+              final user = await SupabaseService.from('users')
+                  .select('id, name')
+                  .eq('id', userId)
+                  .maybeSingle();
+              if (user != null) {
+                createdByUsersMap[userId] = Map<String, dynamic>.from(user);
+              }
+            } catch (e4) {
+              // Skip if user not found
+              continue;
+            }
+          }
+          
+          // Merge user data into leads
+          for (var lead in data) {
+            final leadMap = lead as Map<String, dynamic>;
+            final assignedTo = leadMap['assigned_to'] as String?;
+            final createdBy = leadMap['created_by'] as String?;
+            
+            if (assignedTo != null && assignedUsersMap.containsKey(assignedTo)) {
+              leadMap['assigned_user'] = assignedUsersMap[assignedTo];
+            }
+            if (createdBy != null && createdByUsersMap.containsKey(createdBy)) {
+              leadMap['created_by_user'] = createdByUsersMap[createdBy];
+            }
+          }
+        }
+      }
 
       // Transform the nested structure
       List<LeadWithRelationsModel> leads = data.map((leadJson) {
@@ -72,6 +174,16 @@ class LeadRepository {
                 (lead.company?.toLowerCase().contains(searchLower) ?? false);
           }).toList();
         }
+
+        // Filter by score category client-side
+        if (filters.scoreCategories != null && filters.scoreCategories!.isNotEmpty) {
+          leads = leads.where((lead) {
+            if (lead.scoreCategory == null) {
+              return filters.scoreCategories!.contains('unscored');
+            }
+            return filters.scoreCategories!.contains(lead.scoreCategory!.toLowerCase());
+          }).toList();
+        }
       }
 
       return leads;
@@ -83,18 +195,83 @@ class LeadRepository {
   // Get lead by ID
   Future<LeadWithRelationsModel?> findById(String leadId) async {
     try {
-      final lead = await SupabaseService.from('leads')
-          .select('''
-            *,
-            assigned_user:users!leads_assigned_to_fkey(id, name, email),
-            created_by_user:users!leads_created_by_fkey(id, name),
-            lead_categories(
-              category:categories(*)
-            )
-          ''')
-          .eq('id', leadId)
-          .isFilter('deleted_at', null)
-          .maybeSingle();
+      Map<String, dynamic>? lead;
+      try {
+        // First try: Join with staff table
+        lead = await SupabaseService.from('leads')
+            .select('''
+              *,
+              assigned_user:staff!assigned_to(id, name, email),
+              created_by_user:users!created_by(id, name),
+              lead_categories(
+                category:categories(*)
+              )
+            ''')
+            .eq('id', leadId)
+            .isFilter('deleted_at', null)
+            .maybeSingle();
+      } catch (e) {
+        try {
+          // Second try: Join with users table
+          lead = await SupabaseService.from('leads')
+              .select('''
+                *,
+                assigned_user:users!assigned_to(id, name, email),
+                created_by_user:users!created_by(id, name),
+                lead_categories(
+                  category:categories(*)
+                )
+              ''')
+              .eq('id', leadId)
+              .isFilter('deleted_at', null)
+              .maybeSingle();
+        } catch (e2) {
+          // Fallback: query without user relationships
+          lead = await SupabaseService.from('leads')
+              .select('''
+                *,
+                lead_categories(
+                  category:categories(*)
+                )
+              ''')
+              .eq('id', leadId)
+              .isFilter('deleted_at', null)
+              .maybeSingle();
+          
+          // Fetch user data separately if needed
+          if (lead != null) {
+            final assignedTo = lead['assigned_to'] as String?;
+            final createdBy = lead['created_by'] as String?;
+            
+            if (assignedTo != null) {
+              // Try staff table first, then fallback to users table
+              var assignedUser = await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', assignedTo)
+                  .maybeSingle();
+              if (assignedUser == null) {
+                assignedUser = await SupabaseService.from('users')
+                    .select('id, name, email')
+                    .eq('id', assignedTo)
+                    .maybeSingle();
+              }
+              if (assignedUser != null) {
+                lead['assigned_user'] = assignedUser;
+              }
+            }
+            
+            if (createdBy != null) {
+              final createdByUser = await SupabaseService.from('users')
+                  .select('id, name')
+                  .eq('id', createdBy)
+                  .maybeSingle();
+              if (createdByUser != null) {
+                lead['created_by_user'] = createdByUser;
+              }
+            }
+          }
+        }
+      }
 
       if (lead == null) return null;
       final categories =
