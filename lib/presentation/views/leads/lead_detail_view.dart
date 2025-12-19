@@ -1022,13 +1022,13 @@ class _LeadDetailViewState extends State<LeadDetailView>
               ),
             ),
           ),
-          // Add Activity Button - Always visible
+          // Add Note Button - Always visible
           Padding(
             padding: const EdgeInsets.all(16),
             child: ElevatedButton.icon(
-              onPressed: () => _showAddActivityDialog(),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Activity'),
+              onPressed: () => _showAddActivityDialog(activityType: ActivityType.note),
+              icon: const Icon(Icons.note_add),
+              label: const Text('Add Note'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
@@ -1056,12 +1056,12 @@ class _LeadDetailViewState extends State<LeadDetailView>
                                   ),
                             ),
                             const SizedBox(height: 8),
-                            if (_activityController.activities.isEmpty)
-                              ElevatedButton.icon(
-                                onPressed: () => _showAddActivityDialog(),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Add Activity'),
-                              ),
+                        if (_activityController.activities.isEmpty)
+                          ElevatedButton.icon(
+                            onPressed: () => _showAddActivityDialog(activityType: ActivityType.note),
+                            icon: const Icon(Icons.note_add),
+                            label: const Text('Add Note'),
+                          ),
                           ],
                         ),
                       ),
@@ -1178,9 +1178,6 @@ class _LeadDetailViewState extends State<LeadDetailView>
             activity: activity,
             onTap: () {
               // Show activity details
-            },
-            onDelete: () {
-              _deleteActivity(activity);
             },
           ),
         ),

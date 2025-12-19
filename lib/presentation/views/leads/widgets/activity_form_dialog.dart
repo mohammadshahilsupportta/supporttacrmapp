@@ -117,6 +117,20 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
       }
     }
 
+    // Validate note-specific requirements
+    if (_selectedActivityType == ActivityType.note) {
+      if (_noteContentController.text.trim().isEmpty) {
+        Get.snackbar(
+          'Validation Error',
+          'Note content is required',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+    }
+
     final input = CreateActivityInput(
       leadId: widget.leadId,
       activityType: _selectedActivityType,
@@ -148,9 +162,14 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isNoteOnly = widget.defaultActivityType == ActivityType.note;
+    
     return Dialog(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+        constraints: BoxConstraints(
+          maxWidth: 500,
+          maxHeight: isNoteOnly ? 550 : 700,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
@@ -161,13 +180,35 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Icon(Icons.add_task),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Add Activity',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Icon(
+                      isNoteOnly
+                          ? Icons.note_add
+                          : Icons.add_task,
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isNoteOnly
+                                ? 'Add Note'
+                                : 'Add Activity',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          if (isNoteOnly) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Add a note about this lead. It will appear in the timeline.',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.of(context).pop(),
@@ -177,74 +218,80 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
               ),
               const Divider(height: 1),
               // Form Content
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Activity Type
-                      Text(
-                        'Activity Type',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<ActivityType>(
-                        value: _selectedActivityType,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          isDense: true,
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                      // Activity Type - Hide if default is note
+                      if (widget.defaultActivityType != ActivityType.note) ...[
+                        Text(
+                          'Activity Type',
+                          style: Theme.of(context).textTheme.titleSmall,
                         ),
-                        items: ActivityType.values.map((type) {
-                          return DropdownMenuItem(
-                            value: type,
-                            child: Text(_getActivityTypeLabel(type)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedActivityType = value;
-                              // Reset type-specific fields
-                              _selectedMeetingType = null;
-                              _selectedNoteType = null;
-                              _selectedPriority = null;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<ActivityType>(
+                          value: _selectedActivityType,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: ActivityType.values.map((type) {
+                            return DropdownMenuItem(
+                              value: type,
+                              child: Text(_getActivityTypeLabel(type)),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _selectedActivityType = value;
+                                // Reset type-specific fields
+                                _selectedMeetingType = null;
+                                _selectedNoteType = null;
+                                _selectedPriority = null;
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
-                      // Title
-                      TextFormField(
-                        controller: _titleController,
-                        decoration: InputDecoration(
-                          labelText: 'Title',
-                          border: const OutlineInputBorder(),
-                          hintText: _selectedActivityType == ActivityType.task
-                              ? 'Task title (required)'
-                              : 'Title',
+                      // Title - Hide for notes
+                      if (_selectedActivityType != ActivityType.note) ...[
+                        TextFormField(
+                          controller: _titleController,
+                          decoration: InputDecoration(
+                            labelText: 'Title',
+                            border: const OutlineInputBorder(),
+                            hintText: _selectedActivityType == ActivityType.task
+                                ? 'Task title (required)'
+                                : 'Title',
+                          ),
+                          validator: (value) {
+                            if (_selectedActivityType == ActivityType.task &&
+                                (value == null || value.trim().isEmpty)) {
+                              return 'Title is required for tasks';
+                            }
+                            return null;
+                          },
                         ),
-                        validator: (value) {
-                          if (_selectedActivityType == ActivityType.task &&
-                              (value == null || value.trim().isEmpty)) {
-                            return 'Title is required for tasks';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
+                      ],
 
-                      // Description
-                      TextFormField(
-                        controller: _descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'Description',
-                          border: OutlineInputBorder(),
+                      // Description - Hide for notes
+                      if (_selectedActivityType != ActivityType.note) ...[
+                        TextFormField(
+                          controller: _descriptionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Description',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 3,
                         ),
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Type-specific fields
                       if (_selectedActivityType == ActivityType.task ||
@@ -317,20 +364,26 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                       ],
 
                       if (_selectedActivityType == ActivityType.note) ...[
-                        // Note Type
+                        // Note Type - Optional
                         DropdownButtonFormField<NoteType>(
                           value: _selectedNoteType,
                           decoration: const InputDecoration(
-                            labelText: 'Note Type',
+                            labelText: 'Note Type (Optional)',
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
-                          items: NoteType.values.map((type) {
-                            return DropdownMenuItem(
-                              value: type,
-                              child: Text(type.toString().split('.').last),
-                            );
-                          }).toList(),
+                          items: [
+                            const DropdownMenuItem<NoteType>(
+                              value: null,
+                              child: Text('Select note type'),
+                            ),
+                            ...NoteType.values.map((type) {
+                              return DropdownMenuItem(
+                                value: type,
+                                child: Text(_getNoteTypeLabel(type)),
+                              );
+                            }),
+                          ],
                           onChanged: (value) {
                             setState(() {
                               _selectedNoteType = value;
@@ -338,14 +391,21 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                           },
                         ),
                         const SizedBox(height: 16),
-                        // Note Content
+                        // Note Content - Required for notes
                         TextFormField(
                           controller: _noteContentController,
                           decoration: const InputDecoration(
-                            labelText: 'Note Content',
+                            labelText: 'Note Content *',
                             border: OutlineInputBorder(),
+                            hintText: 'Enter your note here...',
                           ),
-                          maxLines: 4,
+                          maxLines: 6,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Note content is required';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -428,7 +488,6 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                     ],
                   ),
                 ),
-              ),
               const Divider(height: 1),
               // Actions
               Padding(
@@ -479,6 +538,19 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
         return 'Category Change';
       case ActivityType.fieldUpdate:
         return 'Field Update';
+    }
+  }
+
+  String _getNoteTypeLabel(NoteType type) {
+    switch (type) {
+      case NoteType.callSummary:
+        return 'Call Summary';
+      case NoteType.meetingNotes:
+        return 'Meeting Notes';
+      case NoteType.internalNote:
+        return 'Internal Note';
+      case NoteType.followUp:
+        return 'Follow Up';
     }
   }
 }
