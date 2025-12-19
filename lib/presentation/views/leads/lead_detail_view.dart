@@ -1501,7 +1501,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 20),
               onPressed: () {
-                _deleteActivity(task);
+                _deleteActivity(task, isTask: true);
               },
               color: Colors.red,
             ),
@@ -2105,11 +2105,13 @@ class _LeadDetailViewState extends State<LeadDetailView>
     );
   }
 
-  Future<void> _deleteActivity(LeadActivity activity) async {
+  Future<void> _deleteActivity(LeadActivity activity, {bool isTask = false}) async {
     final confirmed = await Get.dialog<bool>(
       AlertDialog(
-        title: const Text('Delete Activity'),
-        content: const Text('Are you sure you want to delete this activity?'),
+        title: Text(isTask ? 'Delete Task' : 'Delete Activity'),
+        content: Text(isTask 
+            ? 'Are you sure you want to delete this task?'
+            : 'Are you sure you want to delete this activity?'),
         actions: [
           TextButton(
             onPressed: () => Get.back(result: false),
@@ -2129,7 +2131,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
       if (success) {
         Get.snackbar(
           'Success',
-          'Activity deleted',
+          isTask ? 'Task deleted' : 'Activity deleted',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white,

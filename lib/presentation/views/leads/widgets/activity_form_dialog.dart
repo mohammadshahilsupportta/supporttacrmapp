@@ -65,35 +65,60 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
     BuildContext context,
     bool isScheduled,
   ) async {
+    final now = DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: now,
+      // For due dates (tasks), only allow future dates
+      // For scheduled dates (meetings), allow past dates too
+      firstDate: isScheduled 
+          ? now.subtract(const Duration(days: 365))
+          : now,
+      lastDate: now.add(const Duration(days: 365)),
     );
     if (picked != null) {
+      // For due dates, if today is selected, set initial time to next hour
+      // Otherwise, use current time
+      final isToday = picked.year == now.year &&
+          picked.month == now.month &&
+          picked.day == now.day;
+      final initialTime = isToday && !isScheduled
+          ? TimeOfDay(
+              hour: now.hour + 1 >= 24 ? 0 : now.hour + 1,
+              minute: 0,
+            )
+          : TimeOfDay.now();
+      
       final TimeOfDay? time = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.now(),
+        initialTime: initialTime,
       );
       if (time != null) {
+        final selectedDateTime = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          time.hour,
+          time.minute,
+        );
+        
+        // For due dates, validate that the selected date/time is in the future
+        if (!isScheduled && selectedDateTime.isBefore(now)) {
+          Get.snackbar(
+            'Invalid Date',
+            'Due date must be in the future',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+          return;
+        }
+        
         setState(() {
           if (isScheduled) {
-            _scheduledAt = DateTime(
-              picked.year,
-              picked.month,
-              picked.day,
-              time.hour,
-              time.minute,
-            );
+            _scheduledAt = selectedDateTime;
           } else {
-            _dueDate = DateTime(
-              picked.year,
-              picked.month,
-              picked.day,
-              time.hour,
-              time.minute,
-            );
+            _dueDate = selectedDateTime;
           }
         });
       }
@@ -163,12 +188,13 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
   @override
   Widget build(BuildContext context) {
     final isNoteOnly = widget.defaultActivityType == ActivityType.note;
+    final isTaskOnly = widget.defaultActivityType == ActivityType.task;
     
     return Dialog(
       child: Container(
         constraints: BoxConstraints(
           maxWidth: 500,
-          maxHeight: isNoteOnly ? 550 : 700,
+          maxHeight: isNoteOnly ? 550 : 800,
         ),
         child: Form(
           key: _formKey,
@@ -183,7 +209,9 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                     Icon(
                       isNoteOnly
                           ? Icons.note_add
-                          : Icons.add_task,
+                          : isTaskOnly
+                              ? Icons.task
+                              : Icons.add_task,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -193,7 +221,9 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                           Text(
                             isNoteOnly
                                 ? 'Add Note'
-                                : 'Add Activity',
+                                : isTaskOnly
+                                    ? 'Create Task'
+                                    : 'Add Activity',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                           if (isNoteOnly) ...[
@@ -218,14 +248,16 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
               ),
               const Divider(height: 1),
               // Form Content
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                      // Activity Type - Hide if default is note
-                      if (widget.defaultActivityType != ActivityType.note) ...[
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Activity Type - Hide if default is note or task
+                      if (widget.defaultActivityType != ActivityType.note &&
+                          widget.defaultActivityType != ActivityType.task) ...[
                         Text(
                           'Activity Type',
                           style: Theme.of(context).textTheme.titleSmall,
@@ -263,16 +295,17 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                         TextFormField(
                           controller: _titleController,
                           decoration: InputDecoration(
-                            labelText: 'Title',
+                            labelText: isTaskOnly ? 'Task Title *' : 'Title',
                             border: const OutlineInputBorder(),
                             hintText: _selectedActivityType == ActivityType.task
                                 ? 'Task title (required)'
                                 : 'Title',
                           ),
                           validator: (value) {
-                            if (_selectedActivityType == ActivityType.task &&
+                            if ((_selectedActivityType == ActivityType.task ||
+                                    isTaskOnly) &&
                                 (value == null || value.trim().isEmpty)) {
-                              return 'Title is required for tasks';
+                              return 'Task title is required';
                             }
                             return null;
                           },
@@ -293,9 +326,26 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                         const SizedBox(height: 16),
                       ],
 
-                      // Type-specific fields
+                      // Task-specific fields - Order: Due Date, Priority, Assign To
                       if (_selectedActivityType == ActivityType.task ||
-                          _selectedActivityType == ActivityType.taskCompleted) ...[
+                          _selectedActivityType == ActivityType.taskCompleted ||
+                          isTaskOnly) ...[
+                        // Due Date
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Due Date'),
+                          subtitle: Text(
+                            _dueDate != null
+                                ? DateFormat('MMM dd, yyyy HH:mm')
+                                    .format(_dueDate!)
+                                : 'No due date',
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.event),
+                            onPressed: () => _selectDate(context, false),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         // Priority
                         DropdownButtonFormField<TaskPriority>(
                           value: _selectedPriority,
@@ -410,9 +460,9 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                         const SizedBox(height: 16),
                       ],
 
-                      // Scheduled At
+                      // Scheduled At - Hide for tasks (only show for meetings)
                       if (_selectedActivityType == ActivityType.meeting ||
-                          _selectedActivityType == ActivityType.task) ...[
+                          _selectedActivityType == ActivityType.meetingCompleted) ...[
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Scheduled At'),
@@ -430,27 +480,10 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                         const SizedBox(height: 8),
                       ],
 
-                      // Due Date
-                      if (_selectedActivityType == ActivityType.task) ...[
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Due Date'),
-                          subtitle: Text(
-                            _dueDate != null
-                                ? DateFormat('MMM dd, yyyy HH:mm')
-                                    .format(_dueDate!)
-                                : 'No due date',
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.event),
-                            onPressed: () => _selectDate(context, false),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-
-                      // Assign To
-                      if (_selectedActivityType == ActivityType.task) ...[
+                      // Assign To - Show for tasks
+                      if (_selectedActivityType == ActivityType.task ||
+                          _selectedActivityType == ActivityType.taskCompleted ||
+                          isTaskOnly) ...[
                         Obx(() {
                           if (_staffController.isLoading) {
                             return const CircularProgressIndicator();
@@ -488,6 +521,7 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                     ],
                   ),
                 ),
+              ),
               const Divider(height: 1),
               // Actions
               Padding(
