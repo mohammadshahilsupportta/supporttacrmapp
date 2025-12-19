@@ -20,7 +20,8 @@ class _CategoriesViewState extends State<CategoriesView> {
   bool _hasInitialized = false;
   Worker? _shopWorker;
 
-  bool _hasPermission(UserModel? user) {
+  bool _canModifyCategories(UserModel? user) {
+    // Only shop owner and admin can create/edit/delete categories
     if (user == null) return false;
     return user.role == UserRole.shopOwner || user.role == UserRole.admin;
   }
@@ -52,18 +53,15 @@ class _CategoriesViewState extends State<CategoriesView> {
     });
 
     // Use a worker to listen to shop changes
-    _shopWorker = ever(
-      authController.shopRx,
-      (shop) {
-        if (shop != null && mounted) {
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (mounted) {
-              _loadDataIfNeeded(authController, categoryController);
-            }
-          });
-        }
-      },
-    );
+    _shopWorker = ever(authController.shopRx, (shop) {
+      if (shop != null && mounted) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _loadDataIfNeeded(authController, categoryController);
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -173,9 +171,7 @@ class _CategoriesViewState extends State<CategoriesView> {
           ),
           TextButton(
             onPressed: () => Get.back(result: true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
           ),
         ],
@@ -224,28 +220,34 @@ class _CategoriesViewState extends State<CategoriesView> {
     final authController = Get.find<AuthController>();
     final categoryController = Get.find<CategoryController>();
 
-    final hasPermission = _hasPermission(authController.user);
-
-    if (!hasPermission) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.lock, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              "You don't have permission to access this page.",
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey,
-                  ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Obx(() {
-      if (categoryController.isLoading && categoryController.categories.isEmpty) {
+      // Allow all authenticated users to view categories
+      // Only restrict if user is not authenticated
+      if (!authController.isAuthenticated || authController.user == null) {
+        // Show loading if still checking auth, otherwise show error
+        if (authController.isLoading) {
+          return const LoadingWidget();
+        }
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                "You don't have permission to access this page.",
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.grey),
+              ),
+            ],
+          ),
+        );
+      }
+
+      final canModify = _canModifyCategories(authController.user);
+      if (categoryController.isLoading &&
+          categoryController.categories.isEmpty) {
         return const LoadingWidget();
       }
 
@@ -271,28 +273,32 @@ class _CategoriesViewState extends State<CategoriesView> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.category_outlined,
-                        size: 64, color: Colors.grey),
+                    const Icon(
+                      Icons.category_outlined,
+                      size: 64,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'No categories yet',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.grey,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: Colors.grey),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Create your first category to organize your leads',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () => _openFormDialog(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Create Your First Category'),
-                    ),
+                    if (canModify)
+                      ElevatedButton.icon(
+                        onPressed: () => _openFormDialog(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Create Your First Category'),
+                      ),
                   ],
                 ),
               )
@@ -306,8 +312,10 @@ class _CategoriesViewState extends State<CategoriesView> {
                   final category = categoryController.categories[index];
                   return CategoryCardWidget(
                     category: category,
-                    onEdit: () => _openFormDialog(category: category),
-                    onDelete: () => _handleDelete(category),
+                    onEdit: canModify
+                        ? () => _openFormDialog(category: category)
+                        : null,
+                    onDelete: canModify ? () => _handleDelete(category) : null,
                   );
                 },
               ),
