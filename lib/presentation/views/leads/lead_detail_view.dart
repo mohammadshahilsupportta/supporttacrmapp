@@ -282,19 +282,31 @@ class _LeadDetailViewState extends State<LeadDetailView>
           );
         }
 
-        return RefreshIndicator(
-          onRefresh: () async {
-            await _leadController.loadLeadById(widget.leadId);
-            await _activityController.refreshActivities(widget.leadId);
-          },
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildOverviewTab(lead, theme),
-              _buildTimelineTab(),
-              _buildTasksTab(),
-            ],
-          ),
+        return TabBarView(
+          controller: _tabController,
+          children: [
+            RefreshIndicator(
+              onRefresh: () async {
+                await _leadController.loadLeadById(widget.leadId);
+                await _activityController.refreshActivities(widget.leadId);
+              },
+              child: _buildOverviewTab(lead, theme),
+            ),
+            RefreshIndicator(
+              onRefresh: () async {
+                await _leadController.loadLeadById(widget.leadId);
+                await _activityController.refreshActivities(widget.leadId);
+              },
+              child: _buildTimelineTab(),
+            ),
+            RefreshIndicator(
+              onRefresh: () async {
+                await _leadController.loadLeadById(widget.leadId);
+                await _activityController.refreshActivities(widget.leadId);
+              },
+              child: _buildTasksTab(),
+            ),
+          ],
         );
       }),
     );
@@ -313,6 +325,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
     }
 
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1024,31 +1037,38 @@ class _LeadDetailViewState extends State<LeadDetailView>
           // Timeline - Shows activities or empty state
           Expanded(
             child: activities.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.history, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          _activityController.activities.isEmpty
-                              ? 'No activities yet'
-                              : 'No ${_getFilterLabel()} found',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: Colors.grey,
+                ? SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.6,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.history, size: 64, color: Colors.grey),
+                            const SizedBox(height: 16),
+                            Text(
+                              _activityController.activities.isEmpty
+                                  ? 'No activities yet'
+                                  : 'No ${_getFilterLabel()} found',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.grey,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (_activityController.activities.isEmpty)
+                              ElevatedButton.icon(
+                                onPressed: () => _showAddActivityDialog(),
+                                icon: const Icon(Icons.add),
+                                label: const Text('Add Activity'),
                               ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        if (_activityController.activities.isEmpty)
-                          ElevatedButton.icon(
-                            onPressed: () => _showAddActivityDialog(),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add Activity'),
-                          ),
-                      ],
+                      ),
                     ),
                   )
                 : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: activities.length,
                     itemBuilder: (context, index) {
@@ -1171,25 +1191,31 @@ class _LeadDetailViewState extends State<LeadDetailView>
   Widget _buildTasksTab() {
     return Obx(() {
       if (_activityController.pendingTasks.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.task_outlined, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text(
-                'No pending tasks',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.task_outlined, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No pending tasks',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.grey,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddActivityDialog(activityType: ActivityType.task),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Task'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => _showAddActivityDialog(activityType: ActivityType.task),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Task'),
-              ),
-            ],
+            ),
           ),
         );
       }
@@ -1208,20 +1234,110 @@ class _LeadDetailViewState extends State<LeadDetailView>
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _activityController.pendingTasks.length,
+            child: _activityController.pendingTasks.isEmpty
+                ? SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.4,
+                    ),
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _activityController.pendingTasks.length,
               itemBuilder: (context, index) {
                 final task = _activityController.pendingTasks[index];
-                return ActivityCardWidget(
-                  activity: task,
-                  onTap: () {
-                    // Show task details or mark as complete
-                    _markTaskComplete(task);
-                  },
-                  onDelete: () {
-                    _deleteActivity(task);
-                  },
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Dismissible(
+                    key: Key(task.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Complete',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    confirmDismiss: (direction) async {
+                      // Mark as complete without showing dialog
+                      await _markTaskCompleteSwipe(task);
+                      return true; // Dismiss the item
+                    },
+                    onDismissed: (direction) {
+                      // Task is already marked as complete in confirmDismiss
+                    },
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Activity content (replicating ActivityCardWidget structure)
+                          _buildTaskCardContent(task),
+                          // Swipe indicator at bottom - always visible
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: const BorderRadius.only(
+                                bottomLeft: Radius.circular(12),
+                                bottomRight: Radius.circular(12),
+                              ),
+                              border: Border(
+                                top: BorderSide(
+                                  color: Colors.green.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.swipe_left,
+                                  size: 18,
+                                  color: Colors.green.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Swipe left to complete',
+                                  style: TextStyle(
+                                    color: Colors.green.shade700,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
@@ -1229,6 +1345,197 @@ class _LeadDetailViewState extends State<LeadDetailView>
         ],
       );
     });
+  }
+
+  Widget _buildTaskCardContent(LeadActivity task) {
+    final theme = Theme.of(context);
+    final iconColor = Colors.blue; // Task color
+    final displayText = task.title ?? task.description ?? '';
+
+    return InkWell(
+      onTap: () {
+        _markTaskComplete(task);
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.task,
+                color: iconColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (displayText.isNotEmpty) ...[
+                    Text(
+                      displayText,
+                      style: theme.textTheme.bodyMedium,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (task.dueDate != null) ...[
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Due: ${DateFormat('MMM dd, hh:mm a').format(task.dueDate!)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  if (task.priority != null || task.taskStatus != null) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (task.priority != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getPriorityColor(task.priority!).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _getPriorityColor(task.priority!).withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.flag,
+                                  size: 12,
+                                  color: _getPriorityColor(task.priority!),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  task.priority.toString().split('.').last.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: _getPriorityColor(task.priority!),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (task.taskStatus != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getTaskStatusColor(task.taskStatus!).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _getTaskStatusColor(task.taskStatus!).withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              task.taskStatusString!.replaceAll('_', ' ').toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _getTaskStatusColor(task.taskStatus!),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Row(
+                    children: [
+                      if (task.performedByUser != null) ...[
+                        Icon(Icons.person, size: 12, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          task.performedByUser!.name,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Icon(Icons.access_time, size: 12, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        task.scheduledAt != null
+                            ? DateFormat('MMM dd, hh:mm a').format(task.scheduledAt!)
+                            : DateFormat('MMM dd, hh:mm a').format(task.createdAt),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                              fontSize: 11,
+                            ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              onPressed: () {
+                _deleteActivity(task);
+              },
+              color: Colors.red,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getPriorityColor(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.high:
+        return Colors.red;
+      case TaskPriority.medium:
+        return Colors.orange;
+      case TaskPriority.low:
+        return Colors.blue;
+    }
+  }
+
+  Color _getTaskStatusColor(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.pending:
+        return Colors.orange;
+      case TaskStatus.inProgress:
+        return Colors.blue;
+      case TaskStatus.completed:
+        return Colors.green;
+      case TaskStatus.cancelled:
+        return Colors.red;
+    }
   }
 
   Widget _buildSectionHeader(String title) {
@@ -1863,29 +2170,43 @@ class _LeadDetailViewState extends State<LeadDetailView>
     );
 
     if (confirmed == true) {
-      final input = UpdateActivityInput(
-        id: task.id,
-        taskStatus: TaskStatus.completed,
-        completedAt: DateTime.now(),
+      await _markTaskCompleteSwipe(task);
+    }
+  }
+
+  Future<void> _markTaskCompleteSwipe(LeadActivity task) async {
+    if (task.activityType != ActivityType.task) return;
+
+    final input = UpdateActivityInput(
+      id: task.id,
+      taskStatus: TaskStatus.completed,
+      completedAt: DateTime.now(),
+    );
+    final success = await _activityController.updateActivity(task.id, input);
+    if (success) {
+      Get.snackbar(
+        'Success',
+        'Task marked as completed',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        icon: const Icon(Icons.check_circle, color: Colors.white),
       );
-      final success = await _activityController.updateActivity(task.id, input);
-      if (success) {
-        Get.snackbar(
-          'Success',
-          'Task marked as completed',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-      } else {
-        Get.snackbar(
-          'Error',
-          _activityController.errorMessage,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
+    } else {
+      Get.snackbar(
+        'Error',
+        _activityController.errorMessage,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        icon: const Icon(Icons.error, color: Colors.white),
+      );
     }
   }
 }
