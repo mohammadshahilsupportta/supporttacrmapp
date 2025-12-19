@@ -21,9 +21,19 @@ class _CategoriesViewState extends State<CategoriesView> {
   Worker? _shopWorker;
 
   bool _canModifyCategories(UserModel? user) {
-    // Only shop owner and admin can create/edit/delete categories
+    // Only shop owner and admin can edit/delete categories
     if (user == null) return false;
     return user.role == UserRole.shopOwner || user.role == UserRole.admin;
+  }
+
+  bool _canAddCategories(UserModel? user) {
+    // Staff can add categories but not edit/delete
+    if (user == null) return false;
+    return user.role == UserRole.shopOwner ||
+        user.role == UserRole.admin ||
+        user.role == UserRole.officeStaff ||
+        user.role == UserRole.marketingManager ||
+        user.role == UserRole.freelance;
   }
 
   void _loadDataIfNeeded(
@@ -246,6 +256,8 @@ class _CategoriesViewState extends State<CategoriesView> {
       }
 
       final canModify = _canModifyCategories(authController.user);
+      final canAdd = _canAddCategories(authController.user);
+
       if (categoryController.isLoading &&
           categoryController.categories.isEmpty) {
         return const LoadingWidget();
@@ -293,7 +305,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                       ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                     ),
                     const SizedBox(height: 24),
-                    if (canModify)
+                    if (canAdd)
                       ElevatedButton.icon(
                         onPressed: () => _openFormDialog(),
                         icon: const Icon(Icons.add),

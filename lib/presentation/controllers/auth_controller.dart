@@ -21,6 +21,7 @@ class AuthController extends GetxController {
   String get errorMessage => _errorMessage.value;
   UserModel? get user => _user.value;
   ShopModel? get shop => _shop.value;
+  Rxn<UserModel> get userRx => _user;
   Rxn<ShopModel> get shopRx => _shop;
 
   @override

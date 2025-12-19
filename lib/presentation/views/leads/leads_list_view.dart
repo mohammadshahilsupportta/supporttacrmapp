@@ -11,6 +11,7 @@ import '../../widgets/lead_card_widget.dart';
 import '../../widgets/lead_table_widget.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../data/models/lead_model.dart';
+import '../../../data/models/user_model.dart';
 
 class LeadsListView extends StatefulWidget {
   const LeadsListView({super.key});
@@ -28,6 +29,12 @@ class _LeadsListViewState extends State<LeadsListView> {
   final Set<String> _selectedScoreCategories = <String>{};
   Timer? _searchDebounceTimer;
   bool _initialLoadAttempted = false;
+
+  bool _isStaffRole(AuthController authController) {
+    final user = authController.user;
+    if (user == null) return false;
+    return user.role != UserRole.shopOwner && user.role != UserRole.admin;
+  }
 
   @override
   void initState() {
@@ -122,6 +129,7 @@ class _LeadsListViewState extends State<LeadsListView> {
         scoreCategories: _selectedScoreCategories.isEmpty
             ? null
             : _selectedScoreCategories.toList(),
+        assignedTo: null, // Always clear assignedTo filter in Leads screen (show all leads)
       ),
     );
     leadController.loadLeads(authController.shop!.id, reset: true, silent: silent);
@@ -188,6 +196,18 @@ class _LeadsListViewState extends State<LeadsListView> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _attemptInitialLoad(authController);
+        }
+      });
+    }
+    
+    // Always ensure filters are correct for Leads screen (no assignedTo filter)
+    final leadController = Get.find<LeadController>();
+    final currentFilters = leadController.filters;
+    if (currentFilters != null && currentFilters.assignedTo != null) {
+      // Filters have assignedTo set incorrectly, fix immediately
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _executeFiltersAndLoad(silent: true);
         }
       });
     }
@@ -315,6 +335,9 @@ class _LeadsListViewState extends State<LeadsListView> {
                                     AppRoutes.LEAD_DETAIL.replaceAll(':id', lead.id),
                                   );
                                 },
+                                isReadOnly: _isStaffRole(authController),
+                                canEditStatus: !_isStaffRole(authController), // Staff cannot edit status in Leads
+                                canEditAssignedTo: !_isStaffRole(authController), // Staff cannot edit assigned to in Leads
                               ),
                             );
                           },

@@ -11,8 +11,18 @@ import '../../data/models/category_model.dart';
 class LeadCardWidget extends StatelessWidget {
   final LeadWithRelationsModel lead;
   final VoidCallback? onTap;
+  final bool isReadOnly; // Make status and assigned to read-only
+  final bool canEditStatus; // Allow editing status (overrides isReadOnly for status)
+  final bool canEditAssignedTo; // Allow editing assigned to (overrides isReadOnly for assigned to)
 
-  const LeadCardWidget({super.key, required this.lead, this.onTap});
+  const LeadCardWidget({
+    super.key, 
+    required this.lead, 
+    this.onTap,
+    this.isReadOnly = false, // Default to false
+    this.canEditStatus = true, // Default to true (can edit status)
+    this.canEditAssignedTo = true, // Default to true (can edit assigned to)
+  });
 
   Color _getStatusColor(LeadStatus status) {
     switch (status) {
@@ -408,6 +418,7 @@ class LeadCardWidget extends StatelessWidget {
     Color statusColor,
   ) {
     return Container(
+      height: 32, // Fixed height to match assigned-to widget
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: statusColor.withOpacity(0.15),
@@ -418,7 +429,8 @@ class LeadCardWidget extends StatelessWidget {
         ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
             _getStatusIcon(lead.status),
@@ -438,11 +450,14 @@ class LeadCardWidget extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          PopupMenuButton<LeadStatus>(
-            icon: Icon(Icons.arrow_drop_down, size: 18, color: statusColor),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onSelected: (newStatus) async {
+          // Only show dropdown if status can be edited
+          // Show if: canEditStatus is true (overrides isReadOnly for status)
+          if (canEditStatus)
+            PopupMenuButton<LeadStatus>(
+              icon: Icon(Icons.arrow_drop_down, size: 18, color: statusColor),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onSelected: (newStatus) async {
               final input = CreateLeadInput(
                 name: lead.name,
                 email: lead.email,
@@ -515,6 +530,7 @@ class LeadCardWidget extends StatelessWidget {
     final assignedName = lead.assignedUser?.name ?? 'Unassigned';
     
     return Container(
+      height: 32, // Fixed height to match status widget
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: assignedColor.withOpacity(0.15),
@@ -525,7 +541,8 @@ class LeadCardWidget extends StatelessWidget {
         ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
             Icons.person_outline,
@@ -545,11 +562,14 @@ class LeadCardWidget extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          PopupMenuButton<String?>(
-            icon: Icon(Icons.arrow_drop_down, size: 18, color: assignedColor),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onSelected: (newAssignedTo) async {
+          // Only show dropdown if assigned to can be edited
+          // Show if: canEditAssignedTo is true (overrides isReadOnly for assigned to)
+          if (canEditAssignedTo)
+            PopupMenuButton<String?>(
+              icon: Icon(Icons.arrow_drop_down, size: 18, color: assignedColor),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onSelected: (newAssignedTo) async {
               final input = CreateLeadInput(
                 name: lead.name,
                 email: lead.email,
