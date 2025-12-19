@@ -91,23 +91,28 @@ class CategoryCardWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _ActionIcon(
-                        icon: Icons.edit_rounded,
-                        color: theme.colorScheme.primary,
-                        onTap: onEdit,
-                      ),
-                      const SizedBox(width: 8),
-                      _ActionIcon(
-                        icon: Icons.delete_rounded,
-                        color: theme.colorScheme.error,
-                        onTap: onDelete,
-                      ),
-                    ],
-                  ),
+                  if (onEdit != null || onDelete != null)
+                    const SizedBox(width: 8),
+                  if (onEdit != null || onDelete != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (onEdit != null)
+                          _ActionIcon(
+                            icon: Icons.edit_rounded,
+                            color: theme.colorScheme.primary,
+                            onTap: onEdit,
+                          ),
+                        if (onEdit != null && onDelete != null)
+                          const SizedBox(width: 8),
+                        if (onDelete != null)
+                          _ActionIcon(
+                            icon: Icons.delete_rounded,
+                            color: theme.colorScheme.error,
+                            onTap: onDelete,
+                          ),
+                      ],
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -149,7 +154,7 @@ class _ActionIcon extends StatelessWidget {
   const _ActionIcon({
     required this.icon,
     required this.color,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
