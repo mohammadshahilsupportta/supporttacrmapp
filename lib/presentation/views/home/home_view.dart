@@ -8,6 +8,7 @@ import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
 import '../../../data/models/lead_model.dart';
 import '../../../data/models/shop_model.dart';
+import '../../../data/models/user_model.dart';
 import '../../../app/routes/app_routes.dart';
 import '../leads/leads_list_view.dart';
 import '../categories/categories_view.dart';
@@ -94,21 +95,55 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
+  bool _canViewStaff(UserModel? user) {
+    if (user == null) return false;
+    // Only shop owners and admins can view staff
+    return user.role == UserRole.shopOwner || user.role == UserRole.admin;
+  }
+
+  bool _canViewCategories(UserModel? user) {
+    if (user == null) return false;
+    // Only shop owners and admins can view categories
+    return user.role == UserRole.shopOwner || user.role == UserRole.admin;
+  }
+
+  int _getActualIndex(int displayedIndex, bool canViewStaff, bool canViewCategories) {
+    // Since both bottom nav and IndexedStack are built conditionally in the same way,
+    // the displayed index should match the actual index directly
+    // IndexedStack children: [Dashboard, Leads, (Staff?), (Categories?), Settings]
+    // Bottom nav items: [Dashboard, Leads, (Staff?), (Categories?), Settings]
+    // So displayedIndex == actualIndex
+    return displayedIndex;
+  }
+
+
   String _getAppBarTitle(int index) {
-    switch (index) {
-      case 0:
-        return 'Dashboard';
-      case 1:
-        return 'Leads';
-      case 2:
-        return 'Staff';
-      case 3:
-        return 'Categories';
-      case 4:
-        return 'Settings';
-      default:
-        return 'Dashboard';
+    final authController = Get.find<AuthController>();
+    final canViewStaff = _canViewStaff(authController.user);
+    final canViewCategories = _canViewCategories(authController.user);
+    
+    // Map displayed index to title based on visible tabs
+    if (index == 0) return 'Dashboard';
+    if (index == 1) return 'Leads';
+    
+    if (canViewStaff) {
+      if (index == 2) return 'Staff';
+      if (canViewCategories) {
+        if (index == 3) return 'Categories';
+        if (index == 4) return 'Settings';
+      } else {
+        if (index == 3) return 'Settings';
+      }
+    } else {
+      if (canViewCategories) {
+        if (index == 2) return 'Categories';
+        if (index == 3) return 'Settings';
+      } else {
+        if (index == 2) return 'Settings';
+      }
     }
+    
+    return 'Dashboard';
   }
 
   Widget _buildBody(
@@ -116,45 +151,64 @@ class _HomeViewState extends State<HomeView> {
     AuthController authController,
     DashboardController dashboardController,
   ) {
+    final canViewStaff = _canViewStaff(authController.user);
+    final canViewCategories = _canViewCategories(authController.user);
+    final actualIndex = _getActualIndex(index, canViewStaff, canViewCategories);
+    
     // Use IndexedStack to preserve state of all tabs
+    // Build children in the same order as IndexedStack expects
+    final children = <Widget>[
+      _buildDashboardContent(authController, dashboardController),
+      const LeadsListView(),
+    ];
+    
+    if (canViewStaff) {
+      children.add(const StaffListView());
+    }
+    
+    if (canViewCategories) {
+      children.add(const CategoriesView());
+    }
+    
+    children.add(const SettingsView());
+    
+    // Ensure index is within bounds
+    final safeIndex = actualIndex < children.length ? actualIndex : 0;
+    
     return IndexedStack(
-      index: index,
-      children: [
-        _buildDashboardContent(authController, dashboardController),
-        const LeadsListView(),
-        const StaffListView(),
-        const CategoriesView(),
-        const SettingsView(),
-      ],
+      index: safeIndex,
+      children: children,
     );
   }
 
   Widget _buildCustomBottomNavBar() {
     final theme = Theme.of(context);
-    return AnimatedNotchBottomBar(
-      notchBottomBarController: _notchController,
-      color: theme.colorScheme.surface,
-      showLabel: true,
-      notchColor: theme.colorScheme.primary,
-      kIconSize: 24.0,
-      kBottomRadius: 30.0,
-      bottomBarItems: [
-        BottomBarItem(
-          inActiveItem: Icon(
-            Icons.dashboard_outlined,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          activeItem: Icon(Icons.dashboard, color: theme.colorScheme.onPrimary),
-          itemLabel: 'Dashboard',
+    final authController = Get.find<AuthController>();
+    final canViewStaff = _canViewStaff(authController.user);
+    
+    // Build bottom bar items conditionally
+    final bottomBarItems = <BottomBarItem>[
+      BottomBarItem(
+        inActiveItem: Icon(
+          Icons.dashboard_outlined,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
-        BottomBarItem(
-          inActiveItem: Icon(
-            Icons.people_outline,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          activeItem: Icon(Icons.people, color: theme.colorScheme.onPrimary),
-          itemLabel: 'Leads',
+        activeItem: Icon(Icons.dashboard, color: theme.colorScheme.onPrimary),
+        itemLabel: 'Dashboard',
+      ),
+      BottomBarItem(
+        inActiveItem: Icon(
+          Icons.people_outline,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
+        activeItem: Icon(Icons.people, color: theme.colorScheme.onPrimary),
+        itemLabel: 'Leads',
+      ),
+    ];
+    
+    // Only add Staff tab if user can view staff
+    if (canViewStaff) {
+      bottomBarItems.add(
         BottomBarItem(
           inActiveItem: Icon(
             Icons.group_outlined,
@@ -163,6 +217,13 @@ class _HomeViewState extends State<HomeView> {
           activeItem: Icon(Icons.group, color: theme.colorScheme.onPrimary),
           itemLabel: 'Staff',
         ),
+      );
+    }
+    
+    // Add Categories tab only if user can view categories
+    final canViewCategories = _canViewCategories(authController.user);
+    if (canViewCategories) {
+      bottomBarItems.add(
         BottomBarItem(
           inActiveItem: Icon(
             Icons.category_outlined,
@@ -171,15 +232,29 @@ class _HomeViewState extends State<HomeView> {
           activeItem: Icon(Icons.category, color: theme.colorScheme.onPrimary),
           itemLabel: 'Categories',
         ),
-        BottomBarItem(
-          inActiveItem: Icon(
-            Icons.settings_outlined,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          activeItem: Icon(Icons.settings, color: theme.colorScheme.onPrimary),
-          itemLabel: 'Settings',
+      );
+    }
+    
+    // Add Settings tab (always visible)
+    bottomBarItems.add(
+      BottomBarItem(
+        inActiveItem: Icon(
+          Icons.settings_outlined,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
-      ],
+        activeItem: Icon(Icons.settings, color: theme.colorScheme.onPrimary),
+        itemLabel: 'Settings',
+      ),
+    );
+    
+    return AnimatedNotchBottomBar(
+      notchBottomBarController: _notchController,
+      color: theme.colorScheme.surface,
+      showLabel: true,
+      notchColor: theme.colorScheme.primary,
+      kIconSize: 24.0,
+      kBottomRadius: 30.0,
+      bottomBarItems: bottomBarItems,
       onTap: (index) {
         setState(() {
           _currentIndex = index;
@@ -190,6 +265,9 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Widget? _buildFloatingActionButton(int index, AuthController authController) {
+    final canViewStaff = _canViewStaff(authController.user);
+    final canViewCategories = _canViewCategories(authController.user);
+    
     switch (index) {
       case 1: // Leads
         return FloatingActionButton.extended(
@@ -199,83 +277,100 @@ class _HomeViewState extends State<HomeView> {
           icon: const Icon(Icons.add),
           label: const Text('Add Lead'),
         );
-      case 2: // Staff
-        return FloatingActionButton.extended(
-          onPressed: () {
-            Get.toNamed(AppRoutes.STAFF_CREATE);
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Add Staff'),
-        );
-      case 3: // Categories
-        return FloatingActionButton.extended(
-          onPressed: () {
-            // Open category form dialog
-            final categoryController = Get.put(CategoryController());
-            showDialog(
-              context: context,
-              builder: (context) => CategoryFormDialog(
-                onCreate: (input) async {
-                  if (authController.shop != null) {
-                    final success = await categoryController.createCategory(
-                      authController.shop!.id,
-                      input,
-                    );
-                    if (success) {
-                      Get.back();
-                      Get.snackbar(
-                        'Success',
-                        'Category created successfully',
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: Colors.green,
-                        colorText: Colors.white,
-                      );
-                    } else {
-                      Get.snackbar(
-                        'Error',
-                        categoryController.errorMessage,
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: Colors.red,
-                        colorText: Colors.white,
-                      );
-                    }
-                  }
-                },
-                onUpdate: (input) async {
-                  if (authController.shop != null) {
-                    final success = await categoryController.updateCategory(
-                      input,
-                      shopId: authController.shop!.id,
-                    );
-                    if (success) {
-                      Get.back();
-                      Get.snackbar(
-                        'Success',
-                        'Category updated successfully',
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: Colors.green,
-                        colorText: Colors.white,
-                      );
-                    } else {
-                      Get.snackbar(
-                        'Error',
-                        categoryController.errorMessage,
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: Colors.red,
-                        colorText: Colors.white,
-                      );
-                    }
-                  }
-                },
-              ),
-            );
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Add Category'),
-        );
+      case 2: // Staff (only if canViewStaff) or Categories (if canViewCategories and no Staff) or nothing
+        if (canViewStaff) {
+          return FloatingActionButton.extended(
+            onPressed: () {
+              Get.toNamed(AppRoutes.STAFF_CREATE);
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Staff'),
+          );
+        } else if (canViewCategories) {
+          return FloatingActionButton.extended(
+            onPressed: () {
+              _showCategoryFormDialog(authController);
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Category'),
+          );
+        }
+        return null;
+      case 3: // Categories (if canViewStaff and canViewCategories) or nothing
+        if (canViewStaff && canViewCategories) {
+          return FloatingActionButton.extended(
+            onPressed: () {
+              _showCategoryFormDialog(authController);
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Category'),
+          );
+        }
+        return null;
       default:
         return null; // No FAB for Dashboard and Settings
     }
+  }
+
+  void _showCategoryFormDialog(AuthController authController) {
+    final categoryController = Get.put(CategoryController());
+    showDialog(
+      context: context,
+      builder: (context) => CategoryFormDialog(
+        onCreate: (input) async {
+          if (authController.shop != null) {
+            final success = await categoryController.createCategory(
+              authController.shop!.id,
+              input,
+            );
+            if (success) {
+              Get.back();
+              Get.snackbar(
+                'Success',
+                'Category created successfully',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.green,
+                colorText: Colors.white,
+              );
+            } else {
+              Get.snackbar(
+                'Error',
+                categoryController.errorMessage,
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.red,
+                colorText: Colors.white,
+              );
+            }
+          }
+        },
+        onUpdate: (input) async {
+          if (authController.shop != null) {
+            final success = await categoryController.updateCategory(
+              input,
+              shopId: authController.shop!.id,
+            );
+            if (success) {
+              Get.back();
+              Get.snackbar(
+                'Success',
+                'Category updated successfully',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.green,
+                colorText: Colors.white,
+              );
+            } else {
+              Get.snackbar(
+                'Error',
+                categoryController.errorMessage,
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.red,
+                colorText: Colors.white,
+              );
+            }
+          }
+        },
+      ),
+    );
   }
 
   Widget _buildDrawer(BuildContext context, AuthController authController) {
@@ -349,38 +444,59 @@ class _HomeViewState extends State<HomeView> {
               _notchController.jumpTo(1);
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.group),
-            title: const Text('Staff'),
-            onTap: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentIndex = 2;
-              });
-              _notchController.jumpTo(2);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.category),
-            title: const Text('Categories'),
-            onTap: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentIndex = 3;
-              });
-              _notchController.jumpTo(3);
-            },
-          ),
+          if (_canViewStaff(authController.user))
+            ListTile(
+              leading: const Icon(Icons.group),
+              title: const Text('Staff'),
+              onTap: () {
+                Navigator.pop(context);
+                final canViewStaff = _canViewStaff(authController.user);
+                final staffIndex = canViewStaff ? 2 : 1;
+                setState(() {
+                  _currentIndex = staffIndex;
+                });
+                _notchController.jumpTo(staffIndex);
+              },
+            ),
+          if (_canViewCategories(authController.user))
+            ListTile(
+              leading: const Icon(Icons.category),
+              title: const Text('Categories'),
+              onTap: () {
+                Navigator.pop(context);
+                final canViewStaff = _canViewStaff(authController.user);
+                int categoriesIndex;
+                if (canViewStaff) {
+                  categoriesIndex = 3;
+                } else {
+                  categoriesIndex = 2;
+                }
+                setState(() {
+                  _currentIndex = categoriesIndex;
+                });
+                _notchController.jumpTo(categoriesIndex);
+              },
+            ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Settings'),
             onTap: () {
               Navigator.pop(context);
+              final canViewStaff = _canViewStaff(authController.user);
+              final canViewCategories = _canViewCategories(authController.user);
+              int settingsIndex;
+              if (canViewStaff && canViewCategories) {
+                settingsIndex = 4;
+              } else if (canViewStaff || canViewCategories) {
+                settingsIndex = 3;
+              } else {
+                settingsIndex = 2;
+              }
               setState(() {
-                _currentIndex = 4;
+                _currentIndex = settingsIndex;
               });
-              _notchController.jumpTo(4);
+              _notchController.jumpTo(settingsIndex);
             },
           ),
           ListTile(

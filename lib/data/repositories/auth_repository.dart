@@ -24,35 +24,58 @@ class AuthRepository {
         throw Exception('Authentication failed');
       }
 
-      // 2. Get user data from users table
-      final userData = await SupabaseService
+      // 2. Try to get user data from users table first (shop owners/admins)
+      var userData = await SupabaseService
           .from('users')
           .select()
           .eq('auth_user_id', authResponse.user!.id)
           .maybeSingle();
 
+      UserModel? user;
+      
+      // 3. If not found in users table, check staff table
       if (userData == null) {
-        await _auth.signOut();
-        throw Exception('User account not found in database');
+        final staffData = await SupabaseService
+            .from('staff')
+            .select()
+            .eq('auth_user_id', authResponse.user!.id)
+            .maybeSingle();
+        
+        if (staffData == null) {
+          await _auth.signOut();
+          throw Exception('User account not found in database');
+        }
+        
+        // Verify staff is active
+        if (staffData['is_active'] != true) {
+          await _auth.signOut();
+          throw Exception('Staff account is inactive');
+        }
+        
+        // Convert staff to UserModel
+        user = UserModel.fromJson(staffData);
+        userData = staffData;
+      } else {
+        user = UserModel.fromJson(userData);
       }
 
-      // 3. Get shop data
-      final shop = await _shopRepository.getById(userData['shop_id'] as String);
+      // 4. Get shop data
+      final shop = await _shopRepository.getById(user.shopId);
       
       if (shop == null) {
         await _auth.signOut();
         throw Exception('Shop data not found');
       }
 
-      // 4. Verify shop is active
+      // 5. Verify shop is active
       if (!shop.isActive) {
         await _auth.signOut();
         throw Exception('Shop account is inactive');
       }
 
-      // 5. Return user and shop data
+      // 6. Return user and shop data
       return {
-        'user': UserModel.fromJson(userData),
+        'user': user,
         'shop': shop,
         'authUser': authResponse.user!,
       };
@@ -88,30 +111,51 @@ class AuthRepository {
     }
   }
 
-  // Get current authenticated user data (from users table)
+  // Get current authenticated user data (from users or staff table)
   Future<Map<String, dynamic>?> getCurrentUserData() async {
     try {
       final authUser = _auth.currentUser;
       if (authUser == null) return null;
 
-      final userData = await SupabaseService
+      // Try to get user data from users table first (shop owners/admins)
+      var userData = await SupabaseService
           .from('users')
           .select()
           .eq('auth_user_id', authUser.id)
           .maybeSingle();
 
-      if (userData == null) return null;
-      final shop = await _shopRepository.getById(userData['shop_id'] as String);
+      UserModel? user;
       
+      // If not found in users table, check staff table
+      if (userData == null) {
+        final staffData = await SupabaseService
+            .from('staff')
+            .select()
+            .eq('auth_user_id', authUser.id)
+            .maybeSingle();
+        
+        if (staffData == null) return null;
+        
+        // Verify staff is active
+        if (staffData['is_active'] != true) return null;
+        
+        // Convert staff to UserModel
+        user = UserModel.fromJson(staffData);
+        userData = staffData;
+      } else {
+        user = UserModel.fromJson(userData);
+      }
+      
+      final shop = await _shopRepository.getById(user.shopId);
       if (shop == null) return null;
 
       return {
-        'user': UserModel.fromJson(userData),
+        'user': user,
         'shop': shop,
         'authUser': authUser,
       };
     } catch (e) {
-      throw Helpers.handleError(e);
+      return null;
     }
   }
 
