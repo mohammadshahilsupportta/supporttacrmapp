@@ -123,11 +123,11 @@ class _HomeViewState extends State<HomeView> {
   bool _canViewCategories(UserModel? user) {
     if (user == null) return false;
     // Shop owners, admins, and staff can view categories
-    return user.role == UserRole.shopOwner || 
-           user.role == UserRole.admin ||
-           user.role == UserRole.officeStaff ||
-           user.role == UserRole.marketingManager ||
-           user.role == UserRole.freelance;
+    return user.role == UserRole.shopOwner ||
+        user.role == UserRole.admin ||
+        user.role == UserRole.officeStaff ||
+        user.role == UserRole.marketingManager ||
+        user.role == UserRole.freelance;
   }
 
   bool _isStaffRole(UserModel? user) {
@@ -137,20 +137,20 @@ class _HomeViewState extends State<HomeView> {
 
   void _correctFiltersForTab(int index, AuthController authController) {
     if (authController.shop == null) return;
-    
+
     final leadController = Get.find<LeadController>();
     final isStaffRole = _isStaffRole(authController.user);
-    
+
     // Determine which view is at this index
     // For staff: Dashboard(0), Leads(1), MyTasks(2), Categories(3), Settings(4)
     // For admin: Dashboard(0), Leads(1), Staff(2), Categories(3), Settings(4)
-    
+
     if (isStaffRole) {
       if (index == 1) {
         // Leads screen - set createdBy to current user (only show leads they created)
         final currentFilters = leadController.filters;
         final shouldHaveCreatedBy = authController.user?.id;
-        if (currentFilters == null || 
+        if (currentFilters == null ||
             currentFilters.createdBy != shouldHaveCreatedBy ||
             currentFilters.assignedTo != null) {
           leadController.setFilters(
@@ -164,14 +164,18 @@ class _HomeViewState extends State<HomeView> {
               createdBy: shouldHaveCreatedBy, // Set createdBy for staff
             ),
           );
-          leadController.loadLeads(authController.shop!.id, reset: true, silent: true);
+          leadController.loadLeads(
+            authController.shop!.id,
+            reset: true,
+            silent: true,
+          );
         }
       } else if (index == 2) {
         // My Tasks screen - set assignedTo to current user
         if (authController.user != null) {
           final currentFilters = leadController.filters;
           final shouldHaveAssignedTo = authController.user!.id;
-          if (currentFilters == null || 
+          if (currentFilters == null ||
               currentFilters.assignedTo != shouldHaveAssignedTo ||
               currentFilters.createdBy != null) {
             leadController.setFilters(
@@ -181,7 +185,11 @@ class _HomeViewState extends State<HomeView> {
                 createdBy: null, // Clear createdBy for My Tasks
               ),
             );
-            leadController.loadLeads(authController.shop!.id, reset: true, silent: true);
+            leadController.loadLeads(
+              authController.shop!.id,
+              reset: true,
+              silent: true,
+            );
           }
         }
       }
@@ -189,8 +197,9 @@ class _HomeViewState extends State<HomeView> {
       // Admin/Owner - Leads screen should have no filters
       if (index == 1) {
         final currentFilters = leadController.filters;
-        if (currentFilters != null && 
-            (currentFilters.assignedTo != null || currentFilters.createdBy != null)) {
+        if (currentFilters != null &&
+            (currentFilters.assignedTo != null ||
+                currentFilters.createdBy != null)) {
           leadController.setFilters(
             LeadFilters(
               status: currentFilters.status,
@@ -202,30 +211,38 @@ class _HomeViewState extends State<HomeView> {
               createdBy: null, // Clear createdBy for Leads
             ),
           );
-          leadController.loadLeads(authController.shop!.id, reset: true, silent: true);
+          leadController.loadLeads(
+            authController.shop!.id,
+            reset: true,
+            silent: true,
+          );
         }
       }
     }
   }
 
-  int _getActualIndex(int displayedIndex, bool canViewStaff, bool canViewCategories) {
+  int _getActualIndex(
+    int displayedIndex,
+    bool canViewStaff,
+    bool canViewCategories,
+  ) {
     // Since both bottom nav and IndexedStack are built conditionally in the same way,
     // the displayed index should match the actual index directly
     return displayedIndex;
   }
 
-
   String _getAppBarTitle(int index) {
     final authController = Get.find<AuthController>();
     final canViewStaff = _canViewStaff(authController.user);
     final canViewCategories = _canViewCategories(authController.user);
-    final isStaffRole = authController.user?.role != UserRole.shopOwner && 
-                        authController.user?.role != UserRole.admin;
-    
+    final isStaffRole =
+        authController.user?.role != UserRole.shopOwner &&
+        authController.user?.role != UserRole.admin;
+
     // Map displayed index to title based on visible tabs
     if (index == 0) return 'Dashboard';
     if (index == 1) return 'Leads';
-    
+
     if (isStaffRole) {
       if (index == 2) return 'My Tasks';
       if (canViewCategories) {
@@ -252,7 +269,7 @@ class _HomeViewState extends State<HomeView> {
         }
       }
     }
-    
+
     return 'Dashboard';
   }
 
@@ -263,41 +280,41 @@ class _HomeViewState extends State<HomeView> {
   ) {
     final canViewStaff = _canViewStaff(authController.user);
     final canViewCategories = _canViewCategories(authController.user);
-    final isStaffRole = authController.user?.role != UserRole.shopOwner && 
-                        authController.user?.role != UserRole.admin;
+    final isStaffRole =
+        authController.user?.role != UserRole.shopOwner &&
+        authController.user?.role != UserRole.admin;
     final actualIndex = _getActualIndex(index, canViewStaff, canViewCategories);
-    
+
     // Use IndexedStack to preserve state of all tabs
     // Build children in the same order as IndexedStack expects
     final children = <Widget>[
       _buildDashboardContent(authController, dashboardController),
     ];
-    
+
     // For staff role, add both Leads and My Tasks
     if (isStaffRole) {
       children.add(const LeadsListView()); // All leads (read-only for staff)
       children.add(const MyTasksView()); // Only assigned leads (read-only)
     } else {
-      children.add(const LeadsListView()); // All leads (editable for admin/owner)
+      children.add(
+        const LeadsListView(),
+      ); // All leads (editable for admin/owner)
     }
-    
+
     if (canViewStaff) {
       children.add(const StaffListView());
     }
-    
+
     if (canViewCategories) {
       children.add(const CategoriesView());
     }
-    
+
     children.add(const SettingsView());
-    
+
     // Ensure index is within bounds
     final safeIndex = actualIndex < children.length ? actualIndex : 0;
-    
-    return IndexedStack(
-      index: safeIndex,
-      children: children,
-    );
+
+    return IndexedStack(index: safeIndex, children: children);
   }
 
   Widget _buildCustomBottomNavBar() {
@@ -306,9 +323,9 @@ class _HomeViewState extends State<HomeView> {
     // Access user reactively - Obx will rebuild when userRx changes
     final user = authController.userRx.value;
     final canViewStaff = _canViewStaff(user);
-    final isStaffRole = user?.role != UserRole.shopOwner && 
-                        user?.role != UserRole.admin;
-    
+    final isStaffRole =
+        user?.role != UserRole.shopOwner && user?.role != UserRole.admin;
+
     // Build bottom bar items conditionally
     final bottomBarItems = <BottomBarItem>[
       BottomBarItem(
@@ -328,7 +345,7 @@ class _HomeViewState extends State<HomeView> {
         itemLabel: 'Leads',
       ),
     ];
-    
+
     // For staff role, add My Tasks tab
     if (isStaffRole) {
       bottomBarItems.add(
@@ -342,7 +359,7 @@ class _HomeViewState extends State<HomeView> {
         ),
       );
     }
-    
+
     // Only add Staff tab if user can view staff
     if (canViewStaff) {
       bottomBarItems.add(
@@ -356,7 +373,7 @@ class _HomeViewState extends State<HomeView> {
         ),
       );
     }
-    
+
     // Add Categories tab only if user can view categories
     final canViewCategories = _canViewCategories(user);
     if (canViewCategories) {
@@ -371,7 +388,7 @@ class _HomeViewState extends State<HomeView> {
         ),
       );
     }
-    
+
     // Add Settings tab (always visible)
     bottomBarItems.add(
       BottomBarItem(
@@ -383,12 +400,13 @@ class _HomeViewState extends State<HomeView> {
         itemLabel: 'Settings',
       ),
     );
-    
+
     // Ensure current index is within bounds
-    final safeCurrentIndex = bottomBarItems.isNotEmpty && _currentIndex < bottomBarItems.length 
-        ? _currentIndex 
+    final safeCurrentIndex =
+        bottomBarItems.isNotEmpty && _currentIndex < bottomBarItems.length
+        ? _currentIndex
         : 0;
-    
+
     // Update state and controller if index is out of bounds (using post-frame to avoid setState during build)
     if (_currentIndex != safeCurrentIndex) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -400,16 +418,17 @@ class _HomeViewState extends State<HomeView> {
         }
       });
     }
-    
+
     // Ensure controller index is valid before building AnimatedNotchBottomBar
     // This prevents the "Initial page index cannot be higher" error
-    if (bottomBarItems.isNotEmpty && _notchController.index >= bottomBarItems.length) {
+    if (bottomBarItems.isNotEmpty &&
+        _notchController.index >= bottomBarItems.length) {
       _notchController.jumpTo(0);
     }
-    
+
     // Get system navigation bar height to add padding
     final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
-    
+
     return SafeArea(
       top: false,
       child: Padding(
@@ -438,9 +457,10 @@ class _HomeViewState extends State<HomeView> {
   Widget? _buildFloatingActionButton(int index, AuthController authController) {
     final canViewStaff = _canViewStaff(authController.user);
     final canViewCategories = _canViewCategories(authController.user);
-    final isStaffRole = authController.user?.role != UserRole.shopOwner && 
-                        authController.user?.role != UserRole.admin;
-    
+    final isStaffRole =
+        authController.user?.role != UserRole.shopOwner &&
+        authController.user?.role != UserRole.admin;
+
     switch (index) {
       case 1: // Leads
         // All users (including staff) can create leads
@@ -840,8 +860,9 @@ class _HomeViewState extends State<HomeView> {
                 final isLoading = dashboardController.isLoading;
                 final activeStaff = dashboardController.activeStaffCount;
                 final user = authController.user;
-                final isStaffRole = user?.role != UserRole.shopOwner && 
-                                    user?.role != UserRole.admin;
+                final isStaffRole =
+                    user?.role != UserRole.shopOwner &&
+                    user?.role != UserRole.admin;
 
                 // Show loading state only if actively loading and no stats
                 if (isLoading && stats == null) {
@@ -886,7 +907,9 @@ class _HomeViewState extends State<HomeView> {
                     StatsCardWidget(
                       title: 'Total Leads',
                       value: totalLeads.toString(),
-                      subtitle: isStaffRole ? 'Your leads' : 'All leads in your shop',
+                      subtitle: isStaffRole
+                          ? 'Your leads'
+                          : 'All leads in your shop',
                       icon: Icons.people,
                       iconColor: Colors.blue,
                     ),
@@ -900,7 +923,9 @@ class _HomeViewState extends State<HomeView> {
                     StatsCardWidget(
                       title: 'New Leads',
                       value: recentCount.toString(),
-                      subtitle: isStaffRole ? 'Your leads this week' : 'Leads added this week',
+                      subtitle: isStaffRole
+                          ? 'Your leads this week'
+                          : 'Leads added this week',
                       icon: Icons.person_add,
                       iconColor: Colors.orange,
                     ),
@@ -1008,11 +1033,11 @@ class _HomeViewState extends State<HomeView> {
               Obx(() {
                 final user = authController.user;
                 final shop = authController.shop;
-                
+
                 if (user == null || shop == null) {
                   return const SizedBox.shrink();
                 }
-                
+
                 return Column(
                   children: [
                     ShopCardWidget(shop: shop),
