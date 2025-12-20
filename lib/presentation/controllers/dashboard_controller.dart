@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import '../../viewmodels/dashboard_viewmodel.dart';
 import '../../viewmodels/staff_viewmodel.dart';
 import '../../data/models/lead_model.dart';
+import '../../data/models/user_model.dart';
 import '../../core/utils/helpers.dart';
 import 'auth_controller.dart';
 
@@ -61,18 +62,35 @@ class DashboardController extends GetxController {
   }
 
   Future<void> _loadStatsForShop(String shopId) async {
-
     _isLoading.value = true;
     _errorMessage.value = '';
 
     try {
-      // Load lead stats
-      final result = await _viewModel.getLeadStats(shopId);
+      final authController = Get.find<AuthController>();
+      final user = authController.user;
+      
+      // Determine if user is staff role (not shopOwner or admin)
+      final isStaffRole = user != null && 
+                          user.role != UserRole.shopOwner && 
+                          user.role != UserRole.admin;
+      
+      // For staff roles, pass userId to filter their own leads
+      // Staff see leads assigned to them OR created by them
+      // Note: If isStaffRole is true, user is guaranteed to be non-null
+      final userId = isStaffRole ? user.id : null;
+      
+      // Load lead stats with optional user filter
+      final result = await _viewModel.getLeadStats(shopId, userId: userId);
       _stats.value = result;
 
-      // Load active staff count
-      final staffList = await _staffViewModel.getStaff(shopId);
-      _activeStaffCount.value = staffList.where((s) => s.isActive).length;
+      // Load active staff count (only for admin/owner)
+      if (!isStaffRole) {
+        final staffList = await _staffViewModel.getStaff(shopId);
+        _activeStaffCount.value = staffList.where((s) => s.isActive).length;
+      } else {
+        // Staff don't need to see staff count
+        _activeStaffCount.value = 0;
+      }
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
     } finally {

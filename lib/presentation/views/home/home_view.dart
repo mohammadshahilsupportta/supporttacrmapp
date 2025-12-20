@@ -830,6 +830,9 @@ class _HomeViewState extends State<HomeView> {
                 final stats = dashboardController.stats;
                 final isLoading = dashboardController.isLoading;
                 final activeStaff = dashboardController.activeStaffCount;
+                final user = authController.user;
+                final isStaffRole = user?.role != UserRole.shopOwner && 
+                                    user?.role != UserRole.admin;
 
                 // Show loading state only if actively loading and no stats
                 if (isLoading && stats == null) {
@@ -874,7 +877,7 @@ class _HomeViewState extends State<HomeView> {
                     StatsCardWidget(
                       title: 'Total Leads',
                       value: totalLeads.toString(),
-                      subtitle: 'All leads in your shop',
+                      subtitle: isStaffRole ? 'Your leads' : 'All leads in your shop',
                       icon: Icons.people,
                       iconColor: Colors.blue,
                     ),
@@ -888,17 +891,27 @@ class _HomeViewState extends State<HomeView> {
                     StatsCardWidget(
                       title: 'New Leads',
                       value: recentCount.toString(),
-                      subtitle: 'Leads added this week',
+                      subtitle: isStaffRole ? 'Your leads this week' : 'Leads added this week',
                       icon: Icons.person_add,
                       iconColor: Colors.orange,
                     ),
-                    StatsCardWidget(
-                      title: 'Active Staff',
-                      value: activeStaff.toString(),
-                      subtitle: 'Team members',
-                      icon: Icons.verified_user,
-                      iconColor: Colors.purple,
-                    ),
+                    // Show different card for staff vs admin/owner
+                    if (isStaffRole)
+                      StatsCardWidget(
+                        title: 'My Tasks',
+                        value: (stats?.assignedCount ?? 0).toString(),
+                        subtitle: 'Leads assigned to you',
+                        icon: Icons.task,
+                        iconColor: Colors.purple,
+                      )
+                    else
+                      StatsCardWidget(
+                        title: 'Active Staff',
+                        value: activeStaff.toString(),
+                        subtitle: 'Team members',
+                        icon: Icons.verified_user,
+                        iconColor: Colors.purple,
+                      ),
                   ],
                 );
               }),

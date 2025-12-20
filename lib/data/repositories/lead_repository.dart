@@ -493,13 +493,20 @@ class LeadRepository {
   }
 
   // Get lead statistics
-  Future<LeadStats> getStats(String shopId) async {
+  Future<LeadStats> getStats(String shopId, {String? userId}) async {
     try {
-      // Get all leads for counting
-      final allLeads = await SupabaseService.from('leads')
+      // Build query for all leads
+      var allLeadsQuery = SupabaseService.from('leads')
           .select('id, status')
           .eq('shop_id', shopId)
-          .isFilter('deleted_at', null) as List<dynamic>? ?? [];
+          .isFilter('deleted_at', null);
+      
+      // For staff roles, filter by assigned_to OR created_by
+      if (userId != null) {
+        allLeadsQuery = allLeadsQuery.or('assigned_to.eq.$userId,created_by.eq.$userId');
+      }
+      
+      final allLeads = await allLeadsQuery as List<dynamic>? ?? [];
 
       final total = allLeads.length;
 
@@ -530,15 +537,33 @@ class LeadRepository {
         byStatus[status] = (byStatus[status] ?? 0) + 1;
       }
 
-      // Get recent count (last 7 days)
+      // Get recent count (last 7 days) with same filters
       final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
-      final recentLeads = await SupabaseService.from('leads')
+      var recentLeadsQuery = SupabaseService.from('leads')
           .select('id')
           .eq('shop_id', shopId)
           .isFilter('deleted_at', null)
-          .gte('created_at', sevenDaysAgo.toIso8601String()) as List<dynamic>? ?? [];
+          .gte('created_at', sevenDaysAgo.toIso8601String());
+      
+      // Apply same user filter for recent leads
+      if (userId != null) {
+        recentLeadsQuery = recentLeadsQuery.or('assigned_to.eq.$userId,created_by.eq.$userId');
+      }
+      
+      final recentLeads = await recentLeadsQuery as List<dynamic>? ?? [];
 
       final recentCount = recentLeads.length;
+
+      // For staff roles, get count of leads assigned to them (not created by them)
+      int assignedCount = 0;
+      if (userId != null) {
+        final assignedLeads = await SupabaseService.from('leads')
+            .select('id')
+            .eq('shop_id', shopId)
+            .eq('assigned_to', userId)
+            .isFilter('deleted_at', null) as List<dynamic>? ?? [];
+        assignedCount = assignedLeads.length;
+      }
 
       // Category counts would require a more complex query
       // For now, return empty list
@@ -549,6 +574,7 @@ class LeadRepository {
         byStatus: byStatus,
         byCategory: byCategory,
         recentCount: recentCount,
+        assignedCount: assignedCount,
       );
     } catch (e) {
       throw Helpers.handleError(e);

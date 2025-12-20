@@ -5,7 +5,7 @@ class DashboardViewModel {
   final LeadRepository _leadRepository = LeadRepository();
 
   // Get dashboard statistics
-  Future<LeadStats> getLeadStats(String shopId) async {
-    return await _leadRepository.getStats(shopId);
+  Future<LeadStats> getLeadStats(String shopId, {String? userId}) async {
+    return await _leadRepository.getStats(shopId, userId: userId);
   }
 }
