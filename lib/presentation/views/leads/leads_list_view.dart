@@ -393,19 +393,38 @@ class _LeadsListViewState extends State<LeadsListView> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search...',
-                  prefixIcon: const Icon(Icons.search, size: 20),
+                  hintText: 'Search by name, email, phone, or company',
+                  prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
+                          icon: const Icon(Icons.clear),
                           onPressed: () {
                             setState(() => _searchController.clear());
                             _applyFiltersAndLoad();
                           },
                         )
                       : null,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
                 ),
                 onChanged: (_) {
                   setState(() {});
@@ -467,17 +486,23 @@ class _LeadsListViewState extends State<LeadsListView> {
                       // Use Future.microtask to ensure setState completes first, use silent loading
                       Future.microtask(() => _applyFiltersAndLoad(silent: true));
                     },
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                     selectedColor: color.withOpacity(0.2),
                     labelStyle: TextStyle(
-                      color: isSelected ? color : null,
+                      color: isSelected ? color : Theme.of(context).colorScheme.onSurface,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                       fontSize: 12,
                     ),
                     side: BorderSide(
-                      color: isSelected ? color : Colors.grey.shade300,
-                      width: 1,
+                      color: isSelected 
+                          ? color 
+                          : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      width: isSelected ? 2 : 1,
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 );
@@ -494,11 +519,30 @@ class _LeadsListViewState extends State<LeadsListView> {
               child: DropdownButtonFormField<String>(
                 value: _selectedCategoryId,
                 isExpanded: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Category',
-                  prefixIcon: Icon(Icons.category_outlined, size: 20),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  prefixIcon: const Icon(Icons.category_outlined),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
                 ),
                 items: [
                   const DropdownMenuItem<String>(
@@ -524,11 +568,30 @@ class _LeadsListViewState extends State<LeadsListView> {
               child: DropdownButtonFormField<LeadSource>(
                 value: _selectedSource,
                 isExpanded: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Source',
-                  prefixIcon: Icon(Icons.filter_alt_outlined, size: 20),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  prefixIcon: const Icon(Icons.filter_alt_outlined),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
                 ),
                 items: [
                   const DropdownMenuItem<LeadSource>(
