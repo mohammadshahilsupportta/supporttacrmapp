@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class HelpSupportView extends StatelessWidget {
   const HelpSupportView({super.key});
@@ -74,17 +75,82 @@ class HelpSupportView extends StatelessWidget {
   }
 
   Future<void> _launchWhatsApp() async {
-    // Remove + and spaces for WhatsApp URL
-    final cleanNumber = supportWhatsApp.replaceAll(RegExp(r'[+\s]'), '');
-    final Uri whatsappUri = Uri.parse('https://wa.me/$cleanNumber');
-    if (await canLaunchUrl(whatsappUri)) {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-    } else {
-      // Fallback: try tel: scheme
-      final Uri phoneUri = Uri(scheme: 'tel', path: supportPhone);
-      if (await canLaunchUrl(phoneUri)) {
-        await launchUrl(phoneUri);
+    try {
+      // Remove all non-numeric characters except + at the start
+      String cleanNumber = supportWhatsApp.replaceAll(RegExp(r'[^\d+]'), '');
+      
+      // Check if number already has country code
+      bool hasCountryCode = cleanNumber.startsWith('+');
+      
+      if (hasCountryCode) {
+        // Remove + for URL (wa.me doesn't need +)
+        cleanNumber = cleanNumber.substring(1);
+      } else {
+        // Remove leading 0 if present
+        if (cleanNumber.startsWith('0')) {
+          cleanNumber = cleanNumber.substring(1);
+        }
+        // Add Indian country code +91
+        cleanNumber = '91$cleanNumber';
       }
+      
+      // Ensure we have a valid number
+      if (cleanNumber.isEmpty || cleanNumber.length < 10) {
+        if (Get.context != null && Get.context!.mounted) {
+          Get.snackbar(
+            'Error',
+            'Invalid WhatsApp number',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2),
+          );
+        }
+        return;
+      }
+      
+      final url = Uri.parse('https://wa.me/$cleanNumber');
+      
+      // Try to launch directly - canLaunchUrl sometimes returns false even when app is installed
+      try {
+        await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (e) {
+        // If external application fails, try platformDefault
+        try {
+          await launchUrl(
+            url,
+            mode: LaunchMode.platformDefault,
+          );
+        } catch (e2) {
+          // If both fail, show error
+          if (Get.context != null && Get.context!.mounted) {
+            Get.snackbar(
+              'Error',
+              'Could not open WhatsApp. Please make sure WhatsApp is installed.',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 3),
+            );
+          }
+          debugPrint('Error launching WhatsApp: $e2');
+        }
+      }
+    } catch (e) {
+      if (Get.context != null && Get.context!.mounted) {
+        Get.snackbar(
+          'Error',
+          'Could not open WhatsApp: ${e.toString()}',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      }
+      debugPrint('Error launching WhatsApp: $e');
     }
   }
 
@@ -193,9 +259,8 @@ class HelpSupportView extends StatelessWidget {
             const SizedBox(height: 12),
 
             // WhatsApp
-            _buildContactCard(
+            _buildWhatsAppCard(
               context,
-              icon: Icons.chat,
               title: 'WhatsApp',
               subtitle: supportWhatsApp,
               color: const Color(0xFF25D366), // WhatsApp green
@@ -237,6 +302,72 @@ class HelpSupportView extends StatelessWidget {
                 ),
                 child: Icon(
                   icon,
+                  color: color,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey[400],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWhatsAppCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: FaIcon(
+                  FontAwesomeIcons.whatsapp,
                   color: color,
                   size: 24,
                 ),
