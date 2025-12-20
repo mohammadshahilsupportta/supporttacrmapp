@@ -14,5 +14,7 @@ abstract class AppRoutes {
   static const STAFF_CREATE = '/staff/create';
   static const STAFF_DETAIL = '/staff/:id';
   static const PROFILE = '/profile';
+  static const SHOP_INFORMATION = '/shop-information';
+  static const HELP_SUPPORT = '/help-support';
   static const SETTINGS = '/settings';
 }

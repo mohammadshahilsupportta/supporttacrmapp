@@ -14,15 +14,6 @@ class ProfileView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              // TODO: Navigate to edit profile
-            },
-            tooltip: 'Edit Profile',
-          ),
-        ],
       ),
       body: Obx(() {
         if (authController.user == null || authController.shop == null) {

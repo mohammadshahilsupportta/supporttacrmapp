@@ -18,6 +18,8 @@ import '../../presentation/views/staff/staff_create_view.dart';
 import '../../presentation/views/staff/staff_detail_view.dart';
 import '../../presentation/views/categories/categories_view.dart';
 import '../../presentation/views/settings/settings_view.dart';
+import '../../presentation/views/settings/shop_information_view.dart';
+import '../../presentation/views/settings/help_support_view.dart';
 import '../../presentation/views/profile/profile_view.dart';
 import '../bindings/staff_binding.dart';
 import '../bindings/activity_binding.dart';
@@ -97,6 +99,8 @@ class AppPages {
     ),
     GetPage(name: AppRoutes.SETTINGS, page: () => const SettingsView()),
     GetPage(name: AppRoutes.PROFILE, page: () => const ProfileView()),
+    GetPage(name: AppRoutes.SHOP_INFORMATION, page: () => const ShopInformationView()),
+    GetPage(name: AppRoutes.HELP_SUPPORT, page: () => const HelpSupportView()),
     // Add more routes here as needed
   ];
 }

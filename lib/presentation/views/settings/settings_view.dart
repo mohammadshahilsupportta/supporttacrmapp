@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
+import '../../../app/routes/app_routes.dart';
 
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
@@ -26,17 +27,7 @@ class SettingsView extends StatelessWidget {
                   subtitle: const Text('View and edit your profile'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // TODO: Navigate to profile
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.notifications),
-                  title: const Text('Notifications'),
-                  subtitle: const Text('Manage notification settings'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    // TODO: Navigate to notifications
+                    Get.toNamed(AppRoutes.PROFILE);
                   },
                 ),
               ],
@@ -57,7 +48,7 @@ class SettingsView extends StatelessWidget {
                   subtitle: const Text('Manage shop details'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // TODO: Navigate to shop settings
+                    Get.toNamed(AppRoutes.SHOP_INFORMATION);
                   },
                 ),
               ],
@@ -81,9 +72,10 @@ class SettingsView extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.help),
                   title: const Text('Help & Support'),
+                  subtitle: const Text('Contact our support team'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // TODO: Show help
+                    Get.toNamed(AppRoutes.HELP_SUPPORT);
                   },
                 ),
               ],
