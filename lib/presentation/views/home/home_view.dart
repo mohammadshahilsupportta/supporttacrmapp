@@ -407,22 +407,31 @@ class _HomeViewState extends State<HomeView> {
       _notchController.jumpTo(0);
     }
     
-    return AnimatedNotchBottomBar(
-      notchBottomBarController: _notchController,
-      color: theme.colorScheme.surface,
-      showLabel: true,
-      notchColor: theme.colorScheme.primary,
-      kIconSize: 24.0,
-      kBottomRadius: 30.0,
-      bottomBarItems: bottomBarItems,
-      onTap: (index) {
-        setState(() {
-          _currentIndex = index;
-        });
-        _notchController.jumpTo(index);
-        // Force filter correction when switching tabs
-        _correctFiltersForTab(index, authController);
-      },
+    // Get system navigation bar height to add padding
+    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
+    
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: 0),
+        child: AnimatedNotchBottomBar(
+          notchBottomBarController: _notchController,
+          color: theme.colorScheme.surface,
+          showLabel: true,
+          notchColor: theme.colorScheme.primary,
+          kIconSize: 24.0,
+          kBottomRadius: 30.0,
+          bottomBarItems: bottomBarItems,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+            _notchController.jumpTo(index);
+            // Force filter correction when switching tabs
+            _correctFiltersForTab(index, authController);
+          },
+        ),
+      ),
     );
   }
 
