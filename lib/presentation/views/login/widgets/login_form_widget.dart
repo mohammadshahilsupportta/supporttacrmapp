@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/custom_text_field.dart';
-import '../../../../app/routes/app_routes.dart';
 
 class LoginFormWidget extends StatefulWidget {
   final AuthController controller;
@@ -21,6 +20,7 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -93,25 +93,25 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
               label: 'Password',
               hint: 'Enter your password',
               controller: _passwordController,
-              obscureText: true,
+              obscureText: _obscurePassword,
               prefixIcon: const Icon(Icons.lock),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your password';
                 }
                 return null;
               },
-            ),
-            const SizedBox(height: 8),
-            // Forgot Password
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {
-                  // TODO: Implement forgot password
-                },
-                child: const Text('Forgot Password?'),
-              ),
             ),
             // Error Message
             if (widget.controller.errorMessage.isNotEmpty) ...[
@@ -136,20 +136,6 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
               text: 'Sign In',
               onPressed: _handleLogin,
               isLoading: widget.controller.isLoading,
-            ),
-            const SizedBox(height: 24),
-            // Register Link
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text("Don't have an account? "),
-                TextButton(
-                  onPressed: () {
-                    Get.toNamed(AppRoutes.REGISTER);
-                  },
-                  child: const Text('Sign Up'),
-                ),
-              ],
             ),
           ],
         ),
