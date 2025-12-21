@@ -1109,9 +1109,20 @@ class _LeadDetailViewState extends State<LeadDetailView>
 
   Widget _buildFilterChip(String value, String label) {
     final isSelected = _activityFilter == value;
+    final theme = Theme.of(context);
     return FilterChip(
-      label: Text(label),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: isSelected 
+              ? Colors.white 
+              : theme.colorScheme.onSurface,
+        ),
+      ),
       selected: isSelected,
+      selectedColor: theme.colorScheme.primary,
+      backgroundColor: theme.colorScheme.surface,
+      checkmarkColor: Colors.white,
       onSelected: (selected) {
         setState(() {
           _activityFilter = value;
@@ -1759,41 +1770,41 @@ class _LeadDetailViewState extends State<LeadDetailView>
         userId: _authController.user!.id,
         defaultActivityType: activityType,
         onCreate: (activity) async {
-          // Close dialog first to avoid build conflicts
-          Navigator.of(context).pop();
+          // Create activity (dialog will handle loading state)
+          final success = await _activityController.createActivity(
+            lead.id,
+            _authController.shop!.id,
+            activity,
+            _authController.user!.id,
+          );
           
-          // Defer the entire operation to next frame
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            final success = await _activityController.createActivity(
-              lead.id,
-              _authController.shop!.id,
-              activity,
-              _authController.user!.id,
+          // Close dialog after operation completes
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+          
+          // Wait a bit for state updates to complete
+          await Future.delayed(const Duration(milliseconds: 100));
+          
+          if (success) {
+            Get.snackbar(
+              'Success',
+              'Activity created successfully',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.green,
+              colorText: Colors.white,
             );
-            
-            // Wait a bit for state updates to complete
-            await Future.delayed(const Duration(milliseconds: 100));
-            
-            if (success) {
-              Get.snackbar(
-                'Success',
-                'Activity created successfully',
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.green,
-                colorText: Colors.white,
-              );
-            } else {
-              // Get error message after state update
-              final errorMsg = _activityController.errorMessage;
-              Get.snackbar(
-                'Error',
-                errorMsg.isNotEmpty ? errorMsg : 'Failed to create activity',
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.red,
-                colorText: Colors.white,
-              );
-            }
-          });
+          } else {
+            // Get error message after state update
+            final errorMsg = _activityController.errorMessage;
+            Get.snackbar(
+              'Error',
+              errorMsg.isNotEmpty ? errorMsg : 'Failed to create activity',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+            );
+          }
         },
       ),
     );

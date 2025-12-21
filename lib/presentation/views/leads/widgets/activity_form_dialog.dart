@@ -10,7 +10,7 @@ class ActivityFormDialog extends StatefulWidget {
   final String shopId;
   final String userId;
   final ActivityType? defaultActivityType;
-  final Function(CreateActivityInput) onCreate;
+  final Future<void> Function(CreateActivityInput) onCreate;
 
   const ActivityFormDialog({
     super.key,
@@ -40,6 +40,7 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
   DateTime? _scheduledAt;
   DateTime? _dueDate;
   String? _assignedTo;
+  bool _isLoading = false;
 
   final StaffController _staffController = Get.put(StaffController());
 
@@ -129,7 +130,9 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
     }
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
+    if (_isLoading) return; // Prevent multiple submissions
+    
     if (!_formKey.currentState!.validate()) return;
 
     // Validate task-specific requirements
@@ -160,33 +163,47 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
       }
     }
 
-    final input = CreateActivityInput(
-      leadId: widget.leadId,
-      activityType: _selectedActivityType,
-      title: _titleController.text.trim().isNotEmpty
-          ? _titleController.text.trim()
-          : null,
-      description: _descriptionController.text.trim().isNotEmpty
-          ? _descriptionController.text.trim()
-          : null,
-      scheduledAt: _scheduledAt,
-      dueDate: _dueDate,
-      priority: _selectedPriority,
-      meetingType: _selectedMeetingType,
-      meetingLocation: _meetingLocationController.text.trim().isNotEmpty
-          ? _meetingLocationController.text.trim()
-          : null,
-      meetingDuration: _meetingDurationController.text.trim().isNotEmpty
-          ? int.tryParse(_meetingDurationController.text.trim())
-          : null,
-      noteContent: _noteContentController.text.trim().isNotEmpty
-          ? _noteContentController.text.trim()
-          : null,
-      noteType: _selectedNoteType,
-      assignedTo: _assignedTo,
-    );
+    setState(() {
+      _isLoading = true;
+    });
 
-    widget.onCreate(input);
+    try {
+      final input = CreateActivityInput(
+        leadId: widget.leadId,
+        activityType: _selectedActivityType,
+        title: _titleController.text.trim().isNotEmpty
+            ? _titleController.text.trim()
+            : null,
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
+        scheduledAt: _scheduledAt,
+        dueDate: _dueDate,
+        priority: _selectedPriority,
+        meetingType: _selectedMeetingType,
+        meetingLocation: _meetingLocationController.text.trim().isNotEmpty
+            ? _meetingLocationController.text.trim()
+            : null,
+        meetingDuration: _meetingDurationController.text.trim().isNotEmpty
+            ? int.tryParse(_meetingDurationController.text.trim())
+            : null,
+        noteContent: _noteContentController.text.trim().isNotEmpty
+            ? _noteContentController.text.trim()
+            : null,
+        noteType: _selectedNoteType,
+        assignedTo: _assignedTo,
+      );
+
+      await widget.onCreate(input);
+    } catch (e) {
+      // Error handling is done in the parent callback
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -534,13 +551,22 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
                       child: const Text('Cancel'),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: _handleSubmit,
-                      child: const Text('Create'),
+                      onPressed: _isLoading ? null : _handleSubmit,
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text('Create'),
                     ),
                   ],
                 ),
