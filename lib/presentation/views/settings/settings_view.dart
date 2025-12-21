@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/theme_controller.dart';
 import '../../../app/routes/app_routes.dart';
 
 class SettingsView extends StatelessWidget {
@@ -51,6 +52,41 @@ class SettingsView extends StatelessWidget {
                     Get.toNamed(AppRoutes.SHOP_INFORMATION);
                   },
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'App Settings',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Column(
+              children: [
+                Obx(() {
+                  final themeController = Get.find<ThemeController>();
+                  return ListTile(
+                    leading: Icon(
+                      themeController.isDarkMode
+                          ? Icons.dark_mode
+                          : Icons.light_mode,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    title: const Text('Theme'),
+                    subtitle: Text(
+                      themeController.isDarkMode
+                          ? 'Dark Mode'
+                          : 'Light Mode',
+                    ),
+                    trailing: Switch(
+                      value: themeController.isDarkMode,
+                      onChanged: (value) {
+                        themeController.toggleTheme();
+                      },
+                    ),
+                  );
+                }),
               ],
             ),
           ),
