@@ -82,10 +82,11 @@ class StaffCardWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withOpacity(0.1),
           width: 1,
         ),
       ),
+      color: theme.colorScheme.surface,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
@@ -97,8 +98,8 @@ class StaffCardWidget extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                roleColor.withOpacity(0.03),
-                roleColor.withOpacity(0.01),
+                theme.colorScheme.primary.withOpacity(0.03),
+                theme.colorScheme.primary.withOpacity(0.01),
               ],
             ),
           ),
@@ -156,7 +157,7 @@ class StaffCardWidget extends StatelessWidget {
                           context,
                           Icons.email_outlined,
                           staff.email,
-                          Colors.blue,
+                          theme.colorScheme.primary,
                         ),
                         const SizedBox(height: 8),
                         // Role and Status badges
@@ -245,7 +246,7 @@ class StaffCardWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                  color: theme.colorScheme.surfaceContainerLowest.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: theme.colorScheme.outline.withOpacity(0.1),

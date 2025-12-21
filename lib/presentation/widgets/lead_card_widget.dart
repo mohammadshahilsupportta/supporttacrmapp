@@ -130,10 +130,11 @@ class LeadCardWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withOpacity(0.1),
           width: 1,
         ),
       ),
+      color: theme.colorScheme.surface,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
@@ -193,13 +194,13 @@ class LeadCardWidget extends StatelessWidget {
                             Icon(
                               Icons.calendar_today_outlined,
                               size: 12,
-                              color: Colors.grey[600],
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               DateFormat('MMM dd, yyyy').format(lead.createdAt),
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.grey[600],
+                                color: theme.colorScheme.onSurfaceVariant,
                                 fontSize: 11,
                               ),
                             ),
@@ -215,7 +216,7 @@ class LeadCardWidget extends StatelessWidget {
                       if (lead.phone != null)
                         IconButton(
                           icon: const Icon(Icons.phone, size: 20),
-                          color: Colors.blue,
+                          color: theme.colorScheme.primary,
                           tooltip: 'Call ${lead.phone}',
                           onPressed: () => _launchPhone(lead.phone!),
                           padding: EdgeInsets.zero,
@@ -224,7 +225,7 @@ class LeadCardWidget extends StatelessWidget {
                       if (lead.whatsapp != null && lead.whatsapp!.isNotEmpty)
                         IconButton(
                           icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 20),
-                          color: Colors.green,
+                          color: const Color(0xFF25D366), // WhatsApp green
                           tooltip: 'WhatsApp ${lead.whatsapp}',
                           onPressed: () => _launchWhatsApp(lead.whatsapp!),
                           padding: EdgeInsets.zero,
@@ -249,7 +250,7 @@ class LeadCardWidget extends StatelessWidget {
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[600],
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -259,7 +260,7 @@ class LeadCardWidget extends StatelessWidget {
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[600],
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -274,7 +275,7 @@ class LeadCardWidget extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _buildAssignedToDropdown(lead, leadController, staffController),
+                        child: _buildAssignedToDropdown(context, lead, leadController, staffController),
                       ),
                     ],
                   ),
@@ -334,7 +335,7 @@ class LeadCardWidget extends StatelessWidget {
                           context,
                           Icons.email_outlined,
                           lead.email!,
-                          Colors.blue,
+                          theme.colorScheme.primary,
                         ),
                       ),
                     if (lead.email != null && lead.phone != null)
@@ -345,7 +346,7 @@ class LeadCardWidget extends StatelessWidget {
                           context,
                           Icons.phone_outlined,
                           lead.phone!,
-                          Colors.green,
+                          theme.colorScheme.primary,
                         ),
                       ),
                   ],
@@ -522,11 +523,15 @@ class LeadCardWidget extends StatelessWidget {
   }
 
   Widget _buildAssignedToDropdown(
+    BuildContext context,
     LeadWithRelationsModel lead,
     LeadController leadController,
     StaffController staffController,
   ) {
-    final assignedColor = lead.assignedUser != null ? Colors.orange : Colors.grey;
+    final theme = Theme.of(context);
+    final assignedColor = lead.assignedUser != null 
+        ? theme.colorScheme.primary 
+        : theme.colorScheme.onSurfaceVariant;
     final assignedName = lead.assignedUser?.name ?? 'Unassigned';
     
     return Container(
@@ -608,14 +613,15 @@ class LeadCardWidget extends StatelessWidget {
               }
             },
             itemBuilder: (context) {
+              final theme = Theme.of(context);
               final items = <PopupMenuItem<String?>>[
                 PopupMenuItem<String?>(
                   value: null,
                   child: Row(
                     children: [
-                      Icon(Icons.person_off, size: 16, color: Colors.grey),
+                      Icon(Icons.person_off, size: 16, color: theme.colorScheme.onSurfaceVariant),
                       const SizedBox(width: 8),
-                      const Text('Unassigned'),
+                      Text('Unassigned', style: TextStyle(color: theme.colorScheme.onSurface)),
                     ],
                   ),
                 ),
@@ -627,9 +633,9 @@ class LeadCardWidget extends StatelessWidget {
                     value: staff.id,
                     child: Row(
                       children: [
-                        Icon(Icons.person, size: 16, color: Colors.orange),
+                        Icon(Icons.person, size: 16, color: theme.colorScheme.primary),
                         const SizedBox(width: 8),
-                        Text(staff.name),
+                        Text(staff.name, style: TextStyle(color: theme.colorScheme.onSurface)),
                       ],
                     ),
                   ),
@@ -649,6 +655,7 @@ class LeadCardWidget extends StatelessWidget {
     String text,
     Color color,
   ) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, size: 14, color: color),
@@ -656,9 +663,9 @@ class LeadCardWidget extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodySmall?.copyWith(
               fontSize: 12,
-              color: Colors.grey[700],
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
