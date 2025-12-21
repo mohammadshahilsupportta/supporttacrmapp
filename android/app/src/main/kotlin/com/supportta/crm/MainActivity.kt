@@ -1,4 +1,4 @@
-package com.example.supportacrm
+package com.supportta.crm
 
 import io.flutter.embedding.android.FlutterActivity
 
