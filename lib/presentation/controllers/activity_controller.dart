@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import '../../viewmodels/activity_viewmodel.dart';
 import '../../data/models/activity_model.dart';
@@ -62,9 +63,7 @@ class ActivityController extends GetxController {
     CreateActivityInput input,
     String performedBy,
   ) async {
-    _isLoading.value = true;
-    _errorMessage.value = '';
-
+    String? errorMsg;
     try {
       final activity = await _viewModel.createActivity(
         leadId,
@@ -72,22 +71,29 @@ class ActivityController extends GetxController {
         input,
         performedBy,
       );
-      _activities.insert(0, activity);
       
-      // If it's a task, add to pending tasks list at the top
-      if (activity.activityType == ActivityType.task &&
-          (activity.taskStatus == TaskStatus.pending ||
-           activity.taskStatus == TaskStatus.inProgress)) {
-        // Insert at the top to show newest first
-        _pendingTasks.insert(0, activity);
-      }
+      // Defer ALL observable updates to avoid build conflicts
+      // Use addPostFrameCallback to ensure updates happen after current build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _activities.insert(0, activity);
+        
+        // If it's a task, add to pending tasks list at the top
+        if (activity.activityType == ActivityType.task &&
+            (activity.taskStatus == TaskStatus.pending ||
+             activity.taskStatus == TaskStatus.inProgress)) {
+          // Insert at the top to show newest first
+          _pendingTasks.insert(0, activity);
+        }
+      });
       
       return true;
     } catch (e) {
-      _errorMessage.value = Helpers.handleError(e);
+      errorMsg = Helpers.handleError(e);
+      // Defer error message update as well
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _errorMessage.value = errorMsg ?? 'Unknown error';
+      });
       return false;
-    } finally {
-      _isLoading.value = false;
     }
   }
 

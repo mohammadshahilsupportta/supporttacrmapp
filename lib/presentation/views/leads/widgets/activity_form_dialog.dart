@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import '../../../../data/models/activity_model.dart';
@@ -46,8 +47,11 @@ class _ActivityFormDialogState extends State<ActivityFormDialog> {
   void initState() {
     super.initState();
     _selectedActivityType = widget.defaultActivityType ?? ActivityType.note;
+    // Defer loading staff to avoid build conflicts
     if (widget.shopId.isNotEmpty) {
-      _staffController.loadStaff(widget.shopId);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _staffController.loadStaff(widget.shopId);
+      });
     }
   }
 

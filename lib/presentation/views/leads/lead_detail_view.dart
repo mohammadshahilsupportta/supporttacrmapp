@@ -1027,7 +1027,11 @@ class _LeadDetailViewState extends State<LeadDetailView>
           Padding(
             padding: const EdgeInsets.all(16),
             child: ElevatedButton.icon(
-              onPressed: () => _showAddActivityDialog(activityType: ActivityType.note),
+              onPressed: () {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _showAddActivityDialog(activityType: ActivityType.note);
+                });
+              },
               icon: const Icon(Icons.note_add),
               label: const Text('Add Note'),
               style: ElevatedButton.styleFrom(
@@ -1059,7 +1063,11 @@ class _LeadDetailViewState extends State<LeadDetailView>
                             const SizedBox(height: 8),
                         if (_activityController.activities.isEmpty)
                           ElevatedButton.icon(
-                            onPressed: () => _showAddActivityDialog(activityType: ActivityType.note),
+                            onPressed: () {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _showAddActivityDialog(activityType: ActivityType.note);
+                              });
+                            },
                             icon: const Icon(Icons.note_add),
                             label: const Text('Add Note'),
                           ),
@@ -1207,7 +1215,11 @@ class _LeadDetailViewState extends State<LeadDetailView>
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton.icon(
-                    onPressed: () => _showAddActivityDialog(activityType: ActivityType.task),
+                    onPressed: () {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _showAddActivityDialog(activityType: ActivityType.task);
+                      });
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('Add Task'),
                   ),
@@ -1223,7 +1235,11 @@ class _LeadDetailViewState extends State<LeadDetailView>
           Padding(
             padding: const EdgeInsets.all(16),
             child: ElevatedButton.icon(
-              onPressed: () => _showAddActivityDialog(activityType: ActivityType.task),
+              onPressed: () {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _showAddActivityDialog(activityType: ActivityType.task);
+                });
+              },
               icon: const Icon(Icons.add),
               label: const Text('Add Task'),
               style: ElevatedButton.styleFrom(
@@ -1743,30 +1759,41 @@ class _LeadDetailViewState extends State<LeadDetailView>
         userId: _authController.user!.id,
         defaultActivityType: activityType,
         onCreate: (activity) async {
-          final success = await _activityController.createActivity(
-            lead.id,
-            _authController.shop!.id,
-            activity,
-            _authController.user!.id,
-          );
-          if (success) {
-            Get.back();
-            Get.snackbar(
-              'Success',
-              'Activity created successfully',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green,
-              colorText: Colors.white,
+          // Close dialog first to avoid build conflicts
+          Navigator.of(context).pop();
+          
+          // Defer the entire operation to next frame
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            final success = await _activityController.createActivity(
+              lead.id,
+              _authController.shop!.id,
+              activity,
+              _authController.user!.id,
             );
-          } else {
-            Get.snackbar(
-              'Error',
-              _activityController.errorMessage,
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.red,
-              colorText: Colors.white,
-            );
-          }
+            
+            // Wait a bit for state updates to complete
+            await Future.delayed(const Duration(milliseconds: 100));
+            
+            if (success) {
+              Get.snackbar(
+                'Success',
+                'Activity created successfully',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.green,
+                colorText: Colors.white,
+              );
+            } else {
+              // Get error message after state update
+              final errorMsg = _activityController.errorMessage;
+              Get.snackbar(
+                'Error',
+                errorMsg.isNotEmpty ? errorMsg : 'Failed to create activity',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.red,
+                colorText: Colors.white,
+              );
+            }
+          });
         },
       ),
     );
