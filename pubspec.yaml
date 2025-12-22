@@ -2,7 +2,7 @@ name: supportacrm
 description: "Supporta CRM Flutter App with GetX, MVVM, and Supabase"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.9.2
