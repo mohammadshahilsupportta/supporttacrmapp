@@ -170,7 +170,17 @@ class LeadController extends GetxController {
 
     try {
       await _viewModel.updateLead(leadId, input);
-      await loadLeadById(leadId);
+      final updatedLead = await _viewModel.getLeadById(leadId);
+      if (updatedLead != null) {
+        _selectedLead.value = updatedLead;
+        
+        // Update the lead in the leads list if it exists
+        final index = _leads.indexWhere((lead) => lead.id == leadId);
+        if (index != -1) {
+          _leads[index] = updatedLead;
+        }
+      }
+      
       return true;
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
