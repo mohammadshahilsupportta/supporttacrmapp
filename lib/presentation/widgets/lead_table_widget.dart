@@ -70,10 +70,7 @@ class LeadTableWidget extends StatelessWidget {
           decoration: BoxDecoration(
             color: categoryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: categoryColor.withOpacity(0.3),
-              width: 1,
-            ),
+            border: Border.all(color: categoryColor.withOpacity(0.3), width: 1),
           ),
           child: Text(
             cat.name,
@@ -95,21 +92,74 @@ class LeadTableWidget extends StatelessWidget {
         await launchUrl(url);
       }
     } catch (e) {
-      Get.snackbar('Error', 'Could not make phone call',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Could not make phone call',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
   Future<void> _launchWhatsApp(String whatsappNumber) async {
-    final cleanNumber = whatsappNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    final url = Uri.parse('https://wa.me/$cleanNumber');
     try {
-      if (await canLaunchUrl(url)) {
+      // Remove all non-numeric characters except + at the start
+      String cleanNumber = whatsappNumber.replaceAll(RegExp(r'[^\d+]'), '');
+
+      // Check if number already has country code
+      bool hasCountryCode = cleanNumber.startsWith('+');
+
+      if (hasCountryCode) {
+        // Remove + for URL (wa.me doesn't need +)
+        cleanNumber = cleanNumber.substring(1);
+      } else {
+        // Remove leading 0 if present
+        if (cleanNumber.startsWith('0')) {
+          cleanNumber = cleanNumber.substring(1);
+        }
+        // Add Indian country code +91
+        cleanNumber = '91$cleanNumber';
+      }
+
+      // Ensure we have a valid number
+      if (cleanNumber.isEmpty || cleanNumber.length < 10) {
+        Get.snackbar(
+          'Error',
+          'Invalid WhatsApp number',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      final url = Uri.parse('https://wa.me/$cleanNumber');
+
+      // Try to launch directly - canLaunchUrl sometimes returns false even when app is installed
+      try {
         await launchUrl(url, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        // If external application fails, try platformDefault
+        try {
+          await launchUrl(url, mode: LaunchMode.platformDefault);
+        } catch (e2) {
+          // If both fail, show error
+          Get.snackbar(
+            'Error',
+            'Could not open WhatsApp. Please make sure WhatsApp is installed.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
       }
     } catch (e) {
-      Get.snackbar('Error', 'Could not open WhatsApp',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Could not open WhatsApp',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -130,10 +180,7 @@ class LeadTableWidget extends StatelessWidget {
           children: [
             const Icon(Icons.people_outline, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            Text(
-              'No leads found',
-              style: theme.textTheme.titleLarge,
-            ),
+            Text('No leads found', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             const Text('Try adjusting your filters'),
           ],
@@ -144,26 +191,55 @@ class LeadTableWidget extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        headingRowColor: MaterialStateProperty.all(
-          theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        headingRowColor: WidgetStateProperty.all(
+          theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
         ),
         columns: const [
-          DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Contact', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Categories', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Assigned To', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(
+            label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          DataColumn(
+            label: Text(
+              'Contact',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          DataColumn(
+            label: Text(
+              'Status',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Categories',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Assigned To',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          DataColumn(
+            label: Text(
+              'Actions',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
         rows: leads.map((lead) {
           return DataRow(
             onSelectChanged: (selected) {
               if (selected == true) {
-                Get.toNamed(
-                  AppRoutes.LEAD_DETAIL.replaceAll(':id', lead.id),
-                );
+                Get.toNamed(AppRoutes.LEAD_DETAIL.replaceAll(':id', lead.id));
               }
             },
             cells: [
@@ -176,9 +252,7 @@ class LeadTableWidget extends StatelessWidget {
                   },
                   child: Text(
                     lead.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -192,9 +266,7 @@ class LeadTableWidget extends StatelessWidget {
                     ? Text(lead.email!)
                     : const Text('—', style: TextStyle(color: Colors.grey)),
               ),
-              DataCell(
-                _buildStatusDropdown(lead, leadController),
-              ),
+              DataCell(_buildStatusDropdown(lead, leadController)),
               DataCell(_buildCategoryTags(lead.categories)),
               DataCell(
                 _buildAssignmentDropdown(lead, leadController, staffController),
@@ -205,9 +277,7 @@ class LeadTableWidget extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ),
-              DataCell(
-                _buildActionButtons(lead),
-              ),
+              DataCell(_buildActionButtons(lead)),
             ],
           );
         }).toList(),
@@ -355,4 +425,3 @@ class LeadTableWidget extends StatelessWidget {
     );
   }
 }
-
