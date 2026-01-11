@@ -115,8 +115,9 @@ class _LeadCreateViewState extends State<LeadCreateView> {
           : null,
       status: _selectedStatus,
       assignedTo: null,
-      categoryIds:
-          _selectedCategoryIds.isNotEmpty ? _selectedCategoryIds : null,
+      categoryIds: _selectedCategoryIds.isNotEmpty
+          ? _selectedCategoryIds
+          : null,
       products: products.isNotEmpty ? products : null,
     );
 
@@ -131,7 +132,7 @@ class _LeadCreateViewState extends State<LeadCreateView> {
     if (ok) {
       // Navigate back to previous screen
       Get.back();
-      
+
       // Show success message after navigation completes
       Future.delayed(const Duration(milliseconds: 500), () {
         Get.snackbar(
@@ -168,11 +169,10 @@ class _LeadCreateViewState extends State<LeadCreateView> {
     final categoryController = Get.find<CategoryController>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Lead'),
-      ),
+      appBar: AppBar(title: const Text('Add Lead')),
       body: Obx(() {
-        if (categoryController.isLoading && categoryController.categories.isEmpty) {
+        if (categoryController.isLoading &&
+            categoryController.categories.isEmpty) {
           return const LoadingWidget();
         }
 
@@ -194,8 +194,9 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                         labelText: 'Name *',
                         prefixIcon: Icon(Icons.person_outline),
                       ),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Name is required' : null,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Name is required'
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -321,10 +322,9 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                     const SizedBox(height: 12),
                     Text(
                       'Categories',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -335,6 +335,17 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                             (CategoryModel cat) => FilterChip(
                               label: Text(cat.name),
                               selected: _selectedCategoryIds.contains(cat.id),
+                              labelStyle: TextStyle(
+                                color: _selectedCategoryIds.contains(cat.id)
+                                    ? Colors.white
+                                    : Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium?.color,
+                              ),
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              checkmarkColor: Colors.white,
                               onSelected: (selected) {
                                 setState(() {
                                   if (selected) {
@@ -434,17 +445,12 @@ class _LeadCreateViewState extends State<LeadCreateView> {
   }
 }
 
-Widget _buildSection({
-  required String title,
-  required List<Widget> children,
-}) {
+Widget _buildSection({required String title, required List<Widget> children}) {
   return Card(
     elevation: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
-      side: BorderSide(
-        color: Colors.grey.shade300,
-      ),
+      side: BorderSide(color: Colors.grey.shade300),
     ),
     child: Padding(
       padding: const EdgeInsets.all(16),
@@ -453,10 +459,7 @@ Widget _buildSection({
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
           ...children,
@@ -465,4 +468,3 @@ Widget _buildSection({
     ),
   );
 }
-
