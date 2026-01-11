@@ -47,6 +47,7 @@ class LeadActivity {
   // Relations
   final AssignedUser? performedByUser;
   final AssignedUser? assignedToUser;
+  final ActivityLead? lead;
 
   LeadActivity({
     required this.id,
@@ -73,6 +74,7 @@ class LeadActivity {
     required this.updatedAt,
     this.performedByUser,
     this.assignedToUser,
+    this.lead,
   });
 
   factory LeadActivity.fromJson(Map<String, dynamic> json) {
@@ -89,8 +91,9 @@ class LeadActivity {
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'])
           : null,
-      dueDate:
-          json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
+      dueDate: json['due_date'] != null
+          ? DateTime.parse(json['due_date'])
+          : null,
       priority: json['priority'] != null
           ? _priorityFromString(json['priority'])
           : null,
@@ -120,6 +123,7 @@ class LeadActivity {
       assignedToUser: json['assigned_to_user'] != null
           ? AssignedUser.fromJson(json['assigned_to_user'])
           : null,
+      lead: json['lead'] != null ? ActivityLead.fromJson(json['lead']) : null,
     );
   }
 
@@ -339,11 +343,23 @@ class AssignedUser {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-    };
+    return {'id': id, 'name': name, 'email': email};
+  }
+}
+
+/// Represents a lead linked to an activity (for calendar view)
+class ActivityLead {
+  final String id;
+  final String name;
+
+  ActivityLead({required this.id, required this.name});
+
+  factory ActivityLead.fromJson(Map<String, dynamic> json) {
+    return ActivityLead(id: json['id'] ?? '', name: json['name'] ?? '');
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'name': name};
   }
 }
 
@@ -389,7 +405,8 @@ class CreateActivityInput {
       if (scheduledAt != null) 'scheduled_at': scheduledAt!.toIso8601String(),
       if (dueDate != null) 'due_date': dueDate!.toIso8601String(),
       if (priority != null) 'priority': _priorityToString(priority!),
-      if (meetingType != null) 'meeting_type': _meetingTypeToString(meetingType!),
+      if (meetingType != null)
+        'meeting_type': _meetingTypeToString(meetingType!),
       if (meetingLocation != null) 'meeting_location': meetingLocation,
       if (meetingDuration != null) 'meeting_duration': meetingDuration,
       if (noteContent != null) 'note_content': noteContent,
@@ -532,4 +549,3 @@ class UpdateActivityInput {
     }
   }
 }
-

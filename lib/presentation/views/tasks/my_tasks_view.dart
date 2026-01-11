@@ -1,14 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../controllers/lead_controller.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 import '../../controllers/auth_controller.dart';
-import '../../controllers/category_controller.dart';
-import '../../controllers/staff_controller.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
-import '../../widgets/lead_card_widget.dart';
-import '../../../data/models/lead_model.dart';
+import '../../../data/models/activity_model.dart';
+import '../../../data/repositories/activity_repository.dart';
 import '../../../app/routes/app_routes.dart';
 
 class MyTasksView extends StatefulWidget {
@@ -19,517 +17,766 @@ class MyTasksView extends StatefulWidget {
 }
 
 class _MyTasksViewState extends State<MyTasksView> {
-  final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  LeadSource? _selectedSource;
-  String? _selectedCategoryId;
-  final Set<LeadStatus> _selectedStatuses = <LeadStatus>{};
-  Timer? _searchDebounceTimer;
+  final ActivityRepository _activityRepository = ActivityRepository();
+
+  DateTime _focusedDay = DateTime.now();
+  DateTime _selectedDay = DateTime.now();
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+
+  List<LeadActivity> _allTasks = [];
+  bool _isLoading = true;
+  String? _errorMessage;
   bool _initialLoadAttempted = false;
+  Worker? _authWorker;
 
   @override
   void initState() {
     super.initState();
-    final authController = Get.find<AuthController>();
-    
-    // Initialize controllers
-    if (!Get.isRegistered<LeadController>()) {
-      Get.put(LeadController());
-    }
-    if (!Get.isRegistered<CategoryController>()) {
-      Get.put(CategoryController());
-    }
-    if (!Get.isRegistered<StaffController>()) {
-      Get.put(StaffController());
-    }
-
-    _scrollController.addListener(_onScroll);
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _attemptInitialLoad(authController);
+      _attemptInitialLoad();
     });
   }
 
   @override
   void dispose() {
-    _searchDebounceTimer?.cancel();
-    _searchController.dispose();
-    _scrollController.dispose();
+    _authWorker?.dispose();
     super.dispose();
   }
 
-  void _attemptInitialLoad(AuthController authController) {
-    if (authController.shop != null && 
-        authController.user != null && 
-        !_initialLoadAttempted) {
-      _loadMyTasks(authController);
+  void _attemptInitialLoad() {
+    final authController = Get.find<AuthController>();
+
+    // If already authenticated, load immediately
+    if (authController.isAuthenticated &&
+        authController.shop != null &&
+        authController.user != null) {
+      _loadTasks();
       _initialLoadAttempted = true;
-      
-      // Load categories for filter dropdown
-      final categoryController = Get.find<CategoryController>();
-      if (categoryController.categories.isEmpty) {
-        categoryController.loadCategories(authController.shop!.id);
-      }
+      return;
     }
-  }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent * 0.8) {
-      final authController = Get.find<AuthController>();
-      final leadController = Get.find<LeadController>();
-      if (authController.shop != null && 
-          leadController.hasMore && 
-          !leadController.isLoadingMore) {
-        leadController.loadMoreLeads(authController.shop!.id);
+    // Wait for shop and user to be loaded
+    _authWorker = ever(authController.shopRx, (shop) {
+      if (shop != null &&
+          authController.user != null &&
+          !_initialLoadAttempted) {
+        _initialLoadAttempted = true;
+        _loadTasks();
       }
-    }
-  }
+    });
 
-  void _loadMyTasks(AuthController authController, {bool silent = false}) {
-    if (authController.shop == null || authController.user == null) return;
-
-    final leadController = Get.find<LeadController>();
-    
-    // Filter leads assigned to current staff user with all filters
-    leadController.setFilters(
-      LeadFilters(
-        assignedTo: authController.user!.id, // Only leads assigned to this staff
-        search: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-        status: _selectedStatuses.isEmpty ? null : _selectedStatuses.toList(),
-        source: _selectedSource,
-        categoryIds: _selectedCategoryId != null ? <String>[_selectedCategoryId!] : null,
-      ),
-    );
-    
-    leadController.loadLeads(authController.shop!.id, reset: true, silent: silent);
-  }
-
-  void _onSearchChanged(String value) {
-    setState(() {});
-    _searchDebounceTimer?.cancel();
-    _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () {
-      _loadMyTasks(Get.find<AuthController>(), silent: true);
+    // Also listen to user changes
+    ever(authController.userRx, (user) {
+      if (user != null &&
+          authController.shop != null &&
+          !_initialLoadAttempted) {
+        _initialLoadAttempted = true;
+        _loadTasks();
+      }
     });
   }
 
-  void _clearFilters() {
+  Future<void> _loadTasks() async {
+    final authController = Get.find<AuthController>();
+    if (authController.shop == null || authController.user == null) {
+      // Don't show error immediately, might still be initializing
+      if (!authController.isAuthenticated) {
+        setState(() {
+          _isLoading = true; // Keep loading state while waiting
+        });
+      }
+      return;
+    }
+
     setState(() {
-      _searchController.clear();
-      _selectedSource = null;
-      _selectedCategoryId = null;
-      _selectedStatuses.clear();
+      _isLoading = true;
+      _errorMessage = null;
     });
-    _loadMyTasks(Get.find<AuthController>(), silent: true);
-  }
 
-  String _sourceLabel(LeadSource source) {
-    switch (source) {
-      case LeadSource.website:
-        return 'Website';
-      case LeadSource.phone:
-        return 'Phone';
-      case LeadSource.walkIn:
-        return 'Walk-in';
-      case LeadSource.referral:
-        return 'Referral';
-      case LeadSource.socialMedia:
-        return 'Social Media';
-      case LeadSource.email:
-        return 'Email';
-      case LeadSource.other:
-        return 'Other';
+    try {
+      final tasks = await _activityRepository.findMyTasks(
+        authController.shop!.id,
+        authController.user!.id,
+      );
+      if (mounted) {
+        setState(() {
+          _allTasks = tasks;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
     }
   }
 
-  String _statusLabel(LeadStatus status) {
-    switch (status) {
-      case LeadStatus.newLead:
-        return 'New';
-      case LeadStatus.contacted:
-        return 'Contacted';
-      case LeadStatus.qualified:
-        return 'Qualified';
-      case LeadStatus.converted:
-        return 'Converted';
-      case LeadStatus.lost:
-        return 'Lost';
+  // Group tasks by date for calendar markers
+  Map<DateTime, List<LeadActivity>> get _tasksByDate {
+    final Map<DateTime, List<LeadActivity>> map = {};
+    for (final task in _allTasks) {
+      if (task.dueDate != null) {
+        final dateOnly = DateTime(
+          task.dueDate!.year,
+          task.dueDate!.month,
+          task.dueDate!.day,
+        );
+        if (!map.containsKey(dateOnly)) {
+          map[dateOnly] = [];
+        }
+        map[dateOnly]!.add(task);
+      }
     }
+    return map;
   }
 
-  Color _statusColor(LeadStatus status) {
-    switch (status) {
-      case LeadStatus.newLead:
-        return Colors.blue;
-      case LeadStatus.contacted:
-        return Colors.orange;
-      case LeadStatus.qualified:
-        return Colors.purple;
-      case LeadStatus.converted:
-        return Colors.green;
-      case LeadStatus.lost:
-        return Colors.red;
-    }
-  }
-
-  Widget _buildFilters(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-    final categoryController = Get.find<CategoryController>();
-    final categories = categoryController.categories;
-    
-    // Calculate active filters count
-    final activeFiltersCount = _selectedStatuses.length +
-        (_selectedCategoryId != null ? 1 : 0) +
-        (_selectedSource != null ? 1 : 0) +
-        (_searchController.text.isNotEmpty ? 1 : 0);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Search field with clear button
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search my tasks...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            setState(() => _searchController.clear());
-                            _loadMyTasks(Get.find<AuthController>(), silent: true);
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                onChanged: _onSearchChanged,
-              ),
-            ),
-            if (activeFiltersCount > 0) ...[
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: _clearFilters,
-                icon: const Icon(Icons.clear_all, size: 16),
-                label: const Text('Clear'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  minimumSize: const Size(0, 36),
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 12),
-        
-        // Status Filter - Compact horizontal scroll
-        SizedBox(
-          height: 36,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(
-                  'Status:',
-                  style: textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ),
-              ...LeadStatus.values.map((status) {
-                final isSelected = _selectedStatuses.contains(status);
-                final color = _statusColor(status);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ChoiceChip(
-                    selected: isSelected,
-                    label: Text(
-                      _statusLabel(status),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _selectedStatuses.add(status);
-                        } else {
-                          _selectedStatuses.remove(status);
-                        }
-                      });
-                      Future.microtask(() => _loadMyTasks(Get.find<AuthController>(), silent: true));
-                    },
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                    selectedColor: color.withOpacity(0.2),
-                    labelStyle: TextStyle(
-                      color: isSelected ? color : Theme.of(context).colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      fontSize: 12,
-                    ),
-                    side: BorderSide(
-                      color: isSelected 
-                          ? color 
-                          : Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                      width: isSelected ? 2 : 1,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Category and Source in single row
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _selectedCategoryId,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  prefixIcon: const Icon(Icons.category_outlined),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('All Categories'),
-                  ),
-                  ...categories.map(
-                    (cat) => DropdownMenuItem<String>(
-                      value: cat.id,
-                      child: Text(cat.name),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() => _selectedCategoryId = value);
-                  Future.microtask(() => _loadMyTasks(Get.find<AuthController>(), silent: true));
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: DropdownButtonFormField<LeadSource>(
-                value: _selectedSource,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: 'Source',
-                  prefixIcon: const Icon(Icons.filter_alt_outlined),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                items: [
-                  const DropdownMenuItem<LeadSource>(
-                    value: null,
-                    child: Text('All Sources'),
-                  ),
-                  ...LeadSource.values.map(
-                    (source) => DropdownMenuItem<LeadSource>(
-                      value: source,
-                      child: Text(_sourceLabel(source)),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() => _selectedSource = value);
-                  Future.microtask(() => _loadMyTasks(Get.find<AuthController>(), silent: true));
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
+  // Tasks for selected date
+  List<LeadActivity> get _selectedDateTasks {
+    final dateOnly = DateTime(
+      _selectedDay.year,
+      _selectedDay.month,
+      _selectedDay.day,
     );
+    return _tasksByDate[dateOnly] ?? [];
+  }
+
+  // Tasks without due date
+  List<LeadActivity> get _tasksWithoutDate {
+    return _allTasks.where((task) => task.dueDate == null).toList();
+  }
+
+  // Check if a task is overdue
+  bool _isOverdue(LeadActivity task) {
+    if (task.dueDate == null) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDate = DateTime(
+      task.dueDate!.year,
+      task.dueDate!.month,
+      task.dueDate!.day,
+    );
+    return dueDate.isBefore(today) &&
+        task.taskStatus != TaskStatus.completed &&
+        task.taskStatus != TaskStatus.cancelled;
+  }
+
+  // Check if any task on a date is overdue
+  bool _hasOverdueOnDate(DateTime date) {
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    final tasks = _tasksByDate[dateOnly] ?? [];
+    return tasks.any(_isOverdue);
+  }
+
+  Color _getPriorityColor(TaskPriority? priority) {
+    switch (priority) {
+      case TaskPriority.high:
+        return Colors.red;
+      case TaskPriority.medium:
+        return Colors.orange;
+      case TaskPriority.low:
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getStatusColor(TaskStatus? status) {
+    switch (status) {
+      case TaskStatus.pending:
+        return Colors.blue;
+      case TaskStatus.inProgress:
+        return Colors.purple;
+      case TaskStatus.completed:
+        return Colors.green;
+      case TaskStatus.cancelled:
+        return Colors.grey;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  String _getStatusLabel(TaskStatus? status) {
+    switch (status) {
+      case TaskStatus.pending:
+        return 'Pending';
+      case TaskStatus.inProgress:
+        return 'In Progress';
+      case TaskStatus.completed:
+        return 'Completed';
+      case TaskStatus.cancelled:
+        return 'Cancelled';
+      default:
+        return 'Pending';
+    }
+  }
+
+  String _getPriorityLabel(TaskPriority? priority) {
+    switch (priority) {
+      case TaskPriority.high:
+        return 'High';
+      case TaskPriority.medium:
+        return 'Medium';
+      case TaskPriority.low:
+        return 'Low';
+      default:
+        return '';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authController = Get.find<AuthController>();
-    
-    // Always ensure filters are correct for My Tasks screen (assignedTo = current user)
-    if (authController.shop != null && authController.user != null) {
-      final leadController = Get.find<LeadController>();
-      final currentFilters = leadController.filters;
-      final shouldHaveAssignedTo = authController.user!.id;
-      
-      if (currentFilters == null || 
-          currentFilters.assignedTo != shouldHaveAssignedTo) {
-        // Filters are incorrect, fix immediately
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _loadMyTasks(authController, silent: true);
-          }
-        });
-      }
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    if (_isLoading) {
+      return const LoadingWidget();
     }
-    
-    return Obx(() {
-      if (!authController.isAuthenticated || authController.user == null) {
-        return const Center(child: Text('Not authenticated'));
-      }
 
-      final leadController = Get.find<LeadController>();
-      
-      if (leadController.isLoading && leadController.leads.isEmpty) {
-        return const LoadingWidget();
-      }
+    if (_errorMessage != null) {
+      return error_widget.ErrorDisplayWidget(
+        message: _errorMessage!,
+        onRetry: _loadTasks,
+      );
+    }
 
-      if (leadController.errorMessage.isNotEmpty) {
-        return error_widget.ErrorDisplayWidget(
-          message: leadController.errorMessage,
-          onRetry: () => _loadMyTasks(authController),
-        );
-      }
+    return RefreshIndicator(
+      onRefresh: _loadTasks,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          // Header
+          // SliverToBoxAdapter(
+          //   child: Padding(
+          //     padding: const EdgeInsets.all(16),
+          //     child: Row(
+          //       children: [
+          //         Icon(
+          //           Icons.calendar_month,
+          //           size: 28,
+          //           color: colorScheme.primary,
+          //         ),
+          //         const SizedBox(width: 12),
+          //         Text(
+          //           'My Tasks',
+          //           style: theme.textTheme.headlineSmall?.copyWith(
+          //             fontWeight: FontWeight.bold,
+          //           ),
+          //         ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
 
-      return RefreshIndicator(
-        onRefresh: () async {
-          _loadMyTasks(authController);
-        },
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // Filters section
-            SliverToBoxAdapter(
+          // Calendar
+          SliverToBoxAdapter(
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: _buildFilters(context),
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    TableCalendar<LeadActivity>(
+                      firstDay: DateTime.utc(2020, 1, 1),
+                      lastDay: DateTime.utc(2030, 12, 31),
+                      focusedDay: _focusedDay,
+                      selectedDayPredicate: (day) =>
+                          isSameDay(_selectedDay, day),
+                      calendarFormat: _calendarFormat,
+                      eventLoader: (day) {
+                        final dateOnly = DateTime(day.year, day.month, day.day);
+                        return _tasksByDate[dateOnly] ?? [];
+                      },
+                      startingDayOfWeek: StartingDayOfWeek.sunday,
+                      calendarStyle: CalendarStyle(
+                        outsideDaysVisible: true,
+                        weekendTextStyle: TextStyle(
+                          color: colorScheme.onSurface,
+                        ),
+                        holidayTextStyle: TextStyle(
+                          color: colorScheme.onSurface,
+                        ),
+                        selectedDecoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        todayDecoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        todayTextStyle: TextStyle(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        markerDecoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        markersMaxCount: 3,
+                        markerSize: 6,
+                        markerMargin: const EdgeInsets.symmetric(
+                          horizontal: 0.5,
+                        ),
+                      ),
+                      calendarBuilders: CalendarBuilders(
+                        markerBuilder: (context, date, events) {
+                          if (events.isEmpty) return null;
+                          final hasOverdue = _hasOverdueOnDate(date);
+                          return Positioned(
+                            bottom: 1,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: hasOverdue
+                                        ? Colors.red
+                                        : colorScheme.primary,
+                                  ),
+                                ),
+                                if (events.length > 1)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 2),
+                                    child: Text(
+                                      '+${events.length - 1}',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: hasOverdue
+                                            ? Colors.red
+                                            : colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      headerStyle: HeaderStyle(
+                        formatButtonVisible: false,
+                        titleCentered: true,
+                        titleTextStyle: theme.textTheme.titleMedium!.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        leftChevronIcon: Icon(
+                          Icons.chevron_left,
+                          color: colorScheme.onSurface,
+                        ),
+                        rightChevronIcon: Icon(
+                          Icons.chevron_right,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      onDaySelected: (selectedDay, focusedDay) {
+                        setState(() {
+                          _selectedDay = selectedDay;
+                          _focusedDay = focusedDay;
+                        });
+                      },
+                      onFormatChanged: (format) {
+                        setState(() {
+                          _calendarFormat = format;
+                        });
+                      },
+                      onPageChanged: (focusedDay) {
+                        _focusedDay = focusedDay;
+                      },
+                    ),
+
+                    // Today button and Legend
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _focusedDay = DateTime.now();
+                                _selectedDay = DateTime.now();
+                              });
+                            },
+                            icon: const Icon(Icons.today, size: 16),
+                            label: const Text('Today'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              minimumSize: const Size(0, 32),
+                            ),
+                          ),
+                          const Spacer(),
+                          // Legend
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Tasks',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Overdue',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            
-            // Leads list
-            if (leadController.leads.isEmpty)
-              SliverFillRemaining(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.task_outlined, size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No tasks assigned',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
+          ),
+
+          // Selected Date Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    size: 20,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isToday(_selectedDay)
+                        ? 'Today'
+                        : DateFormat('MMMM d, yyyy').format(_selectedDay),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${_selectedDateTasks.length} task${_selectedDateTasks.length != 1 ? 's' : ''}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Tasks for selected date
+          if (_selectedDateTasks.isEmpty)
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 48,
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No tasks scheduled',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'You don\'t have any leads assigned to you yet',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final task = _selectedDateTasks[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: _buildTaskCard(task),
+                );
+              }, childCount: _selectedDateTasks.length),
+            ),
+
+          // Tasks without due date section
+          if (_tasksWithoutDate.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 20,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'No Due Date',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_tasksWithoutDate.length}',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index >= 3 && _tasksWithoutDate.length > 3) {
+                    // Show "more tasks" indicator
+                    if (index == 3) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          '+${_tasksWithoutDate.length - 3} more tasks without due date',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }
+                  final task = _tasksWithoutDate[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
+                    child: _buildTaskCard(task),
+                  );
+                },
+                childCount: _tasksWithoutDate.length > 3
+                    ? 4
+                    : _tasksWithoutDate.length,
+              ),
+            ),
+          ],
+
+          // Bottom padding
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        ],
+      ),
+    );
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  Widget _buildTaskCard(LeadActivity task) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isOverdue = _isOverdue(task);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isOverdue
+            ? const BorderSide(color: Colors.red, width: 0)
+            : BorderSide.none,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: isOverdue
+              ? const Border(left: BorderSide(color: Colors.red, width: 4))
+              : null,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            // Navigate to lead detail
+            Get.toNamed(AppRoutes.LEAD_DETAIL.replaceAll(':id', task.leadId));
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title and priority
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        task.title ?? 'Untitled Task',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (task.priority != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getPriorityColor(
+                            task.priority,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _getPriorityColor(
+                              task.priority,
+                            ).withOpacity(0.3),
+                          ),
+                        ),
+                        child: Text(
+                          _getPriorityLabel(task.priority),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: _getPriorityColor(task.priority),
+                          ),
+                        ),
                       ),
                     ],
+                  ],
+                ),
+
+                // Description
+                if (task.description != null &&
+                    task.description!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    task.description!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final lead = leadController.leads[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: LeadCardWidget(
-                        lead: lead,
-                        onTap: () {
-                          Get.toNamed('${AppRoutes.LEAD_DETAIL.replaceAll(':id', lead.id)}');
-                        },
-                        isReadOnly: false, // Allow editing
-                        canEditStatus: true, // Can edit status in My Tasks
-                        canEditAssignedTo: false, // Cannot edit assigned to (read-only)
+                ],
+
+                const SizedBox(height: 8),
+
+                // Lead name, status, and arrow
+                Row(
+                  children: [
+                    // Lead name
+                    if (task.lead != null) ...[
+                      Icon(
+                        Icons.person_outline,
+                        size: 14,
+                        color: colorScheme.onSurfaceVariant,
                       ),
-                    );
-                  },
-                  childCount: leadController.leads.length,
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          task.lead!.name,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.primary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+
+                    // Status badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(
+                          task.taskStatus,
+                        ).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _getStatusLabel(task.taskStatus),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: _getStatusColor(task.taskStatus),
+                        ),
+                      ),
+                    ),
+
+                    const Spacer(),
+
+                    // Arrow indicator
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ],
                 ),
-              ),
-            
-            // Loading more indicator
-            if (leadController.isLoadingMore)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              ),
-          ],
+              ],
+            ),
+          ),
         ),
-      );
-    });
+      ),
+    );
   }
 }
-
