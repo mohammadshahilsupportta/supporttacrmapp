@@ -170,6 +170,118 @@ class _MyTasksViewState extends State<MyTasksView> {
     return tasks.any(_isOverdue);
   }
 
+  // Check if task is due today
+  bool _isDueToday(LeadActivity task) {
+    if (task.dueDate == null) return false;
+    final now = DateTime.now();
+    return task.dueDate!.year == now.year &&
+        task.dueDate!.month == now.month &&
+        task.dueDate!.day == now.day;
+  }
+
+  // Complete task action
+  Future<void> _completeTask(LeadActivity task) async {
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('Complete Task'),
+        content: Text('Mark "${task.title ?? 'Untitled Task'}" as completed?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Complete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _activityRepository.update(
+        task.id,
+        UpdateActivityInput(
+          id: task.id,
+          taskStatus: TaskStatus.completed,
+          completedAt: DateTime.now(),
+        ),
+      );
+      Get.snackbar(
+        'Success',
+        'Task completed',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green.shade100,
+        colorText: Colors.green.shade900,
+      );
+      _loadTasks();
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to complete task',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+      );
+    }
+  }
+
+  // Edit task action - Navigate to lead detail for editing
+  void _editTask(LeadActivity task) {
+    Get.toNamed(AppRoutes.LEAD_DETAIL.replaceAll(':id', task.leadId));
+    Get.snackbar(
+      'Edit Task',
+      'Use the Activities tab to edit this task',
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 3),
+    );
+  }
+
+  // Delete task action
+  Future<void> _deleteTask(LeadActivity task) async {
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('Delete Task'),
+        content: const Text('Are you sure you want to delete this task?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Get.back(result: true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _activityRepository.delete(task.id);
+      Get.snackbar(
+        'Success',
+        'Task deleted',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green.shade100,
+        colorText: Colors.green.shade900,
+      );
+      _loadTasks();
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to delete task',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+      );
+    }
+  }
+
   Color _getPriorityColor(TaskPriority? priority) {
     switch (priority) {
       case TaskPriority.high:
@@ -629,6 +741,7 @@ class _MyTasksViewState extends State<MyTasksView> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isOverdue = _isOverdue(task);
+    final isDueToday = _isDueToday(task);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -636,6 +749,8 @@ class _MyTasksViewState extends State<MyTasksView> {
         borderRadius: BorderRadius.circular(12),
         side: isOverdue
             ? const BorderSide(color: Colors.red, width: 0)
+            : isDueToday
+            ? BorderSide(color: Colors.orange.shade300, width: 0)
             : BorderSide.none,
       ),
       child: Container(
@@ -643,137 +758,271 @@ class _MyTasksViewState extends State<MyTasksView> {
           borderRadius: BorderRadius.circular(12),
           border: isOverdue
               ? const Border(left: BorderSide(color: Colors.red, width: 4))
+              : isDueToday
+              ? Border(
+                  left: BorderSide(color: Colors.orange.shade400, width: 4),
+                )
               : null,
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            // Navigate to lead detail
-            Get.toNamed(AppRoutes.LEAD_DETAIL.replaceAll(':id', task.leadId));
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title and priority
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        task.title ?? 'Untitled Task',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Row 1: Checkbox, Title, Priority, Action buttons
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Complete checkbox
+                  GestureDetector(
+                    onTap: () => _completeTask(task),
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      margin: const EdgeInsets.only(right: 8, top: 2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colorScheme.onSurfaceVariant,
+                          width: 2,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        size: 14,
+                        color: Colors.transparent,
                       ),
                     ),
-                    if (task.priority != null) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
+                  ),
+
+                  // Title
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                task.title ?? 'Untitled Task',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (task.priority != null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getPriorityColor(
+                                    task.priority,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _getPriorityColor(
+                                      task.priority,
+                                    ).withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  _getPriorityLabel(task.priority),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: _getPriorityColor(task.priority),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        decoration: BoxDecoration(
-                          color: _getPriorityColor(
-                            task.priority,
-                          ).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _getPriorityColor(
-                              task.priority,
-                            ).withOpacity(0.3),
+
+                        // Description
+                        if (task.description != null &&
+                            task.description!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            task.description!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Action buttons (edit, delete)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          size: 18,
+                          color: colorScheme.onSurfaceVariant,
                         ),
-                        child: Text(
-                          _getPriorityLabel(task.priority),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: _getPriorityColor(task.priority),
-                          ),
+                        onPressed: () => _editTask(task),
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
                         ),
+                        tooltip: 'Edit',
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: Colors.red,
+                        ),
+                        onPressed: () => _deleteTask(task),
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        tooltip: 'Delete',
                       ),
                     ],
-                  ],
-                ),
-
-                // Description
-                if (task.description != null &&
-                    task.description!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    task.description!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
+              ),
 
-                const SizedBox(height: 8),
+              const SizedBox(height: 8),
 
-                // Lead name, status, and arrow
-                Row(
-                  children: [
-                    // Lead name
-                    if (task.lead != null) ...[
-                      Icon(
-                        Icons.person_outline,
-                        size: 14,
-                        color: colorScheme.onSurfaceVariant,
+              // Row 2: Due date, lead name, assigned user, status
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Due date with Today/Overdue label
+                  if (task.dueDate != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.schedule,
+                          size: 14,
+                          color: isOverdue
+                              ? Colors.red
+                              : isDueToday
+                              ? Colors.orange
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat('MMM d, yyyy').format(task.dueDate!),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isOverdue
+                                ? Colors.red
+                                : isDueToday
+                                ? Colors.orange
+                                : colorScheme.onSurfaceVariant,
+                            fontWeight: (isOverdue || isDueToday)
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        if (isDueToday)
+                          Text(
+                            ' (Today)',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        if (isOverdue)
+                          Text(
+                            ' (Overdue)',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
+                    ),
+
+                  // Lead name
+                  if (task.lead != null)
+                    GestureDetector(
+                      onTap: () {
+                        Get.toNamed(
+                          AppRoutes.LEAD_DETAIL.replaceAll(':id', task.leadId),
+                        );
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.person_outline,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            task.lead!.name,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.primary,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          task.lead!.name,
+                    ),
+
+                  // Assigned user
+                  if (task.assignedToUser != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '→',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.primary,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(
-                          task.taskStatus,
-                        ).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _getStatusLabel(task.taskStatus),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: _getStatusColor(task.taskStatus),
+                        const SizedBox(width: 4),
+                        Text(
+                          task.assignedToUser!.name,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.primary,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
 
-                    const Spacer(),
-
-                    // Arrow indicator
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: colorScheme.onSurfaceVariant,
+                  // Status badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
                     ),
-                  ],
-                ),
-              ],
-            ),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(task.taskStatus).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _getStatusLabel(task.taskStatus),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: _getStatusColor(task.taskStatus),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
