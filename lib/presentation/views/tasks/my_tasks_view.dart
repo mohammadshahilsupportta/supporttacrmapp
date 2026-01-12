@@ -179,109 +179,6 @@ class _MyTasksViewState extends State<MyTasksView> {
         task.dueDate!.day == now.day;
   }
 
-  // Complete task action
-  Future<void> _completeTask(LeadActivity task) async {
-    final confirmed = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('Complete Task'),
-        content: Text('Mark "${task.title ?? 'Untitled Task'}" as completed?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Get.back(result: true),
-            child: const Text('Complete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await _activityRepository.update(
-        task.id,
-        UpdateActivityInput(
-          id: task.id,
-          taskStatus: TaskStatus.completed,
-          completedAt: DateTime.now(),
-        ),
-      );
-      Get.snackbar(
-        'Success',
-        'Task completed',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.shade100,
-        colorText: Colors.green.shade900,
-      );
-      _loadTasks();
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to complete task',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        colorText: Colors.red.shade900,
-      );
-    }
-  }
-
-  // Edit task action - Navigate to lead detail for editing
-  void _editTask(LeadActivity task) {
-    Get.toNamed(AppRoutes.LEAD_DETAIL.replaceAll(':id', task.leadId));
-    Get.snackbar(
-      'Edit Task',
-      'Use the Activities tab to edit this task',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 3),
-    );
-  }
-
-  // Delete task action
-  Future<void> _deleteTask(LeadActivity task) async {
-    final confirmed = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('Delete Task'),
-        content: const Text('Are you sure you want to delete this task?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Get.back(result: true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await _activityRepository.delete(task.id);
-      Get.snackbar(
-        'Success',
-        'Task deleted',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.shade100,
-        colorText: Colors.green.shade900,
-      );
-      _loadTasks();
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to delete task',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        colorText: Colors.red.shade900,
-      );
-    }
-  }
-
   Color _getPriorityColor(TaskPriority? priority) {
     switch (priority) {
       case TaskPriority.high:
@@ -322,19 +219,6 @@ class _MyTasksViewState extends State<MyTasksView> {
         return 'Cancelled';
       default:
         return 'Pending';
-    }
-  }
-
-  String _getPriorityLabel(TaskPriority? priority) {
-    switch (priority) {
-      case TaskPriority.high:
-        return 'High';
-      case TaskPriority.medium:
-        return 'Medium';
-      case TaskPriority.low:
-        return 'Low';
-      default:
-        return '';
     }
   }
 
@@ -832,27 +716,6 @@ class _MyTasksViewState extends State<MyTasksView> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => _completeTask(task),
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: accentColor.withOpacity(0.5),
-                                  width: 2,
-                                ),
-                                color: accentColor.withOpacity(0.08),
-                              ),
-                              child: Icon(
-                                Icons.check_rounded,
-                                size: 14,
-                                color: accentColor.withOpacity(0.5),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -917,18 +780,28 @@ class _MyTasksViewState extends State<MyTasksView> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          _buildActionBtn(
-                            Icons.open_in_new_rounded,
-                            () => _editTask(task),
-                            colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          _buildActionBtn(
-                            Icons.delete_outline_rounded,
-                            () => _deleteTask(task),
-                            const Color(0xFFDC2626),
-                          ),
+                          // Arrow button to navigate to lead detail (like website)
+                          if (task.leadId.isNotEmpty)
+                            GestureDetector(
+                              onTap: () => Get.toNamed(
+                                AppRoutes.LEAD_DETAIL.replaceAll(
+                                  ':id',
+                                  task.leadId,
+                                ),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primary.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 18,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ],
@@ -968,20 +841,6 @@ class _MyTasksViewState extends State<MyTasksView> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionBtn(IconData icon, VoidCallback onTap, Color color) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, size: 16, color: color),
       ),
     );
   }
