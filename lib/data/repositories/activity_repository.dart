@@ -632,6 +632,7 @@ class ActivityRepository {
 
       try {
         // First try: Join with staff table and leads table
+        // Match website behavior: show tasks where user is assigned_to OR performed_by
         data =
             await SupabaseService.from('lead_activities')
                     .select('''
@@ -642,7 +643,7 @@ class ActivityRepository {
             ''')
                     .eq('shop_id', shopId)
                     .eq('activity_type', 'task')
-                    .eq('assigned_to', userId)
+                    .or('assigned_to.eq.$userId,performed_by.eq.$userId')
                     .filter('task_status', 'in', statusFilter)
                     .order('due_date', ascending: true, nullsFirst: false)
                     .order('created_at', ascending: false)
@@ -661,7 +662,7 @@ class ActivityRepository {
               ''')
                       .eq('shop_id', shopId)
                       .eq('activity_type', 'task')
-                      .eq('assigned_to', userId)
+                      .or('assigned_to.eq.$userId,performed_by.eq.$userId')
                       .filter('task_status', 'in', statusFilter)
                       .order('due_date', ascending: true, nullsFirst: false)
                       .order('created_at', ascending: false)
@@ -677,7 +678,7 @@ class ActivityRepository {
               ''')
                       .eq('shop_id', shopId)
                       .eq('activity_type', 'task')
-                      .eq('assigned_to', userId)
+                      .or('assigned_to.eq.$userId,performed_by.eq.$userId')
                       .filter('task_status', 'in', statusFilter)
                       .order('due_date', ascending: true, nullsFirst: false)
                       .order('created_at', ascending: false)

@@ -141,14 +141,12 @@ class _HomeViewState extends State<HomeView> {
     final leadController = Get.find<LeadController>();
     final isStaffRole = _isStaffRole(authController.user);
 
-    // Determine which view is at this index
-    // For staff: Dashboard(0), Leads(1), MyTasks(2), Categories(3), Settings(4)
-    // For admin: Dashboard(0), Leads(1), Staff(2), Categories(3), Settings(4)
-
-    if (isStaffRole) {
-      if (index == 1) {
-        // Leads screen - set createdBy to current user (only show leads they created)
-        final currentFilters = leadController.filters;
+    // New structure: Dashboard(0), Leads(1), MyTasks(2), Staff?(3), Categories?(3/4), Settings(last)
+    // Only need to correct filters for Leads tab (index 1)
+    if (index == 1) {
+      final currentFilters = leadController.filters;
+      if (isStaffRole) {
+        // Staff: set createdBy to current user (only show leads they created)
         final shouldHaveCreatedBy = authController.user?.id;
         if (currentFilters == null ||
             currentFilters.createdBy != shouldHaveCreatedBy ||
@@ -160,8 +158,8 @@ class _HomeViewState extends State<HomeView> {
               categoryIds: currentFilters?.categoryIds,
               search: currentFilters?.search,
               scoreCategories: currentFilters?.scoreCategories,
-              assignedTo: null, // Clear assignedTo for Leads
-              createdBy: shouldHaveCreatedBy, // Set createdBy for staff
+              assignedTo: null,
+              createdBy: shouldHaveCreatedBy,
             ),
           );
           leadController.loadLeads(
@@ -170,33 +168,8 @@ class _HomeViewState extends State<HomeView> {
             silent: true,
           );
         }
-      } else if (index == 2) {
-        // My Tasks screen - set assignedTo to current user
-        if (authController.user != null) {
-          final currentFilters = leadController.filters;
-          final shouldHaveAssignedTo = authController.user!.id;
-          if (currentFilters == null ||
-              currentFilters.assignedTo != shouldHaveAssignedTo ||
-              currentFilters.createdBy != null) {
-            leadController.setFilters(
-              LeadFilters(
-                assignedTo: shouldHaveAssignedTo,
-                search: currentFilters?.search,
-                createdBy: null, // Clear createdBy for My Tasks
-              ),
-            );
-            leadController.loadLeads(
-              authController.shop!.id,
-              reset: true,
-              silent: true,
-            );
-          }
-        }
-      }
-    } else {
-      // Admin/Owner - Leads screen should have no filters
-      if (index == 1) {
-        final currentFilters = leadController.filters;
+      } else {
+        // Admin/Owner - Leads screen should have no user-specific filters
         if (currentFilters != null &&
             (currentFilters.assignedTo != null ||
                 currentFilters.createdBy != null)) {
@@ -207,8 +180,8 @@ class _HomeViewState extends State<HomeView> {
               categoryIds: currentFilters.categoryIds,
               search: currentFilters.search,
               scoreCategories: currentFilters.scoreCategories,
-              assignedTo: null, // Clear assignedTo for Leads
-              createdBy: null, // Clear createdBy for Leads
+              assignedTo: null,
+              createdBy: null,
             ),
           );
           leadController.loadLeads(
@@ -219,6 +192,8 @@ class _HomeViewState extends State<HomeView> {
         }
       }
     }
+    // My Tasks (index 2) now uses its own data loading via ActivityRepository
+    // so no filter correction needed for that tab
   }
 
   int _getActualIndex(
@@ -235,39 +210,24 @@ class _HomeViewState extends State<HomeView> {
     final authController = Get.find<AuthController>();
     final canViewStaff = _canViewStaff(authController.user);
     final canViewCategories = _canViewCategories(authController.user);
-    final isStaffRole =
-        authController.user?.role != UserRole.shopOwner &&
-        authController.user?.role != UserRole.admin;
 
-    // Map displayed index to title based on visible tabs
+    // New structure matches bottom bar:
+    // Dashboard(0), Leads(1), MyTasks(2), Staff?(3 if visible), Categories?(3 if no Staff), Settings(last)
     if (index == 0) return 'Dashboard';
     if (index == 1) return 'Leads';
+    if (index == 2) return 'My Tasks';
 
-    if (isStaffRole) {
-      if (index == 2) return 'My Tasks';
-      if (canViewCategories) {
-        if (index == 3) return 'Categories';
-        if (index == 4) return 'Settings';
-      } else {
-        if (index == 3) return 'Settings';
-      }
+    if (canViewStaff) {
+      // Admin/Owner: Staff at 3, Settings at 4 (Categories via route)
+      if (index == 3) return 'Staff';
+      if (index == 4) return 'Settings';
+    } else if (canViewCategories) {
+      // Staff with Categories: Categories at 3, Settings at 4
+      if (index == 3) return 'Categories';
+      if (index == 4) return 'Settings';
     } else {
-      if (canViewStaff) {
-        if (index == 2) return 'Staff';
-        if (canViewCategories) {
-          if (index == 3) return 'Categories';
-          if (index == 4) return 'Settings';
-        } else {
-          if (index == 3) return 'Settings';
-        }
-      } else {
-        if (canViewCategories) {
-          if (index == 2) return 'Categories';
-          if (index == 3) return 'Settings';
-        } else {
-          if (index == 2) return 'Settings';
-        }
-      }
+      // Staff without Categories: Settings at 3
+      if (index == 3) return 'Settings';
     }
 
     return 'Dashboard';
@@ -280,32 +240,24 @@ class _HomeViewState extends State<HomeView> {
   ) {
     final canViewStaff = _canViewStaff(authController.user);
     final canViewCategories = _canViewCategories(authController.user);
-    final isStaffRole =
-        authController.user?.role != UserRole.shopOwner &&
-        authController.user?.role != UserRole.admin;
     final actualIndex = _getActualIndex(index, canViewStaff, canViewCategories);
 
     // Use IndexedStack to preserve state of all tabs
-    // Build children in the same order as IndexedStack expects
+    // Build children in SAME ORDER as bottom bar for index consistency
+    // Structure: Dashboard(0), Leads(1), MyTasks(2), Staff?(3), Categories?(if no Staff), Settings(last)
     final children = <Widget>[
       _buildDashboardContent(authController, dashboardController),
+      const LeadsListView(),
+      const MyTasksView(), // My Tasks now shown for ALL roles
     ];
-
-    // For staff role, add both Leads and My Tasks
-    if (isStaffRole) {
-      children.add(const LeadsListView()); // All leads (read-only for staff)
-      children.add(const MyTasksView()); // Only assigned leads (read-only)
-    } else {
-      children.add(
-        const LeadsListView(),
-      ); // All leads (editable for admin/owner)
-    }
 
     if (canViewStaff) {
       children.add(const StaffListView());
     }
 
-    if (canViewCategories) {
+    // Categories only in bottom bar (and IndexedStack) if Staff is not visible
+    // When Staff is visible, Categories is only accessible via drawer
+    if (canViewCategories && !canViewStaff) {
       children.add(const CategoriesView());
     }
 
@@ -323,10 +275,10 @@ class _HomeViewState extends State<HomeView> {
     // Access user reactively - Obx will rebuild when userRx changes
     final user = authController.userRx.value;
     final canViewStaff = _canViewStaff(user);
-    final isStaffRole =
-        user?.role != UserRole.shopOwner && user?.role != UserRole.admin;
+    final canViewCategories = _canViewCategories(user);
 
-    // Build bottom bar items conditionally
+    // Build bottom bar items - My Tasks now shown for ALL roles
+    // Structure: Dashboard(0), Leads(1), MyTasks(2), Staff?(3), Categories?(3/4), Settings(last)
     final bottomBarItems = <BottomBarItem>[
       BottomBarItem(
         inActiveItem: Icon(
@@ -344,21 +296,16 @@ class _HomeViewState extends State<HomeView> {
         activeItem: Icon(Icons.people, color: theme.colorScheme.onPrimary),
         itemLabel: 'Leads',
       ),
-    ];
-
-    // For staff role, add My Tasks tab
-    if (isStaffRole) {
-      bottomBarItems.add(
-        BottomBarItem(
-          inActiveItem: Icon(
-            Icons.task_outlined,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          activeItem: Icon(Icons.task, color: theme.colorScheme.onPrimary),
-          itemLabel: 'My Tasks',
+      // My Tasks now visible for ALL roles
+      BottomBarItem(
+        inActiveItem: Icon(
+          Icons.task_outlined,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
-      );
-    }
+        activeItem: Icon(Icons.task, color: theme.colorScheme.onPrimary),
+        itemLabel: 'My Tasks',
+      ),
+    ];
 
     // Only add Staff tab if user can view staff
     if (canViewStaff) {
@@ -374,9 +321,10 @@ class _HomeViewState extends State<HomeView> {
       );
     }
 
-    // Add Categories tab only if user can view categories
-    final canViewCategories = _canViewCategories(user);
-    if (canViewCategories) {
+    // Add Categories tab only if user can view categories AND there's room
+    // (max 5 items, need to reserve space for Settings)
+    // For admin/owner with Staff, Categories will only be in drawer
+    if (canViewCategories && bottomBarItems.length < 4) {
       bottomBarItems.add(
         BottomBarItem(
           inActiveItem: Icon(
@@ -389,7 +337,7 @@ class _HomeViewState extends State<HomeView> {
       );
     }
 
-    // Add Settings tab (always visible)
+    // Add Settings tab (always visible in bottom bar)
     bottomBarItems.add(
       BottomBarItem(
         inActiveItem: Icon(
@@ -457,10 +405,8 @@ class _HomeViewState extends State<HomeView> {
   Widget? _buildFloatingActionButton(int index, AuthController authController) {
     final canViewStaff = _canViewStaff(authController.user);
     final canViewCategories = _canViewCategories(authController.user);
-    final isStaffRole =
-        authController.user?.role != UserRole.shopOwner &&
-        authController.user?.role != UserRole.admin;
 
+    // New structure: Dashboard(0), Leads(1), MyTasks(2), Staff?(3), Categories?(3/4), Settings(last)
     switch (index) {
       case 1: // Leads
         // All users (including staff) can create leads
@@ -471,12 +417,9 @@ class _HomeViewState extends State<HomeView> {
           icon: const Icon(Icons.add),
           label: const Text('Add Lead'),
         );
-      case 2: // My Tasks (staff only) or Staff (admin/owner)
-        if (isStaffRole) {
-          // My Tasks - no FAB (read-only)
-          return null;
-        }
-        // Staff tab for admin/owner
+      case 2: // My Tasks - no FAB for all roles (tasks are created from lead detail)
+        return null;
+      case 3: // Staff (if canViewStaff) or Categories (if no Staff but canViewCategories)
         if (canViewStaff) {
           return FloatingActionButton.extended(
             onPressed: () {
@@ -495,29 +438,15 @@ class _HomeViewState extends State<HomeView> {
           );
         }
         return null;
-      case 3: // Categories (if canViewCategories) or Staff (if canViewStaff and not staff role)
-        if (isStaffRole) {
-          // Staff role at index 3 would be Categories
-          if (canViewCategories) {
-            return FloatingActionButton.extended(
-              onPressed: () {
-                _showCategoryFormDialog(authController);
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Category'),
-            );
-          }
-        } else {
-          // Admin/owner at index 3 would be Categories (if Staff is at 2)
-          if (canViewCategories) {
-            return FloatingActionButton.extended(
-              onPressed: () {
-                _showCategoryFormDialog(authController);
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Category'),
-            );
-          }
+      case 4: // Categories (if canViewStaff is true, Categories is at 4)
+        if (canViewStaff && canViewCategories) {
+          return FloatingActionButton.extended(
+            onPressed: () {
+              _showCategoryFormDialog(authController);
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Category'),
+          );
         }
         return null;
       default:
@@ -657,35 +586,29 @@ class _HomeViewState extends State<HomeView> {
               _notchController.jumpTo(1);
             },
           ),
-          if (_isStaffRole(authController.user))
-            ListTile(
-              leading: const Icon(Icons.task),
-              title: const Text('My Tasks'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  _currentIndex = 2;
-                });
-                _notchController.jumpTo(2);
-              },
-            ),
+          // My Tasks now visible for ALL roles
+          ListTile(
+            leading: const Icon(Icons.task),
+            title: const Text('My Tasks'),
+            onTap: () {
+              Navigator.pop(context);
+              setState(() {
+                _currentIndex = 2;
+              });
+              _notchController.jumpTo(2);
+            },
+          ),
           if (_canViewStaff(authController.user))
             ListTile(
               leading: const Icon(Icons.group),
               title: const Text('Staff'),
               onTap: () {
                 Navigator.pop(context);
-                final isStaffRole = _isStaffRole(authController.user);
-                int staffIndex;
-                if (isStaffRole) {
-                  staffIndex = 3; // After Leads and My Tasks
-                } else {
-                  staffIndex = 2; // After Leads
-                }
+                // Staff is at index 3 for all roles that can view it
                 setState(() {
-                  _currentIndex = staffIndex;
+                  _currentIndex = 3;
                 });
-                _notchController.jumpTo(staffIndex);
+                _notchController.jumpTo(3);
               },
             ),
           if (_canViewCategories(authController.user))
@@ -694,20 +617,17 @@ class _HomeViewState extends State<HomeView> {
               title: const Text('Categories'),
               onTap: () {
                 Navigator.pop(context);
-                final isStaffRole = _isStaffRole(authController.user);
                 final canViewStaff = _canViewStaff(authController.user);
-                int categoriesIndex;
-                if (isStaffRole) {
-                  categoriesIndex = 3; // After Leads and My Tasks
-                } else if (canViewStaff) {
-                  categoriesIndex = 3; // After Leads and Staff
+                if (canViewStaff) {
+                  // Categories is not in bottom bar for admin, navigate via route
+                  Get.toNamed(AppRoutes.CATEGORIES);
                 } else {
-                  categoriesIndex = 2; // After Leads
+                  // Categories is at index 3 when Staff is not visible
+                  setState(() {
+                    _currentIndex = 3;
+                  });
+                  _notchController.jumpTo(3);
                 }
-                setState(() {
-                  _currentIndex = categoriesIndex;
-                });
-                _notchController.jumpTo(categoriesIndex);
               },
             ),
           const Divider(),
@@ -716,20 +636,17 @@ class _HomeViewState extends State<HomeView> {
             title: const Text('Settings'),
             onTap: () {
               Navigator.pop(context);
-              final isStaffRole = _isStaffRole(authController.user);
               final canViewStaff = _canViewStaff(authController.user);
               final canViewCategories = _canViewCategories(authController.user);
-              int settingsIndex;
-              if (isStaffRole) {
-                // Staff: Dashboard(0), Leads(1), MyTasks(2), Categories(3), Settings(4)
-                settingsIndex = canViewCategories ? 4 : 3;
-              } else if (canViewStaff && canViewCategories) {
-                // Admin/Owner: Dashboard(0), Leads(1), Staff(2), Categories(3), Settings(4)
-                settingsIndex = 4;
-              } else if (canViewStaff || canViewCategories) {
-                settingsIndex = 3;
-              } else {
-                settingsIndex = 2;
+              // Settings index depends on what's in bottom bar
+              // For admin with Staff: Dashboard(0), Leads(1), MyTasks(2), Staff(3), Settings(4)
+              // For staff with Categories: Dashboard(0), Leads(1), MyTasks(2), Categories(3), Settings(4)
+              // For staff without Categories: Dashboard(0), Leads(1), MyTasks(2), Settings(3)
+              int settingsIndex = 3; // Base: after My Tasks
+              if (canViewStaff) {
+                settingsIndex = 4; // Staff at 3, Settings at 4
+              } else if (canViewCategories) {
+                settingsIndex = 4; // Categories at 3, Settings at 4
               }
               setState(() {
                 _currentIndex = settingsIndex;

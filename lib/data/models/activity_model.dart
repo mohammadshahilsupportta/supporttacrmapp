@@ -86,13 +86,13 @@ class LeadActivity {
       title: json['title'],
       description: json['description'],
       scheduledAt: json['scheduled_at'] != null
-          ? DateTime.parse(json['scheduled_at'])
+          ? DateTime.parse(json['scheduled_at']).toLocal()
           : null,
       completedAt: json['completed_at'] != null
-          ? DateTime.parse(json['completed_at'])
+          ? DateTime.parse(json['completed_at']).toLocal()
           : null,
       dueDate: json['due_date'] != null
-          ? DateTime.parse(json['due_date'])
+          ? DateTime.parse(json['due_date']).toLocal()
           : null,
       priority: json['priority'] != null
           ? _priorityFromString(json['priority'])
@@ -115,8 +115,8 @@ class LeadActivity {
       metadata: json['metadata'] != null
           ? Map<String, dynamic>.from(json['metadata'])
           : null,
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: DateTime.parse(json['created_at']).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at']).toLocal(),
       performedByUser: json['performed_by_user'] != null
           ? AssignedUser.fromJson(json['performed_by_user'])
           : null,
