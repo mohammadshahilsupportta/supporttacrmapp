@@ -603,6 +603,10 @@ class _LeadDetailViewState extends State<LeadDetailView>
 
           // Additional Information
           if (lead.address != null ||
+              lead.country != null ||
+              lead.state != null ||
+              lead.city != null ||
+              lead.district != null ||
               lead.occupation != null ||
               lead.fieldOfWork != null ||
               lead.source != null) ...[
@@ -1853,6 +1857,10 @@ class _LeadDetailViewState extends State<LeadDetailView>
                   whatsapp: lead.whatsapp,
                   company: lead.company,
                   address: lead.address,
+                  country: lead.country,
+                  state: lead.state,
+                  city: lead.city,
+                  district: lead.district,
                   occupation: lead.occupation,
                   fieldOfWork: lead.fieldOfWork,
                   source: lead.source,
@@ -1954,6 +1962,10 @@ class _LeadDetailViewState extends State<LeadDetailView>
                   whatsapp: lead.whatsapp,
                   company: lead.company,
                   address: lead.address,
+                  country: lead.country,
+                  state: lead.state,
+                  city: lead.city,
+                  district: lead.district,
                   occupation: lead.occupation,
                   fieldOfWork: lead.fieldOfWork,
                   source: lead.source,

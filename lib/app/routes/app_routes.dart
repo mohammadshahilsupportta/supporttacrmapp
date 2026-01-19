@@ -17,4 +17,5 @@ abstract class AppRoutes {
   static const SHOP_INFORMATION = '/shop-information';
   static const HELP_SUPPORT = '/help-support';
   static const SETTINGS = '/settings';
+  static const REPORTS = '/reports';
 }

@@ -27,6 +27,10 @@ class _LeadsListViewState extends State<LeadsListView> {
   String? _selectedCategoryId;
   final Set<LeadStatus> _selectedStatuses = <LeadStatus>{};
   final Set<String> _selectedScoreCategories = <String>{};
+  String? _selectedCountry;
+  String? _selectedState;
+  String? _selectedCity;
+  String? _selectedDistrict;
   Timer? _searchDebounceTimer;
   bool _initialLoadAttempted = false;
 
@@ -135,6 +139,10 @@ class _LeadsListViewState extends State<LeadsListView> {
         scoreCategories: _selectedScoreCategories.isEmpty
             ? null
             : _selectedScoreCategories.toList(),
+        country: _selectedCountry,
+        state: _selectedState,
+        city: _selectedCity,
+        district: _selectedDistrict,
         assignedTo: null, // Always clear assignedTo filter in Leads screen
         createdBy: createdBy, // Filter by createdBy for staff role
       ),
@@ -153,6 +161,10 @@ class _LeadsListViewState extends State<LeadsListView> {
       _selectedCategoryId = null;
       _selectedStatuses.clear();
       _selectedScoreCategories.clear();
+      _selectedCountry = null;
+      _selectedState = null;
+      _selectedCity = null;
+      _selectedDistrict = null;
     });
     // Use silent loading for filter clearing
     _applyFiltersAndLoad(silent: true);
@@ -175,6 +187,47 @@ class _LeadsListViewState extends State<LeadsListView> {
       case LeadSource.other:
         return 'Other';
     }
+  }
+
+  /// Get unique location values from current leads
+  List<String> _getUniqueLocationValues(
+    String type, {
+    String? country,
+    String? state,
+    String? city,
+  }) {
+    final leadController = Get.find<LeadController>();
+    final leads = leadController.leads;
+
+    final values = <String>{};
+    for (final lead in leads) {
+      String? value;
+      switch (type) {
+        case 'country':
+          value = lead.country;
+          break;
+        case 'state':
+          value = lead.state;
+          if (country != null && lead.country != country) continue;
+          break;
+        case 'city':
+          value = lead.city;
+          if (country != null && lead.country != country) continue;
+          if (state != null && lead.state != state) continue;
+          break;
+        case 'district':
+          value = lead.district;
+          if (country != null && lead.country != country) continue;
+          if (state != null && lead.state != state) continue;
+          if (city != null && lead.city != city) continue;
+          break;
+      }
+      if (value != null && value.trim().isNotEmpty) {
+        values.add(value);
+      }
+    }
+    final sorted = values.toList()..sort();
+    return sorted;
   }
 
   String _statusLabel(LeadStatus status) {
@@ -381,7 +434,11 @@ class _LeadsListViewState extends State<LeadsListView> {
         (_selectedCategoryId != null ? 1 : 0) +
         (_selectedSource != null ? 1 : 0) +
         (_searchController.text.isNotEmpty ? 1 : 0) +
-        _selectedScoreCategories.length;
+        _selectedScoreCategories.length +
+        (_selectedCountry != null ? 1 : 0) +
+        (_selectedState != null ? 1 : 0) +
+        (_selectedCity != null ? 1 : 0) +
+        (_selectedDistrict != null ? 1 : 0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -615,6 +672,173 @@ class _LeadsListViewState extends State<LeadsListView> {
           ],
         ),
 
+        // Location Filters
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            // Country Filter
+            SizedBox(
+              width: 120,
+              child: DropdownButtonFormField<String>(
+                value: _selectedCountry,
+                decoration: InputDecoration(
+                  labelText: 'Country',
+                  prefixIcon: const Icon(Icons.public_outlined, size: 18),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  isDense: true,
+                ),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('All Countries', style: TextStyle(fontSize: 12)),
+                  ),
+                  ..._getUniqueLocationValues('country').map(
+                    (country) => DropdownMenuItem<String>(
+                      value: country,
+                      child: Text(country, style: const TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCountry = value;
+                    // Clear dependent filters when country changes
+                    if (value == null) {
+                      _selectedState = null;
+                      _selectedCity = null;
+                      _selectedDistrict = null;
+                    } else {
+                      _selectedState = null;
+                      _selectedCity = null;
+                      _selectedDistrict = null;
+                    }
+                  });
+                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                },
+              ),
+            ),
+            // State Filter
+            SizedBox(
+              width: 120,
+              child: DropdownButtonFormField<String>(
+                value: _selectedState,
+                decoration: InputDecoration(
+                  labelText: 'State',
+                  prefixIcon: const Icon(Icons.map_outlined, size: 18),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  isDense: true,
+                ),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('All States', style: TextStyle(fontSize: 12)),
+                  ),
+                  ..._getUniqueLocationValues('state', country: _selectedCountry).map(
+                    (state) => DropdownMenuItem<String>(
+                      value: state,
+                      child: Text(state, style: const TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedState = value;
+                    // Clear dependent filters when state changes
+                    if (value == null) {
+                      _selectedCity = null;
+                      _selectedDistrict = null;
+                    } else {
+                      _selectedCity = null;
+                      _selectedDistrict = null;
+                    }
+                  });
+                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                },
+              ),
+            ),
+            // City Filter
+            SizedBox(
+              width: 120,
+              child: DropdownButtonFormField<String>(
+                value: _selectedCity,
+                decoration: InputDecoration(
+                  labelText: 'City',
+                  prefixIcon: const Icon(Icons.location_city_outlined, size: 18),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  isDense: true,
+                ),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('All Cities', style: TextStyle(fontSize: 12)),
+                  ),
+                  ..._getUniqueLocationValues('city', country: _selectedCountry, state: _selectedState).map(
+                    (city) => DropdownMenuItem<String>(
+                      value: city,
+                      child: Text(city, style: const TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCity = value;
+                    // Clear dependent filters when city changes
+                    if (value == null) {
+                      _selectedDistrict = null;
+                    } else {
+                      _selectedDistrict = null;
+                    }
+                  });
+                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                },
+              ),
+            ),
+            // District Filter
+            SizedBox(
+              width: 120,
+              child: DropdownButtonFormField<String>(
+                value: _selectedDistrict,
+                decoration: InputDecoration(
+                  labelText: 'District',
+                  prefixIcon: const Icon(Icons.place_outlined, size: 18),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  isDense: true,
+                ),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('All Districts', style: TextStyle(fontSize: 12)),
+                  ),
+                  ..._getUniqueLocationValues('district', country: _selectedCountry, state: _selectedState, city: _selectedCity).map(
+                    (district) => DropdownMenuItem<String>(
+                      value: district,
+                      child: Text(district, style: const TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedDistrict = value);
+                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                },
+              ),
+            ),
+          ],
+        ),
+
         // Active Filters Display - Compact
         if (activeFiltersCount > 0) ...[
           const SizedBox(height: 12),
@@ -695,7 +919,6 @@ class _LeadsListViewState extends State<LeadsListView> {
                         setState(() {
                           _selectedScoreCategories.remove(category);
                         });
-                        // Use Future.microtask to ensure setState completes first, use silent loading
                         Future.microtask(() => _applyFiltersAndLoad(silent: true));
                       },
                       deleteIcon: const Icon(Icons.close, size: 14),
@@ -705,6 +928,90 @@ class _LeadsListViewState extends State<LeadsListView> {
                     ),
                   );
                 }),
+                if (_selectedCountry != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Chip(
+                      label: Text(
+                        'Country: $_selectedCountry',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      onDeleted: () {
+                        setState(() {
+                          _selectedCountry = null;
+                          _selectedState = null;
+                          _selectedCity = null;
+                          _selectedDistrict = null;
+                        });
+                        Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                      },
+                      deleteIcon: const Icon(Icons.close, size: 14),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+                if (_selectedState != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Chip(
+                      label: Text(
+                        'State: $_selectedState',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      onDeleted: () {
+                        setState(() {
+                          _selectedState = null;
+                          _selectedCity = null;
+                          _selectedDistrict = null;
+                        });
+                        Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                      },
+                      deleteIcon: const Icon(Icons.close, size: 14),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+                if (_selectedCity != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Chip(
+                      label: Text(
+                        'City: $_selectedCity',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      onDeleted: () {
+                        setState(() {
+                          _selectedCity = null;
+                          _selectedDistrict = null;
+                        });
+                        Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                      },
+                      deleteIcon: const Icon(Icons.close, size: 14),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+                if (_selectedDistrict != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Chip(
+                      label: Text(
+                        'District: $_selectedDistrict',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      onDeleted: () {
+                        setState(() => _selectedDistrict = null);
+                        Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                      },
+                      deleteIcon: const Icon(Icons.close, size: 14),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
               ],
             ),
           ),

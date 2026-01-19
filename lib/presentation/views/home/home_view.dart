@@ -630,6 +630,15 @@ class _HomeViewState extends State<HomeView> {
                 }
               },
             ),
+          if (_canViewStaff(authController.user))
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Reports'),
+              onTap: () {
+                Navigator.pop(context);
+                Get.toNamed(AppRoutes.REPORTS);
+              },
+            ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.settings),

@@ -117,6 +117,20 @@ class LeadRepository {
             queryBuilder = queryBuilder.inFilter('score_category', categories);
           }
         }
+
+        // Filter by location
+        if (filters.country != null && filters.country!.isNotEmpty) {
+          queryBuilder = queryBuilder.eq('country', filters.country!);
+        }
+        if (filters.state != null && filters.state!.isNotEmpty) {
+          queryBuilder = queryBuilder.eq('state', filters.state!);
+        }
+        if (filters.city != null && filters.city!.isNotEmpty) {
+          queryBuilder = queryBuilder.eq('city', filters.city!);
+        }
+        if (filters.district != null && filters.district!.isNotEmpty) {
+          queryBuilder = queryBuilder.eq('district', filters.district!);
+        }
       }
 
       // Apply sorting (must be after filters, before pagination)

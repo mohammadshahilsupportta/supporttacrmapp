@@ -21,8 +21,10 @@ import '../../presentation/views/settings/settings_view.dart';
 import '../../presentation/views/settings/shop_information_view.dart';
 import '../../presentation/views/settings/help_support_view.dart';
 import '../../presentation/views/profile/profile_view.dart';
+import '../../presentation/views/reports/reports_view.dart';
 import '../bindings/staff_binding.dart';
 import '../bindings/activity_binding.dart';
+import '../bindings/report_binding.dart';
 
 class AppPages {
   static const INITIAL = AppRoutes.SPLASH;
@@ -101,6 +103,11 @@ class AppPages {
     GetPage(name: AppRoutes.PROFILE, page: () => const ProfileView()),
     GetPage(name: AppRoutes.SHOP_INFORMATION, page: () => const ShopInformationView()),
     GetPage(name: AppRoutes.HELP_SUPPORT, page: () => const HelpSupportView()),
+    GetPage(
+      name: AppRoutes.REPORTS,
+      page: () => const ReportsView(),
+      binding: ReportBinding(),
+    ),
     // Add more routes here as needed
   ];
 }

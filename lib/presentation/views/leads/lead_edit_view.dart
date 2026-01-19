@@ -25,6 +25,10 @@ class _LeadEditViewState extends State<LeadEditView> {
   final _whatsappController = TextEditingController();
   final _companyController = TextEditingController();
   final _addressController = TextEditingController();
+  final _countryController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _districtController = TextEditingController();
   final _occupationController = TextEditingController();
   final _fieldOfWorkController = TextEditingController();
   final _notesController = TextEditingController();
@@ -79,6 +83,10 @@ class _LeadEditViewState extends State<LeadEditView> {
         _whatsappController.text = lead.whatsapp ?? '';
         _companyController.text = lead.company ?? '';
         _addressController.text = lead.address ?? '';
+        _countryController.text = lead.country ?? '';
+        _stateController.text = lead.state ?? '';
+        _cityController.text = lead.city ?? '';
+        _districtController.text = lead.district ?? '';
         _occupationController.text = lead.occupation ?? '';
         _fieldOfWorkController.text = lead.fieldOfWork ?? '';
         _notesController.text = lead.notes ?? '';
@@ -106,6 +114,10 @@ class _LeadEditViewState extends State<LeadEditView> {
     _whatsappController.dispose();
     _companyController.dispose();
     _addressController.dispose();
+    _countryController.dispose();
+    _stateController.dispose();
+    _cityController.dispose();
+    _districtController.dispose();
     _occupationController.dispose();
     _fieldOfWorkController.dispose();
     _notesController.dispose();
@@ -153,6 +165,18 @@ class _LeadEditViewState extends State<LeadEditView> {
           : null,
       address: _addressController.text.trim().isNotEmpty
           ? _addressController.text.trim()
+          : null,
+      country: _countryController.text.trim().isNotEmpty
+          ? _countryController.text.trim()
+          : null,
+      state: _stateController.text.trim().isNotEmpty
+          ? _stateController.text.trim()
+          : null,
+      city: _cityController.text.trim().isNotEmpty
+          ? _cityController.text.trim()
+          : null,
+      district: _districtController.text.trim().isNotEmpty
+          ? _districtController.text.trim()
           : null,
       occupation: _occupationController.text.trim().isNotEmpty
           ? _occupationController.text.trim()
@@ -297,6 +321,38 @@ class _LeadEditViewState extends State<LeadEditView> {
                       decoration: const InputDecoration(
                         labelText: 'Address',
                         prefixIcon: Icon(Icons.location_on_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _countryController,
+                      decoration: const InputDecoration(
+                        labelText: 'Country',
+                        prefixIcon: Icon(Icons.public_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _stateController,
+                      decoration: const InputDecoration(
+                        labelText: 'State',
+                        prefixIcon: Icon(Icons.map_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _cityController,
+                      decoration: const InputDecoration(
+                        labelText: 'City',
+                        prefixIcon: Icon(Icons.location_city_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _districtController,
+                      decoration: const InputDecoration(
+                        labelText: 'District',
+                        prefixIcon: Icon(Icons.place_outlined),
                       ),
                     ),
                     const SizedBox(height: 12),

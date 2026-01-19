@@ -13,6 +13,10 @@ class LeadModel {
   final String? whatsapp;
   final String? company;
   final String? address;
+  final String? country;
+  final String? state;
+  final String? city;
+  final String? district;
   final String? occupation;
   final String? fieldOfWork;
   final LeadSource? source;
@@ -37,6 +41,10 @@ class LeadModel {
     this.whatsapp,
     this.company,
     this.address,
+    this.country,
+    this.state,
+    this.city,
+    this.district,
     this.occupation,
     this.fieldOfWork,
     this.source,
@@ -63,6 +71,10 @@ class LeadModel {
       whatsapp: json['whatsapp'],
       company: json['company'],
       address: json['address'],
+      country: json['country'],
+      state: json['state'],
+      city: json['city'],
+      district: json['district'],
       occupation: json['occupation'],
       fieldOfWork: json['field_of_work'],
       source: json['source'] != null ? _sourceFromString(json['source']) : null,
@@ -199,6 +211,10 @@ class LeadModel {
       'whatsapp': whatsapp,
       'company': company,
       'address': address,
+      'country': country,
+      'state': state,
+      'city': city,
+      'district': district,
       'occupation': occupation,
       'field_of_work': fieldOfWork,
       'source': sourceString,
@@ -231,6 +247,10 @@ class LeadWithRelationsModel extends LeadModel {
     super.whatsapp,
     super.company,
     super.address,
+    super.country,
+    super.state,
+    super.city,
+    super.district,
     super.occupation,
     super.fieldOfWork,
     super.source,
@@ -260,6 +280,10 @@ class LeadWithRelationsModel extends LeadModel {
       whatsapp: json['whatsapp'],
       company: json['company'],
       address: json['address'],
+      country: json['country'],
+      state: json['state'],
+      city: json['city'],
+      district: json['district'],
       occupation: json['occupation'],
       fieldOfWork: json['field_of_work'],
       source: json['source'] != null
@@ -331,6 +355,10 @@ class CreateLeadInput {
   final String? whatsapp;
   final String? company;
   final String? address;
+  final String? country;
+  final String? state;
+  final String? city;
+  final String? district;
   final String? occupation;
   final String? fieldOfWork;
   final LeadSource? source;
@@ -347,6 +375,10 @@ class CreateLeadInput {
     this.whatsapp,
     this.company,
     this.address,
+    this.country,
+    this.state,
+    this.city,
+    this.district,
     this.occupation,
     this.fieldOfWork,
     this.source,
@@ -365,6 +397,10 @@ class CreateLeadInput {
       'whatsapp': whatsapp,
       'company': company,
       'address': address,
+      'country': country,
+      'state': state,
+      'city': city,
+      'district': district,
       'occupation': occupation,
       'field_of_work': fieldOfWork,
       'source': source != null ? LeadModel.sourceToString(source!) : null,
@@ -399,6 +435,10 @@ class LeadFilters {
   final DateTime? dateFrom;
   final DateTime? dateTo;
   final List<String>? scoreCategories; // 'hot', 'warm', 'cold', 'unscored'
+  final String? country;
+  final String? state;
+  final String? city;
+  final String? district;
   final LeadSortBy? sortBy;
   final LeadSortOrder? sortOrder;
   final int? limit;
@@ -414,6 +454,10 @@ class LeadFilters {
     this.dateFrom,
     this.dateTo,
     this.scoreCategories,
+    this.country,
+    this.state,
+    this.city,
+    this.district,
     this.sortBy,
     this.sortOrder,
     this.limit,
