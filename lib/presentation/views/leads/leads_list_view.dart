@@ -207,6 +207,291 @@ class _LeadsListViewState extends State<LeadsListView> {
     _applyFiltersAndLoad(silent: true);
   }
 
+  /// Mobile UX: open filters in a bottom sheet instead of inline row of dropdowns.
+  void _openMobileFiltersSheet(BuildContext context) {
+    final authController = Get.find<AuthController>();
+    final leadController = Get.find<LeadController>();
+    final categoryController = Get.find<CategoryController>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        final mediaQuery = MediaQuery.of(context);
+        final bottomInset = mediaQuery.viewInsets.bottom;
+
+        final countryValues = leadController.countries;
+        final stateValues = leadController.states;
+        final cityValues = leadController.cities;
+        final districtValues = leadController.districts;
+        final categories = categoryController.categories;
+
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: bottomInset + 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Filters',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Category
+                DropdownButtonFormField<String>(
+                  value: _selectedCategoryId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All Categories'),
+                    ),
+                    ...categories.map(
+                      (cat) => DropdownMenuItem<String>(
+                        value: cat.id,
+                        child: Text(cat.name),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedCategoryId = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Source
+                DropdownButtonFormField<LeadSource>(
+                  value: _selectedSource,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Source',
+                    prefixIcon: Icon(Icons.filter_alt_outlined),
+                  ),
+                  items: [
+                    const DropdownMenuItem<LeadSource>(
+                      value: null,
+                      child: Text('All Sources'),
+                    ),
+                    ...LeadSource.values.map(
+                      (source) => DropdownMenuItem<LeadSource>(
+                        value: source,
+                        child: Text(_sourceLabel(source)),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedSource = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Country
+                DropdownButtonFormField<String>(
+                  value: _selectedCountry,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Country',
+                    prefixIcon: Icon(Icons.public_outlined),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All Countries'),
+                    ),
+                    ...countryValues.map(
+                      (v) => DropdownMenuItem<String>(
+                        value: v,
+                        child: Text(v),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    final shopId = authController.shop?.id;
+                    setState(() {
+                      _selectedCountry = value?.trim();
+                      _selectedState = null;
+                      _selectedCity = null;
+                      _selectedDistrict = null;
+                    });
+                    leadController.clearLocationOptionsBelowCountry();
+                    if (shopId != null && _selectedCountry != null) {
+                      leadController.loadStates(
+                        shopId,
+                        country: _selectedCountry!,
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // State
+                DropdownButtonFormField<String>(
+                  value: _selectedState,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'State',
+                    prefixIcon: Icon(Icons.map_outlined),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All States'),
+                    ),
+                    ...stateValues.map(
+                      (v) => DropdownMenuItem<String>(
+                        value: v,
+                        child: Text(v),
+                      ),
+                    ),
+                  ],
+                  onChanged: _selectedCountry == null
+                      ? null
+                      : (value) {
+                          final shopId = authController.shop?.id;
+                          setState(() {
+                            _selectedState = value?.trim();
+                            _selectedCity = null;
+                            _selectedDistrict = null;
+                          });
+                          leadController.clearLocationOptionsBelowState();
+                          if (shopId != null &&
+                              _selectedCountry != null &&
+                              _selectedState != null) {
+                            leadController.loadCities(
+                              shopId,
+                              country: _selectedCountry!,
+                              state: _selectedState!,
+                            );
+                          }
+                        },
+                ),
+                const SizedBox(height: 12),
+
+                // City
+                DropdownButtonFormField<String>(
+                  value: _selectedCity,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'City',
+                    prefixIcon: Icon(Icons.location_city_outlined),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All Cities'),
+                    ),
+                    ...cityValues.map(
+                      (v) => DropdownMenuItem<String>(
+                        value: v,
+                        child: Text(v),
+                      ),
+                    ),
+                  ],
+                  onChanged: _selectedState == null
+                      ? null
+                      : (value) {
+                          final shopId = authController.shop?.id;
+                          setState(() {
+                            _selectedCity = value?.trim();
+                            _selectedDistrict = null;
+                          });
+                          leadController.clearLocationOptionsBelowCity();
+                          if (shopId != null &&
+                              _selectedCountry != null &&
+                              _selectedState != null &&
+                              _selectedCity != null) {
+                            leadController.loadDistricts(
+                              shopId,
+                              country: _selectedCountry!,
+                              state: _selectedState!,
+                              city: _selectedCity!,
+                            );
+                          }
+                        },
+                ),
+                const SizedBox(height: 12),
+
+                // District
+                DropdownButtonFormField<String>(
+                  value: _selectedDistrict,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'District',
+                    prefixIcon: Icon(Icons.place_outlined),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All Districts'),
+                    ),
+                    ...districtValues.map(
+                      (v) => DropdownMenuItem<String>(
+                        value: v,
+                        child: Text(v),
+                      ),
+                    ),
+                  ],
+                  onChanged: _selectedCity == null
+                      ? null
+                      : (value) {
+                          setState(() => _selectedDistrict = value?.trim());
+                        },
+                ),
+                const SizedBox(height: 20),
+
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _clearFilters();
+                      },
+                      child: const Text('Clear'),
+                    ),
+                    const Spacer(),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _applyFiltersAndLoad(silent: false);
+                      },
+                      child: const Text('Apply'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   String _sourceLabel(LeadSource source) {
     switch (source) {
       case LeadSource.website:
@@ -522,6 +807,8 @@ class _LeadsListViewState extends State<LeadsListView> {
         (_selectedCity != null ? 1 : 0) +
         (_selectedDistrict != null ? 1 : 0);
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -651,138 +938,164 @@ class _LeadsListViewState extends State<LeadsListView> {
         ),
         const SizedBox(height: 12),
 
-        // Category and Source in single row
-        Row(
-          children: [
-            Expanded(
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  prefixIcon: const Icon(Icons.category_outlined),
-                  filled: true,
-                  fillColor: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .outline
-                          .withOpacity(0.2),
+        // Mobile: show a single Filters button; Desktop/tablet: show inline dropdowns
+        if (isMobile) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 36),
+              ),
+              icon: const Icon(Icons.filter_list, size: 18),
+              label: const Text('Filters'),
+              onPressed: () => _openMobileFiltersSheet(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+        ] else ...[
+          // Category and Source in single row
+          Row(
+            children: [
+              Expanded(
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    prefixIcon: const Icon(Icons.category_outlined),
+                    filled: true,
+                    fillColor: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withOpacity(0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withOpacity(0.2),
+                      ),
                     ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .outline
-                          .withOpacity(0.2),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withOpacity(0.2),
+                      ),
                     ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
                     ),
-                  ),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  constraints: const BoxConstraints(minHeight: 36),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCategoryId,
-                    isExpanded: true,
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('All Categories'),
-                  ),
-                  ...categories.map(
-                    (cat) => DropdownMenuItem<String>(
-                      value: cat.id,
-                      child: Text(cat.name),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
+                    constraints: const BoxConstraints(minHeight: 36),
                   ),
-                ],
-                onChanged: (value) {
-                  setState(() => _selectedCategoryId = value);
-                  // Use Future.microtask to ensure setState completes first, use silent loading
-                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
-                },
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedCategoryId,
+                      isExpanded: true,
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('All Categories'),
+                        ),
+                        ...categories.map(
+                          (cat) => DropdownMenuItem<String>(
+                            value: cat.id,
+                            child: Text(cat.name),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _selectedCategoryId = value);
+                        Future.microtask(
+                            () => _applyFiltersAndLoad(silent: true));
+                      },
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: DropdownButtonFormField<LeadSource>(
-                value: _selectedSource,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: 'Source',
-                  prefixIcon: const Icon(Icons.filter_alt_outlined),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButtonFormField<LeadSource>(
+                  value: _selectedSource,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: 'Source',
+                    prefixIcon: const Icon(Icons.filter_alt_outlined),
+                    filled: true,
+                    fillColor: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withOpacity(0.3),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withOpacity(0.2),
+                      ),
                     ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withOpacity(0.2),
+                      ),
                     ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
                     ),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    constraints: const BoxConstraints(minHeight: 36),
                   ),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  constraints: const BoxConstraints(minHeight: 36),
+                  items: [
+                    const DropdownMenuItem<LeadSource>(
+                      value: null,
+                      child: Text('All Sources'),
+                    ),
+                    ...LeadSource.values.map(
+                      (source) => DropdownMenuItem<LeadSource>(
+                        value: source,
+                        child: Text(_sourceLabel(source)),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedSource = value);
+                    Future.microtask(
+                        () => _applyFiltersAndLoad(silent: true));
+                  },
                 ),
-                items: [
-                  const DropdownMenuItem<LeadSource>(
-                    value: null,
-                    child: Text('All Sources'),
-                  ),
-                  ...LeadSource.values.map(
-                    (source) => DropdownMenuItem<LeadSource>(
-                      value: source,
-                      child: Text(_sourceLabel(source)),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() => _selectedSource = value);
-                  // Use Future.microtask to ensure setState completes first, use silent loading
-                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
-                },
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
 
-        // Location Filters
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
+          // Location Filters (inline only on larger screens)
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
             // Aim for two items per row on small screens, clamp to avoid overflow
             final spacing = 8.0;
             final targetWidth = (constraints.maxWidth - (spacing * 3)) / 2;
@@ -832,13 +1145,13 @@ class _LeadsListViewState extends State<LeadsListView> {
                     prefixIcon: Icon(icon, size: 18),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 6,
+                      vertical: 8,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     isDense: true,
-                    constraints: const BoxConstraints(minHeight: 32),
+                    constraints: const BoxConstraints(minHeight: 36),
                     enabled: enabled,
                   ),
                   child: DropdownButtonHideUnderline(
@@ -998,6 +1311,7 @@ class _LeadsListViewState extends State<LeadsListView> {
             });
           },
         ),
+        ],
 
         // Active Filters Display - Compact
         if (activeFiltersCount > 0) ...[
