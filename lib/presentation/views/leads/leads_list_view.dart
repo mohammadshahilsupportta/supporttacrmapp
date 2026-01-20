@@ -34,6 +34,32 @@ class _LeadsListViewState extends State<LeadsListView> {
   Timer? _searchDebounceTimer;
   bool _initialLoadAttempted = false;
 
+  // Normalizes user-entered / backend-provided location values so visually-identical
+  // strings (e.g. "India", "India\u00A0", "India\u200B") don't produce duplicate dropdown items.
+  String _normalizeLocationValue(String input) {
+    var s = input;
+
+    // 1) Remove all Unicode "format" characters (Cf) like ZWSP/ZWNJ/ZWJ/LRM/RLM/etc.
+    // These often cause visually identical strings to compare unequal.
+    s = s.replaceAll(RegExp(r'\p{Cf}+', unicode: true), '');
+
+    // 2) Convert all "weird spaces" (NBSP and other Unicode space separators) to normal spaces.
+    s = s.replaceAll(
+      RegExp(r'[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]'),
+      ' ',
+    );
+
+    // 3) Remove BOM if present.
+    s = s.replaceAll('\uFEFF', '');
+
+    // 4) Collapse any whitespace runs (tabs/newlines/multiple spaces) to a single space.
+    s = s.replaceAll(RegExp(r'\s+'), ' ');
+
+    return s.trim();
+  }
+
+  String _locationKey(String input) => _normalizeLocationValue(input).toLowerCase();
+
   bool _isStaffRole(AuthController authController) {
     final user = authController.user;
     if (user == null) return false;
@@ -61,6 +87,11 @@ class _LeadsListViewState extends State<LeadsListView> {
     // Load data on first frame - always attempt load on first mount
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _attemptInitialLoad(authController);
+      // Load distinct location values for dropdowns (website-style)
+      final leadController = Get.find<LeadController>();
+      if (authController.shop != null) {
+        leadController.loadCountries(authController.shop!.id);
+      }
     });
   }
 
@@ -77,6 +108,12 @@ class _LeadsListViewState extends State<LeadsListView> {
       // Always load on first mount, regardless of current state
       _applyFiltersAndLoad(silent: false); // Use non-silent for initial load to show loading
       _initialLoadAttempted = true;
+
+      // Load distinct location values for dropdowns (website-style)
+      final leadController = Get.find<LeadController>();
+      if (leadController.countries.isEmpty && !leadController.isLoadingLocations) {
+        leadController.loadCountries(authController.shop!.id);
+      }
       
       final categoryController = Get.find<CategoryController>();
       if (categoryController.categories.isEmpty) {
@@ -189,8 +226,9 @@ class _LeadsListViewState extends State<LeadsListView> {
     }
   }
 
-  /// Get unique location values from current leads
-  List<String> _getUniqueLocationValues(
+  /// Fallback: Get unique location values from currently loaded leads.
+  /// Used when the Supabase distinct queries haven't returned any data yet.
+  List<String> _getUniqueLocationValuesFromLeads(
     String type, {
     String? country,
     String? state,
@@ -199,7 +237,7 @@ class _LeadsListViewState extends State<LeadsListView> {
     final leadController = Get.find<LeadController>();
     final leads = leadController.leads;
 
-    final values = <String>{};
+    final valueSet = <String>{};
     for (final lead in leads) {
       String? value;
       switch (type) {
@@ -207,27 +245,45 @@ class _LeadsListViewState extends State<LeadsListView> {
           value = lead.country;
           break;
         case 'state':
+          if (country != null &&
+              _locationKey(lead.country ?? '') != _locationKey(country)) {
+            continue;
+          }
           value = lead.state;
-          if (country != null && lead.country != country) continue;
           break;
         case 'city':
+          if (country != null &&
+              _locationKey(lead.country ?? '') != _locationKey(country)) {
+            continue;
+          }
+          if (state != null &&
+              _locationKey(lead.state ?? '') != _locationKey(state)) {
+            continue;
+          }
           value = lead.city;
-          if (country != null && lead.country != country) continue;
-          if (state != null && lead.state != state) continue;
           break;
         case 'district':
+          if (country != null &&
+              _locationKey(lead.country ?? '') != _locationKey(country)) {
+            continue;
+          }
+          if (state != null &&
+              _locationKey(lead.state ?? '') != _locationKey(state)) {
+            continue;
+          }
+          if (city != null &&
+              _locationKey(lead.city ?? '') != _locationKey(city)) {
+            continue;
+          }
           value = lead.district;
-          if (country != null && lead.country != country) continue;
-          if (state != null && lead.state != state) continue;
-          if (city != null && lead.city != city) continue;
           break;
       }
-      if (value != null && value.trim().isNotEmpty) {
-        values.add(value);
+      if (value != null && _normalizeLocationValue(value).isNotEmpty) {
+        valueSet.add(_normalizeLocationValue(value));
       }
     }
-    final sorted = values.toList()..sort();
-    return sorted;
+    final list = valueSet.toList()..sort();
+    return list;
   }
 
   String _statusLabel(LeadStatus status) {
@@ -262,6 +318,18 @@ class _LeadsListViewState extends State<LeadsListView> {
     
     // Always ensure filters are correct for Leads screen
     final leadController = Get.find<LeadController>();
+
+    // Ensure location dropdown values load once shop is available (IndexedStack-safe)
+    if (authController.shop != null &&
+        leadController.countries.isEmpty &&
+        !leadController.isLoadingLocations) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && authController.shop != null) {
+          leadController.loadCountries(authController.shop!.id);
+        }
+      });
+    }
+
     final currentFilters = leadController.filters;
     final isStaffRole = _isStaffRole(authController);
     final shouldHaveCreatedBy = isStaffRole && authController.user != null 
@@ -573,24 +641,31 @@ class _LeadsListViewState extends State<LeadsListView> {
         Row(
           children: [
             Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _selectedCategoryId,
-                isExpanded: true,
+              child: InputDecorator(
                 decoration: InputDecoration(
                   labelText: 'Category',
                   prefixIcon: const Icon(Icons.category_outlined),
                   filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  fillColor: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withOpacity(0.3),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withOpacity(0.2),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withOpacity(0.2),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -600,24 +675,36 @@ class _LeadsListViewState extends State<LeadsListView> {
                       width: 2,
                     ),
                   ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  constraints: const BoxConstraints(minHeight: 36),
                 ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('All Categories'),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedCategoryId,
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('All Categories'),
+                      ),
+                      ...categories.map(
+                        (cat) => DropdownMenuItem<String>(
+                          value: cat.id,
+                          child: Text(cat.name),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _selectedCategoryId = value);
+                      // Use Future.microtask to ensure setState completes first, use silent loading
+                      Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                    },
                   ),
-                  ...categories.map(
-                    (cat) => DropdownMenuItem<String>(
-                      value: cat.id,
-                      child: Text(cat.name),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() => _selectedCategoryId = value);
-                  // Use Future.microtask to ensure setState completes first, use silent loading
-                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
-                },
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -649,6 +736,12 @@ class _LeadsListViewState extends State<LeadsListView> {
                       width: 2,
                     ),
                   ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  constraints: const BoxConstraints(minHeight: 36),
                 ),
                 items: [
                   const DropdownMenuItem<LeadSource>(
@@ -674,169 +767,215 @@ class _LeadsListViewState extends State<LeadsListView> {
 
         // Location Filters
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            // Country Filter
-            SizedBox(
-              width: 120,
-              child: DropdownButtonFormField<String>(
-                value: _selectedCountry,
-                decoration: InputDecoration(
-                  labelText: 'Country',
-                  prefixIcon: const Icon(Icons.public_outlined, size: 18),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Aim for two items per row on small screens, clamp to avoid overflow
+            final spacing = 8.0;
+            final targetWidth = (constraints.maxWidth - (spacing * 3)) / 2;
+            final itemWidth = targetWidth.clamp(140.0, 260.0);
+
+            Widget buildLocationDropdown({
+              required String label,
+              required List<String> values,
+              required IconData icon,
+              required ValueChanged<String?> onChanged,
+            }) {
+              // Step 1: Normalize and deduplicate ALL input values using a Set
+              final normalizedSet = <String>{};
+              for (final item in values) {
+                final normalized = _normalizeLocationValue(item);
+                if (normalized.isNotEmpty) {
+                  normalizedSet.add(normalized);
+                }
+              }
+
+              // Step 2: Convert to sorted list for display
+              final uniqueValues = normalizedSet.toList()..sort();
+
+              // Step 3: Build items list
+              final items = <DropdownMenuItem<String>>[
+                DropdownMenuItem<String>(
+                  value: null,
+                  child: Text(
+                    'All $label${label.endsWith('y') ? 'ies' : 's'}',
+                    style: const TextStyle(fontSize: 12),
                   ),
-                  isDense: true,
                 ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('All Countries', style: TextStyle(fontSize: 12)),
+                ...uniqueValues.map(
+                  (v) => DropdownMenuItem<String>(
+                    value: v,
+                    child: Text(v, style: const TextStyle(fontSize: 12)),
                   ),
-                  ..._getUniqueLocationValues('country').map(
-                    (country) => DropdownMenuItem<String>(
-                      value: country,
-                      child: Text(country, style: const TextStyle(fontSize: 12)),
+                ),
+              ];
+
+              return SizedBox(
+                width: itemWidth,
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: label,
+                    prefixIcon: Icon(icon, size: 18),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    isDense: true,
+                    constraints: const BoxConstraints(minHeight: 32),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: null, // always null to avoid assertion
+                      isExpanded: true,
+                      items: items,
+                      onChanged: onChanged,
                     ),
                   ),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCountry = value;
-                    // Clear dependent filters when country changes
-                    if (value == null) {
-                      _selectedState = null;
-                      _selectedCity = null;
-                      _selectedDistrict = null;
-                    } else {
-                      _selectedState = null;
-                      _selectedCity = null;
-                      _selectedDistrict = null;
-                    }
-                  });
-                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
-                },
-              ),
-            ),
-            // State Filter
-            SizedBox(
-              width: 120,
-              child: DropdownButtonFormField<String>(
-                value: _selectedState,
-                decoration: InputDecoration(
-                  labelText: 'State',
-                  prefixIcon: const Icon(Icons.map_outlined, size: 18),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  isDense: true,
                 ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('All States', style: TextStyle(fontSize: 12)),
-                  ),
-                  ..._getUniqueLocationValues('state', country: _selectedCountry).map(
-                    (state) => DropdownMenuItem<String>(
-                      value: state,
-                      child: Text(state, style: const TextStyle(fontSize: 12)),
-                    ),
-                  ),
+              );
+            }
+
+            return Obx(() {
+              final leadController = Get.find<LeadController>();
+              final countryValues = leadController.countries.isNotEmpty
+                  ? leadController.countries
+                  : _getUniqueLocationValuesFromLeads('country');
+              final stateValues = leadController.states.isNotEmpty
+                  ? leadController.states
+                  : _getUniqueLocationValuesFromLeads(
+                      'state',
+                      country: _selectedCountry,
+                    );
+              final cityValues = leadController.cities.isNotEmpty
+                  ? leadController.cities
+                  : _getUniqueLocationValuesFromLeads(
+                      'city',
+                      country: _selectedCountry,
+                      state: _selectedState,
+                    );
+              final districtValues = leadController.districts.isNotEmpty
+                  ? leadController.districts
+                  : _getUniqueLocationValuesFromLeads(
+                      'district',
+                      country: _selectedCountry,
+                      state: _selectedState,
+                      city: _selectedCity,
+                    );
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  // Country Filter
+                  () {
+                    return buildLocationDropdown(
+                      label: 'Country',
+                      values: countryValues,
+                      icon: Icons.public_outlined,
+                      onChanged: (value) {
+                        final authController = Get.find<AuthController>();
+                        final leadController = Get.find<LeadController>();
+                        setState(() {
+                          _selectedCountry =
+                              value == null ? null : _normalizeLocationValue(value);
+                          _selectedState = null;
+                          _selectedCity = null;
+                          _selectedDistrict = null;
+                        });
+                        leadController.clearLocationOptionsBelowCountry();
+                        if (authController.shop != null &&
+                            _selectedCountry != null) {
+                          leadController.loadStates(
+                            authController.shop!.id,
+                            country: _selectedCountry!,
+                          );
+                        }
+                        Future.microtask(
+                            () => _applyFiltersAndLoad(silent: true));
+                      },
+                    );
+                  }(),
+                  // State Filter
+                  () {
+                    return buildLocationDropdown(
+                      label: 'State',
+                      values: stateValues,
+                      icon: Icons.map_outlined,
+                      onChanged: (value) {
+                        final authController = Get.find<AuthController>();
+                        final leadController = Get.find<LeadController>();
+                        setState(() {
+                          _selectedState =
+                              value == null ? null : _normalizeLocationValue(value);
+                          _selectedCity = null;
+                          _selectedDistrict = null;
+                        });
+                        leadController.clearLocationOptionsBelowState();
+                        if (authController.shop != null &&
+                            _selectedCountry != null &&
+                            _selectedState != null) {
+                          leadController.loadCities(
+                            authController.shop!.id,
+                            country: _selectedCountry!,
+                            state: _selectedState!,
+                          );
+                        }
+                        Future.microtask(
+                            () => _applyFiltersAndLoad(silent: true));
+                      },
+                    );
+                  }(),
+                  // City Filter
+                  () {
+                    return buildLocationDropdown(
+                      label: 'City',
+                      values: cityValues,
+                      icon: Icons.location_city_outlined,
+                      onChanged: (value) {
+                        final authController = Get.find<AuthController>();
+                        final leadController = Get.find<LeadController>();
+                        setState(() {
+                          _selectedCity =
+                              value == null ? null : _normalizeLocationValue(value);
+                          _selectedDistrict = null;
+                        });
+                        leadController.clearLocationOptionsBelowCity();
+                        if (authController.shop != null &&
+                            _selectedCountry != null &&
+                            _selectedState != null &&
+                            _selectedCity != null) {
+                          leadController.loadDistricts(
+                            authController.shop!.id,
+                            country: _selectedCountry!,
+                            state: _selectedState!,
+                            city: _selectedCity!,
+                          );
+                        }
+                        Future.microtask(
+                            () => _applyFiltersAndLoad(silent: true));
+                      },
+                    );
+                  }(),
+                  // District Filter
+                  () {
+                    return buildLocationDropdown(
+                      label: 'District',
+                      values: districtValues,
+                      icon: Icons.place_outlined,
+                      onChanged: (value) {
+                        setState(() => _selectedDistrict =
+                            value == null ? null : _normalizeLocationValue(value));
+                        Future.microtask(
+                            () => _applyFiltersAndLoad(silent: true));
+                      },
+                    );
+                  }(),
                 ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedState = value;
-                    // Clear dependent filters when state changes
-                    if (value == null) {
-                      _selectedCity = null;
-                      _selectedDistrict = null;
-                    } else {
-                      _selectedCity = null;
-                      _selectedDistrict = null;
-                    }
-                  });
-                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
-                },
-              ),
-            ),
-            // City Filter
-            SizedBox(
-              width: 120,
-              child: DropdownButtonFormField<String>(
-                value: _selectedCity,
-                decoration: InputDecoration(
-                  labelText: 'City',
-                  prefixIcon: const Icon(Icons.location_city_outlined, size: 18),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  isDense: true,
-                ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('All Cities', style: TextStyle(fontSize: 12)),
-                  ),
-                  ..._getUniqueLocationValues('city', country: _selectedCountry, state: _selectedState).map(
-                    (city) => DropdownMenuItem<String>(
-                      value: city,
-                      child: Text(city, style: const TextStyle(fontSize: 12)),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCity = value;
-                    // Clear dependent filters when city changes
-                    if (value == null) {
-                      _selectedDistrict = null;
-                    } else {
-                      _selectedDistrict = null;
-                    }
-                  });
-                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
-                },
-              ),
-            ),
-            // District Filter
-            SizedBox(
-              width: 120,
-              child: DropdownButtonFormField<String>(
-                value: _selectedDistrict,
-                decoration: InputDecoration(
-                  labelText: 'District',
-                  prefixIcon: const Icon(Icons.place_outlined, size: 18),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  isDense: true,
-                ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('All Districts', style: TextStyle(fontSize: 12)),
-                  ),
-                  ..._getUniqueLocationValues('district', country: _selectedCountry, state: _selectedState, city: _selectedCity).map(
-                    (district) => DropdownMenuItem<String>(
-                      value: district,
-                      child: Text(district, style: const TextStyle(fontSize: 12)),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() => _selectedDistrict = value);
-                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
-                },
-              ),
-            ),
-          ],
+              );
+            });
+          },
         ),
 
         // Active Filters Display - Compact

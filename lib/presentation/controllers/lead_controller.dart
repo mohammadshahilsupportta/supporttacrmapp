@@ -18,6 +18,13 @@ class LeadController extends GetxController {
   final _currentOffset = 0.obs;
   static const int _pageSize = 20;
 
+  // Location dropdown values (fetched distinct from DB, like website)
+  final _countries = <String>[].obs;
+  final _states = <String>[].obs;
+  final _cities = <String>[].obs;
+  final _districts = <String>[].obs;
+  final _isLoadingLocations = false.obs;
+
   // Getters
   List<LeadWithRelationsModel> get leads => _leads;
   bool get isLoading => _isLoading.value;
@@ -27,6 +34,11 @@ class LeadController extends GetxController {
   LeadWithRelationsModel? get selectedLead => _selectedLead.value;
   LeadFilters? get filters => _filters.value;
   LeadStats? get stats => _stats.value;
+  List<String> get countries => _countries;
+  List<String> get states => _states;
+  List<String> get cities => _cities;
+  List<String> get districts => _districts;
+  bool get isLoadingLocations => _isLoadingLocations.value;
 
   // Set filters (resets pagination)
   void setFilters(LeadFilters? filters) {
@@ -60,6 +72,10 @@ class LeadController extends GetxController {
         dateFrom: _filters.value?.dateFrom,
         dateTo: _filters.value?.dateTo,
         scoreCategories: _filters.value?.scoreCategories,
+        country: _filters.value?.country,
+        state: _filters.value?.state,
+        city: _filters.value?.city,
+        district: _filters.value?.district,
         sortBy: _filters.value?.sortBy,
         sortOrder: _filters.value?.sortOrder,
         limit: _pageSize,
@@ -104,6 +120,10 @@ class LeadController extends GetxController {
         dateFrom: _filters.value?.dateFrom,
         dateTo: _filters.value?.dateTo,
         scoreCategories: _filters.value?.scoreCategories,
+        country: _filters.value?.country,
+        state: _filters.value?.state,
+        city: _filters.value?.city,
+        district: _filters.value?.district,
         sortBy: _filters.value?.sortBy,
         sortOrder: _filters.value?.sortOrder,
         limit: _pageSize,
@@ -215,6 +235,77 @@ class LeadController extends GetxController {
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
     }
+  }
+
+  // Load distinct location values (like website)
+  Future<void> loadCountries(String shopId) async {
+    _isLoadingLocations.value = true;
+    try {
+      final result = await _viewModel.getLocationValues(shopId, type: 'country');
+      _countries.assignAll(result);
+    } finally {
+      _isLoadingLocations.value = false;
+    }
+  }
+
+  Future<void> loadStates(String shopId, {required String country}) async {
+    _isLoadingLocations.value = true;
+    try {
+      final result = await _viewModel.getLocationValues(
+        shopId,
+        type: 'state',
+        country: country,
+      );
+      _states.assignAll(result);
+    } finally {
+      _isLoadingLocations.value = false;
+    }
+  }
+
+  Future<void> loadCities(String shopId, {required String country, required String state}) async {
+    _isLoadingLocations.value = true;
+    try {
+      final result = await _viewModel.getLocationValues(
+        shopId,
+        type: 'city',
+        country: country,
+        state: state,
+      );
+      _cities.assignAll(result);
+    } finally {
+      _isLoadingLocations.value = false;
+    }
+  }
+
+  Future<void> loadDistricts(String shopId, {required String country, required String state, required String city}) async {
+    _isLoadingLocations.value = true;
+    try {
+      final result = await _viewModel.getLocationValues(
+        shopId,
+        type: 'district',
+        country: country,
+        state: state,
+        city: city,
+      );
+      _districts.assignAll(result);
+    } finally {
+      _isLoadingLocations.value = false;
+    }
+  }
+
+  void clearLocationOptionsBelowCountry() {
+    _states.clear();
+    _cities.clear();
+    _districts.clear();
+  }
+
+  void clearLocationOptionsBelowState() {
+    _cities.clear();
+    _districts.clear();
+  }
+
+  void clearLocationOptionsBelowCity() {
+    _districts.clear();
   }
 }
 

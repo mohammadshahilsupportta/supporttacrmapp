@@ -5,6 +5,65 @@ import '../../core/utils/helpers.dart';
 import 'lead_repository_helper.dart';
 
 class LeadRepository {
+  // Get unique location values (country, state, city, district) for dropdown filters
+  // Mirrors the website logic (distinct values from DB with cascading filters).
+  Future<List<String>> getLocationValues(
+    String shopId, {
+    required String type, // 'country' | 'state' | 'city' | 'district'
+    String? country,
+    String? state,
+    String? city,
+  }) async {
+    try {
+      if (!<String>['country', 'state', 'city', 'district'].contains(type)) {
+        throw Exception('Invalid location type: $type');
+      }
+
+      dynamic query = SupabaseService.from('leads')
+          .select(type)
+          .eq('shop_id', shopId)
+          .isFilter('deleted_at', null)
+          .not(type, 'is', null);
+
+      // Cascading filters (exact match like website endpoint)
+      if (type == 'state' && country != null && country.trim().isNotEmpty) {
+        query = query.eq('country', country.trim());
+      }
+      if (type == 'city' && state != null && state.trim().isNotEmpty) {
+        query = query.eq('state', state.trim());
+        if (country != null && country.trim().isNotEmpty) {
+          query = query.eq('country', country.trim());
+        }
+      }
+      if (type == 'district' && city != null && city.trim().isNotEmpty) {
+        query = query.eq('city', city.trim());
+        if (state != null && state.trim().isNotEmpty) {
+          query = query.eq('state', state.trim());
+        }
+        if (country != null && country.trim().isNotEmpty) {
+          query = query.eq('country', country.trim());
+        }
+      }
+
+      query = query.order(type, ascending: true);
+      final data = await query as List<dynamic>? ?? [];
+
+      final set = <String>{};
+      for (final row in data) {
+        final map = row as Map<String, dynamic>;
+        final v = map[type];
+        if (v is String) {
+          final trimmed = v.trim();
+          if (trimmed.isNotEmpty) set.add(trimmed);
+        }
+      }
+      final result = set.toList()..sort();
+      return result;
+    } catch (e) {
+      throw Helpers.handleError(e);
+    }
+  }
+
   // Get all leads with filters (server-side filtering and pagination)
   Future<List<LeadWithRelationsModel>> findAll(
     String shopId, {
@@ -118,18 +177,22 @@ class LeadRepository {
           }
         }
 
-        // Filter by location
+        // Filter by location (using ilike for partial matching like website)
         if (filters.country != null && filters.country!.isNotEmpty) {
-          queryBuilder = queryBuilder.eq('country', filters.country!);
+          final countryTerm = '%${filters.country!.trim()}%';
+          queryBuilder = queryBuilder.ilike('country', countryTerm);
         }
         if (filters.state != null && filters.state!.isNotEmpty) {
-          queryBuilder = queryBuilder.eq('state', filters.state!);
+          final stateTerm = '%${filters.state!.trim()}%';
+          queryBuilder = queryBuilder.ilike('state', stateTerm);
         }
         if (filters.city != null && filters.city!.isNotEmpty) {
-          queryBuilder = queryBuilder.eq('city', filters.city!);
+          final cityTerm = '%${filters.city!.trim()}%';
+          queryBuilder = queryBuilder.ilike('city', cityTerm);
         }
         if (filters.district != null && filters.district!.isNotEmpty) {
-          queryBuilder = queryBuilder.eq('district', filters.district!);
+          final districtTerm = '%${filters.district!.trim()}%';
+          queryBuilder = queryBuilder.ilike('district', districtTerm);
         }
       }
 

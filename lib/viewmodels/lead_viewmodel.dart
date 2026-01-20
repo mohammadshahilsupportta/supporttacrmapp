@@ -46,4 +46,21 @@ class LeadViewModel {
   Future<LeadStats> getStats(String shopId) async {
     return await _repository.getStats(shopId);
   }
+
+  // Get unique location values for filter dropdowns (country/state/city/district)
+  Future<List<String>> getLocationValues(
+    String shopId, {
+    required String type,
+    String? country,
+    String? state,
+    String? city,
+  }) async {
+    return await _repository.getLocationValues(
+      shopId,
+      type: type,
+      country: country,
+      state: state,
+      city: city,
+    );
+  }
 }
