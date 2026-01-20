@@ -686,23 +686,23 @@ class _LeadsListViewState extends State<LeadsListView> {
                   child: DropdownButton<String>(
                     value: _selectedCategoryId,
                     isExpanded: true,
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('All Categories'),
-                      ),
-                      ...categories.map(
-                        (cat) => DropdownMenuItem<String>(
-                          value: cat.id,
-                          child: Text(cat.name),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() => _selectedCategoryId = value);
-                      // Use Future.microtask to ensure setState completes first, use silent loading
-                      Future.microtask(() => _applyFiltersAndLoad(silent: true));
-                    },
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('All Categories'),
+                  ),
+                  ...categories.map(
+                    (cat) => DropdownMenuItem<String>(
+                      value: cat.id,
+                      child: Text(cat.name),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedCategoryId = value);
+                  // Use Future.microtask to ensure setState completes first, use silent loading
+                  Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                },
                   ),
                 ),
               ),
@@ -779,6 +779,7 @@ class _LeadsListViewState extends State<LeadsListView> {
               required List<String> values,
               required IconData icon,
               required ValueChanged<String?> onChanged,
+              required bool enabled,
             }) {
               // Step 1: Normalize and deduplicate ALL input values using a Set
               final normalizedSet = <String>{};
@@ -786,8 +787,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                 final normalized = _normalizeLocationValue(item);
                 if (normalized.isNotEmpty) {
                   normalizedSet.add(normalized);
+                  }
                 }
-              }
 
               // Step 2: Convert to sorted list for display
               final uniqueValues = normalizedSet.toList()..sort();
@@ -808,7 +809,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                   ),
                 ),
               ];
-
+              
               return SizedBox(
                 width: itemWidth,
                 child: InputDecorator(
@@ -824,13 +825,14 @@ class _LeadsListViewState extends State<LeadsListView> {
                     ),
                     isDense: true,
                     constraints: const BoxConstraints(minHeight: 32),
+                    enabled: enabled,
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: null, // always null to avoid assertion
                       isExpanded: true,
                       items: items,
-                      onChanged: onChanged,
+                      onChanged: enabled ? onChanged : null,
                     ),
                   ),
                 ),
@@ -864,116 +866,121 @@ class _LeadsListViewState extends State<LeadsListView> {
                       city: _selectedCity,
                     );
 
-              return Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
-                children: [
-                  // Country Filter
-                  () {
-                    return buildLocationDropdown(
-                      label: 'Country',
-                      values: countryValues,
-                      icon: Icons.public_outlined,
-                      onChanged: (value) {
-                        final authController = Get.find<AuthController>();
-                        final leadController = Get.find<LeadController>();
-                        setState(() {
-                          _selectedCountry =
-                              value == null ? null : _normalizeLocationValue(value);
-                          _selectedState = null;
-                          _selectedCity = null;
-                          _selectedDistrict = null;
-                        });
-                        leadController.clearLocationOptionsBelowCountry();
-                        if (authController.shop != null &&
-                            _selectedCountry != null) {
-                          leadController.loadStates(
-                            authController.shop!.id,
-                            country: _selectedCountry!,
-                          );
-                        }
-                        Future.microtask(
-                            () => _applyFiltersAndLoad(silent: true));
-                      },
-                    );
-                  }(),
-                  // State Filter
-                  () {
-                    return buildLocationDropdown(
-                      label: 'State',
-                      values: stateValues,
-                      icon: Icons.map_outlined,
-                      onChanged: (value) {
-                        final authController = Get.find<AuthController>();
-                        final leadController = Get.find<LeadController>();
-                        setState(() {
-                          _selectedState =
-                              value == null ? null : _normalizeLocationValue(value);
-                          _selectedCity = null;
-                          _selectedDistrict = null;
-                        });
-                        leadController.clearLocationOptionsBelowState();
-                        if (authController.shop != null &&
-                            _selectedCountry != null &&
-                            _selectedState != null) {
-                          leadController.loadCities(
-                            authController.shop!.id,
-                            country: _selectedCountry!,
-                            state: _selectedState!,
-                          );
-                        }
-                        Future.microtask(
-                            () => _applyFiltersAndLoad(silent: true));
-                      },
-                    );
-                  }(),
-                  // City Filter
-                  () {
-                    return buildLocationDropdown(
-                      label: 'City',
-                      values: cityValues,
-                      icon: Icons.location_city_outlined,
-                      onChanged: (value) {
-                        final authController = Get.find<AuthController>();
-                        final leadController = Get.find<LeadController>();
-                        setState(() {
-                          _selectedCity =
-                              value == null ? null : _normalizeLocationValue(value);
-                          _selectedDistrict = null;
-                        });
-                        leadController.clearLocationOptionsBelowCity();
-                        if (authController.shop != null &&
-                            _selectedCountry != null &&
-                            _selectedState != null &&
-                            _selectedCity != null) {
-                          leadController.loadDistricts(
-                            authController.shop!.id,
-                            country: _selectedCountry!,
-                            state: _selectedState!,
-                            city: _selectedCity!,
-                          );
-                        }
-                        Future.microtask(
-                            () => _applyFiltersAndLoad(silent: true));
-                      },
-                    );
-                  }(),
-                  // District Filter
-                  () {
-                    return buildLocationDropdown(
-                      label: 'District',
-                      values: districtValues,
-                      icon: Icons.place_outlined,
-                      onChanged: (value) {
-                        setState(() => _selectedDistrict =
-                            value == null ? null : _normalizeLocationValue(value));
-                        Future.microtask(
-                            () => _applyFiltersAndLoad(silent: true));
-                      },
-                    );
-                  }(),
-                ],
-              );
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                // Country Filter (always enabled)
+                () {
+                  final authController = Get.find<AuthController>();
+                  final leadController = Get.find<LeadController>();
+                  return buildLocationDropdown(
+                    label: 'Country',
+                    values: countryValues,
+                    icon: Icons.public_outlined,
+                    enabled: true,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCountry =
+                            value == null ? null : _normalizeLocationValue(value);
+                        _selectedState = null;
+                        _selectedCity = null;
+                        _selectedDistrict = null;
+                      });
+                      leadController.clearLocationOptionsBelowCountry();
+                      final shopId = authController.shop?.id;
+                      if (shopId != null && _selectedCountry != null) {
+                        leadController.loadStates(
+                          shopId,
+                          country: _selectedCountry!,
+                        );
+                      }
+                      Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                    },
+                  );
+                }(),
+                // State Filter (enabled only if country is selected)
+                () {
+                  final authController = Get.find<AuthController>();
+                  final leadController = Get.find<LeadController>();
+                  final enabled = _selectedCountry != null;
+                  return buildLocationDropdown(
+                    label: 'State',
+                    values: stateValues,
+                    icon: Icons.map_outlined,
+                    enabled: enabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedState =
+                            value == null ? null : _normalizeLocationValue(value);
+                        _selectedCity = null;
+                        _selectedDistrict = null;
+                      });
+                      leadController.clearLocationOptionsBelowState();
+                      final shopId = authController.shop?.id;
+                      if (shopId != null &&
+                          _selectedCountry != null &&
+                          _selectedState != null) {
+                        leadController.loadCities(
+                          shopId,
+                          country: _selectedCountry!,
+                          state: _selectedState!,
+                        );
+                      }
+                      Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                    },
+                  );
+                }(),
+                // City Filter (enabled only if state is selected)
+                () {
+                  final authController = Get.find<AuthController>();
+                  final leadController = Get.find<LeadController>();
+                  final enabled = _selectedState != null;
+                  return buildLocationDropdown(
+                    label: 'City',
+                    values: cityValues,
+                    icon: Icons.location_city_outlined,
+                    enabled: enabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCity =
+                            value == null ? null : _normalizeLocationValue(value);
+                        _selectedDistrict = null;
+                      });
+                      leadController.clearLocationOptionsBelowCity();
+                      final shopId = authController.shop?.id;
+                      if (shopId != null &&
+                          _selectedCountry != null &&
+                          _selectedState != null &&
+                          _selectedCity != null) {
+                        leadController.loadDistricts(
+                          shopId,
+                          country: _selectedCountry!,
+                          state: _selectedState!,
+                          city: _selectedCity!,
+                        );
+                      }
+                      Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                    },
+                  );
+                }(),
+                // District Filter (enabled only if city is selected)
+                () {
+                  final enabled = _selectedCity != null;
+                  return buildLocationDropdown(
+                    label: 'District',
+                    values: districtValues,
+                    icon: Icons.place_outlined,
+                    enabled: enabled,
+                    onChanged: (value) {
+                      setState(() => _selectedDistrict =
+                          value == null ? null : _normalizeLocationValue(value));
+                      Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                    },
+                  );
+                }(),
+              ],
+            );
             });
           },
         ),
