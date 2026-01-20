@@ -226,6 +226,20 @@ class _LeadsListViewState extends State<LeadsListView> {
     }
   }
 
+  /// Properly pluralize location labels for dropdown "All X" options
+  String _pluralLabel(String singular) {
+    final lower = singular.toLowerCase();
+    if (lower == 'country') return 'Countries';
+    if (lower == 'city') return 'Cities';
+    if (lower == 'state') return 'States';
+    if (lower == 'district') return 'Districts';
+    // Fallback: basic English rule
+    if (singular.endsWith('y')) {
+      return '${singular.substring(0, singular.length - 1)}ies';
+    }
+    return '${singular}s';
+  }
+
   /// Fallback: Get unique location values from currently loaded leads.
   /// Used when the Supabase distinct queries haven't returned any data yet.
   List<String> _getUniqueLocationValuesFromLeads(
@@ -798,7 +812,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                 DropdownMenuItem<String>(
                   value: null,
                   child: Text(
-                    'All $label${label.endsWith('y') ? 'ies' : 's'}',
+                    'All ${_pluralLabel(label)}',
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
