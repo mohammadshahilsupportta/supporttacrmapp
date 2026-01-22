@@ -39,7 +39,7 @@ class CategoryCardWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.3),
+          color: theme.colorScheme.outline.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -124,10 +124,10 @@ class CategoryCardWidget extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.08),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.25),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.25),
                       width: 1,
                     ),
                   ),
@@ -166,7 +166,7 @@ class _ActionIcon extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           shape: BoxShape.circle,
         ),
         child: Icon(

@@ -186,7 +186,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                     const Text("Already have an account? "),
                     TextButton(
                       onPressed: () {
-                        Get.offNamed(AppRoutes.LOGIN);
+                        Get.offNamed(AppRoutes.login);
                       },
                       child: const Text('Sign In'),
                     ),

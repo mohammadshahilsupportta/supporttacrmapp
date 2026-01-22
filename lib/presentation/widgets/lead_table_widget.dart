@@ -39,9 +39,9 @@ class LeadTableWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Text(
         LeadModel.statusToString(status),
@@ -68,9 +68,9 @@ class LeadTableWidget extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: categoryColor.withOpacity(0.1),
+            color: categoryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: categoryColor.withOpacity(0.3), width: 1),
+            border: Border.all(color: categoryColor.withValues(alpha: 0.3), width: 1),
           ),
           child: Text(
             cat.name,
@@ -192,7 +192,7 @@ class LeadTableWidget extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         headingRowColor: WidgetStateProperty.all(
-          theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
         columns: const [
           DataColumn(
@@ -239,7 +239,7 @@ class LeadTableWidget extends StatelessWidget {
           return DataRow(
             onSelectChanged: (selected) {
               if (selected == true) {
-                Get.toNamed(AppRoutes.LEAD_DETAIL.replaceAll(':id', lead.id));
+                Get.toNamed(AppRoutes.leadDetail.replaceAll(':id', lead.id));
               }
             },
             cells: [
@@ -247,7 +247,7 @@ class LeadTableWidget extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     Get.toNamed(
-                      AppRoutes.LEAD_DETAIL.replaceAll(':id', lead.id),
+                      AppRoutes.leadDetail.replaceAll(':id', lead.id),
                     );
                   },
                   child: Text(

@@ -28,7 +28,7 @@ class SettingsView extends StatelessWidget {
                   subtitle: const Text('View and edit your profile'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    Get.toNamed(AppRoutes.PROFILE);
+                    Get.toNamed(AppRoutes.profile);
                   },
                 ),
               ],
@@ -49,7 +49,7 @@ class SettingsView extends StatelessWidget {
                   subtitle: const Text('Manage shop details'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    Get.toNamed(AppRoutes.SHOP_INFORMATION);
+                    Get.toNamed(AppRoutes.shopInformation);
                   },
                 ),
               ],
@@ -111,7 +111,7 @@ class SettingsView extends StatelessWidget {
                   subtitle: const Text('Contact our support team'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    Get.toNamed(AppRoutes.HELP_SUPPORT);
+                    Get.toNamed(AppRoutes.helpSupport);
                   },
                 ),
               ],

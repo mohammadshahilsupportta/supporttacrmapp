@@ -285,16 +285,16 @@ class _LeadsListViewState extends State<LeadsListView> {
     );
 
     // DEBUG: Print filters being set
-    print('🔍 [FILTER DEBUG] Setting filters:');
-    print('  - Country: ${filters.country}');
-    print('  - State: ${filters.state}');
-    print('  - City: ${filters.city}');
-    print('  - District: ${filters.district}');
-    print('  - AssignedTo: ${filters.assignedTo}');
-    print('  - Status: ${filters.status}');
-    print('  - Source: ${filters.source}');
-    print('  - CategoryIds: ${filters.categoryIds}');
-    print('  - Search: ${filters.search}');
+    debugPrint('🔍 [FILTER DEBUG] Setting filters:');
+    debugPrint('  - Country: ${filters.country}');
+    debugPrint('  - State: ${filters.state}');
+    debugPrint('  - City: ${filters.city}');
+    debugPrint('  - District: ${filters.district}');
+    debugPrint('  - AssignedTo: ${filters.assignedTo}');
+    debugPrint('  - Status: ${filters.status}');
+    debugPrint('  - Source: ${filters.source}');
+    debugPrint('  - CategoryIds: ${filters.categoryIds}');
+    debugPrint('  - Search: ${filters.search}');
 
     leadController.setFilters(filters);
     leadController.loadLeads(authController.shop!.id, reset: true, silent: silent);
@@ -920,7 +920,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                               color: Theme.of(context)
                                   .colorScheme
                                   .outline
-                                  .withOpacity(0.2),
+                                  .withValues(alpha: 0.2),
                             ),
                           ),
                           child: Table(
@@ -982,7 +982,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                               color: Theme.of(context)
                                   .colorScheme
                                   .outline
-                                  .withOpacity(0.2),
+                                  .withValues(alpha: 0.2),
                             ),
                           ),
                           child: leadController.isFiltering
@@ -1029,7 +1029,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                                 lead: lead,
                                 onTap: () {
                                   Get.toNamed(
-                                    AppRoutes.LEAD_DETAIL.replaceAll(':id', lead.id),
+                                    AppRoutes.leadDetail.replaceAll(':id', lead.id),
                                   );
                                 },
                                 isReadOnly: _isStaffRole(authController),
@@ -1096,17 +1096,17 @@ class _LeadsListViewState extends State<LeadsListView> {
                         )
                       : null,
                   filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -1177,8 +1177,8 @@ class _LeadsListViewState extends State<LeadsListView> {
                       // Use Future.microtask to ensure setState completes first, use silent loading
                       Future.microtask(() => _applyFiltersAndLoad(silent: true));
                     },
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                    selectedColor: color.withOpacity(0.2),
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    selectedColor: color.withValues(alpha: 0.2),
                     labelStyle: TextStyle(
                       color: isSelected ? color : Theme.of(context).colorScheme.onSurface,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -1187,7 +1187,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                     side: BorderSide(
                       color: isSelected 
                           ? color 
-                          : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                          : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                       width: isSelected ? 2 : 1,
                     ),
                     shape: RoundedRectangleBorder(
@@ -1232,14 +1232,14 @@ class _LeadsListViewState extends State<LeadsListView> {
                     fillColor: Theme.of(context)
                         .colorScheme
                         .surfaceContainerHighest
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
                         color: Theme.of(context)
                             .colorScheme
                             .outline
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
@@ -1248,7 +1248,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                         color: Theme.of(context)
                             .colorScheme
                             .outline
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -1302,14 +1302,14 @@ class _LeadsListViewState extends State<LeadsListView> {
                     fillColor: Theme.of(context)
                         .colorScheme
                         .surfaceContainerHighest
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
                         color: Theme.of(context)
                             .colorScheme
                             .outline
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
@@ -1318,7 +1318,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                         color: Theme.of(context)
                             .colorScheme
                             .outline
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -1370,14 +1370,14 @@ class _LeadsListViewState extends State<LeadsListView> {
                 fillColor: Theme.of(context)
                     .colorScheme
                     .surfaceContainerHighest
-                    .withOpacity(0.3),
+                    .withValues(alpha: 0.3),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
                     color: Theme.of(context)
                         .colorScheme
                         .outline
-                        .withOpacity(0.2),
+                        .withValues(alpha: 0.2),
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
@@ -1386,7 +1386,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                     color: Theme.of(context)
                         .colorScheme
                         .outline
-                        .withOpacity(0.2),
+                        .withValues(alpha: 0.2),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(

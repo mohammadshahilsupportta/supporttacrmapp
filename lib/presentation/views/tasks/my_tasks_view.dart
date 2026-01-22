@@ -495,7 +495,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -504,7 +504,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                     Icon(
                       Icons.calendar_today_outlined,
                       size: 48,
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -640,7 +640,7 @@ class _MyTasksViewState extends State<MyTasksView> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: accentColor.withOpacity(isDark ? 0.15 : 0.06),
+            color: accentColor.withValues(alpha: isDark ? 0.15 : 0.06),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -657,7 +657,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [accentColor, accentColor.withOpacity(0.5)],
+                    colors: [accentColor, accentColor.withValues(alpha: 0.5)],
                   ),
                 ),
               ),
@@ -682,7 +682,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                                   BoxShadow(
                                     color: _getPriorityColor(
                                       task.priority,
-                                    ).withOpacity(0.5),
+                                    ).withValues(alpha: 0.5),
                                     blurRadius: 4,
                                     spreadRadius: 1,
                                   ),
@@ -740,7 +740,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                                 if (task.lead != null)
                                   GestureDetector(
                                     onTap: () => Get.toNamed(
-                                      AppRoutes.LEAD_DETAIL.replaceAll(
+                                      AppRoutes.leadDetail.replaceAll(
                                         ':id',
                                         task.leadId,
                                       ),
@@ -765,7 +765,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                                   decoration: BoxDecoration(
                                     color: _getStatusColor(
                                       task.taskStatus,
-                                    ).withOpacity(0.12),
+                                    ).withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -784,7 +784,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                           if (task.leadId.isNotEmpty)
                             GestureDetector(
                               onTap: () => Get.toNamed(
-                                AppRoutes.LEAD_DETAIL.replaceAll(
+                                AppRoutes.leadDetail.replaceAll(
                                   ':id',
                                   task.leadId,
                                 ),
@@ -792,7 +792,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primary.withOpacity(0.08),
+                                  color: colorScheme.primary.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
@@ -824,7 +824,7 @@ class _MyTasksViewState extends State<MyTasksView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: filled ? color.withOpacity(0.12) : Colors.transparent,
+        color: filled ? color.withValues(alpha: 0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

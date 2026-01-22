@@ -75,7 +75,7 @@ class AuthController extends GetxController {
         _user.value = result['user'] as UserModel;
         _shop.value = result['shop'] as ShopModel;
         _isAuthenticated.value = true;
-        Get.offAllNamed(AppRoutes.HOME);
+        Get.offAllNamed(AppRoutes.home);
       } else {
         _errorMessage.value = 'Sign in failed';
       }
@@ -108,7 +108,7 @@ class AuthController extends GetxController {
 
       // Navigate back to login after a short delay
       Future.delayed(const Duration(seconds: 2), () {
-        Get.offNamed(AppRoutes.LOGIN);
+        Get.offNamed(AppRoutes.login);
       });
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
@@ -125,7 +125,7 @@ class AuthController extends GetxController {
       _user.value = null;
       _shop.value = null;
       _isAuthenticated.value = false;
-      Get.offAllNamed(AppRoutes.LOGIN);
+      Get.offAllNamed(AppRoutes.login);
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
     } finally {

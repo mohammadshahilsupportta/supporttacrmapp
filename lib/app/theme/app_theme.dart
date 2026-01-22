@@ -13,17 +13,17 @@ class AppTheme {
     colorScheme: ColorScheme.light(
       primary: primaryColor,
       onPrimary: Colors.white,
-      secondary: primaryColor.withOpacity(0.8),
+      secondary: primaryColor.withValues(alpha: 0.8),
       onSecondary: Colors.white,
       error: Colors.red,
       onError: Colors.white,
       surface: lightSurface,
       onSurface: primaryColor,
-      onSurfaceVariant: primaryColor.withOpacity(0.7),
+      onSurfaceVariant: primaryColor.withValues(alpha: 0.7),
       background: lightBackground,
       onBackground: primaryColor,
-      outline: primaryColor.withOpacity(0.2),
-      shadow: primaryColor.withOpacity(0.1),
+      outline: primaryColor.withValues(alpha: 0.2),
+      shadow: primaryColor.withValues(alpha: 0.1),
       // Surface container colors
       surfaceContainerHighest: lightSurface,
       surfaceContainerHigh: lightSurface,
@@ -54,11 +54,11 @@ class AppTheme {
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primaryColor.withOpacity(0.2)),
+        borderSide: BorderSide(color: primaryColor.withValues(alpha: 0.2)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primaryColor.withOpacity(0.2)),
+        borderSide: BorderSide(color: primaryColor.withValues(alpha: 0.2)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -74,7 +74,7 @@ class AppTheme {
       ),
       disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primaryColor.withOpacity(0.1)),
+        borderSide: BorderSide(color: primaryColor.withValues(alpha: 0.1)),
       ),
       fillColor: lightSurface,
       filled: true,
@@ -116,7 +116,7 @@ class AppTheme {
       elevation: 2,
     ),
     dividerTheme: DividerThemeData(
-      color: primaryColor.withOpacity(0.1),
+      color: primaryColor.withValues(alpha: 0.1),
       thickness: 1,
     ),
     chipTheme: ChipThemeData(
@@ -127,7 +127,7 @@ class AppTheme {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: primaryColor.withOpacity(0.2)),
+        side: BorderSide(color: primaryColor.withValues(alpha: 0.2)),
       ),
     ),
   );
@@ -137,17 +137,17 @@ class AppTheme {
     colorScheme: ColorScheme.dark(
       primary: lightBackground,
       onPrimary: primaryColor,
-      secondary: lightBackground.withOpacity(0.8),
+      secondary: lightBackground.withValues(alpha: 0.8),
       onSecondary: primaryColor,
       error: Colors.red.shade300,
       onError: Colors.white,
       surface: darkSurface,
       onSurface: lightBackground,
-      onSurfaceVariant: lightBackground.withOpacity(0.7),
+      onSurfaceVariant: lightBackground.withValues(alpha: 0.7),
       background: darkBackground,
       onBackground: lightBackground,
-      outline: lightBackground.withOpacity(0.3),
-      shadow: Colors.black.withOpacity(0.3),
+      outline: lightBackground.withValues(alpha: 0.3),
+      shadow: Colors.black.withValues(alpha: 0.3),
       // Surface container colors
       surfaceContainerHighest: darkSurface,
       surfaceContainerHigh: darkSurface,
@@ -178,11 +178,11 @@ class AppTheme {
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: lightBackground.withOpacity(0.3)),
+        borderSide: BorderSide(color: lightBackground.withValues(alpha: 0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: lightBackground.withOpacity(0.3)),
+        borderSide: BorderSide(color: lightBackground.withValues(alpha: 0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -198,7 +198,7 @@ class AppTheme {
       ),
       disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: lightBackground.withOpacity(0.1)),
+        borderSide: BorderSide(color: lightBackground.withValues(alpha: 0.1)),
       ),
       fillColor: darkSurface,
       filled: true,
@@ -240,7 +240,7 @@ class AppTheme {
       elevation: 2,
     ),
     dividerTheme: DividerThemeData(
-      color: lightBackground.withOpacity(0.1),
+      color: lightBackground.withValues(alpha: 0.1),
       thickness: 1,
     ),
     chipTheme: ChipThemeData(
@@ -251,7 +251,7 @@ class AppTheme {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: lightBackground.withOpacity(0.3)),
+        side: BorderSide(color: lightBackground.withValues(alpha: 0.3)),
       ),
     ),
   );

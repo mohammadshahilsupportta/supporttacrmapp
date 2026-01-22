@@ -184,7 +184,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               color: theme.colorScheme.surface,
               border: Border(
                 bottom: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.12),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.12),
                   width: 1,
                 ),
               ),
@@ -341,7 +341,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.2),
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -358,10 +358,10 @@ class _LeadDetailViewState extends State<LeadDetailView>
                         width: 64,
                         height: 64,
                         decoration: BoxDecoration(
-                          color: _getStatusColor(lead.status).withOpacity(0.1),
+                          color: _getStatusColor(lead.status).withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: _getStatusColor(lead.status).withOpacity(0.3),
+                            color: _getStatusColor(lead.status).withValues(alpha: 0.3),
                             width: 2,
                           ),
                         ),
@@ -398,11 +398,11 @@ class _LeadDetailViewState extends State<LeadDetailView>
                               ),
                               decoration: BoxDecoration(
                                 color: _getStatusColor(lead.status)
-                                    .withOpacity(0.15),
+                                    .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color: _getStatusColor(lead.status)
-                                      .withOpacity(0.3),
+                                      .withValues(alpha: 0.3),
                                   width: 1,
                                 ),
                               ),
@@ -487,7 +487,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -497,7 +497,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
                   children: [
                     CircleAvatar(
                       radius: 20,
-                      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                       child: Text(
                         lead.assignedUser!.name[0].toUpperCase(),
                         style: TextStyle(
@@ -541,7 +541,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -575,7 +575,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.2),
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -616,7 +616,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -654,7 +654,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -675,10 +675,10 @@ class _LeadDetailViewState extends State<LeadDetailView>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: categoryColor.withOpacity(0.1),
+                        color: categoryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: categoryColor.withOpacity(0.3),
+                          color: categoryColor.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -720,7 +720,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -755,7 +755,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -784,7 +784,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -806,7 +806,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: theme.colorScheme.outline.withOpacity(0.2),
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -954,7 +954,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -1006,7 +1006,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               color: Theme.of(context).colorScheme.surface,
               border: Border(
                 bottom: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                 ),
               ),
             ),
@@ -1176,7 +1176,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
                 border: Border.all(color: iconColor, width: 2),
               ),
@@ -1190,7 +1190,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               Container(
                 width: 2,
                 height: 80,
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
                 margin: const EdgeInsets.symmetric(vertical: 4),
               ),
           ],
@@ -1331,14 +1331,14 @@ class _LeadDetailViewState extends State<LeadDetailView>
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                             decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.1),
+                              color: Colors.green.withValues(alpha: 0.1),
                               borderRadius: const BorderRadius.only(
                                 bottomLeft: Radius.circular(12),
                                 bottomRight: Radius.circular(12),
                               ),
                               border: Border(
                                 top: BorderSide(
-                                  color: Colors.green.withOpacity(0.2),
+                                  color: Colors.green.withValues(alpha: 0.2),
                                   width: 1,
                                 ),
                               ),
@@ -1393,7 +1393,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -1444,10 +1444,10 @@ class _LeadDetailViewState extends State<LeadDetailView>
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: _getPriorityColor(task.priority!).withOpacity(0.1),
+                              color: _getPriorityColor(task.priority!).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: _getPriorityColor(task.priority!).withOpacity(0.3),
+                                color: _getPriorityColor(task.priority!).withValues(alpha: 0.3),
                                 width: 1,
                               ),
                             ),
@@ -1478,10 +1478,10 @@ class _LeadDetailViewState extends State<LeadDetailView>
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: _getTaskStatusColor(task.taskStatus!).withOpacity(0.1),
+                              color: _getTaskStatusColor(task.taskStatus!).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: _getTaskStatusColor(task.taskStatus!).withOpacity(0.3),
+                                color: _getTaskStatusColor(task.taskStatus!).withValues(alpha: 0.3),
                                 width: 1,
                               ),
                             ),
@@ -2113,7 +2113,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
     }
     
     Get.toNamed(
-      AppRoutes.LEAD_EDIT.replaceAll(':id', lead.id),
+      AppRoutes.leadEdit.replaceAll(':id', lead.id),
     );
   }
 

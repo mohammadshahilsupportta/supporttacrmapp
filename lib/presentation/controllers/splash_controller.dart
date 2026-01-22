@@ -15,9 +15,9 @@ class SplashController extends GetxController {
 
     // Check if user is authenticated
     if (SupabaseService.isAuthenticated) {
-      Get.offAllNamed(AppRoutes.HOME);
+      Get.offAllNamed(AppRoutes.home);
     } else {
-      Get.offAllNamed(AppRoutes.LOGIN);
+      Get.offAllNamed(AppRoutes.login);
     }
   }
 }

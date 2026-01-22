@@ -231,7 +231,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -247,10 +247,10 @@ class _StaffDetailViewState extends State<StaffDetailView> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: roleColor.withOpacity(0.1),
+                    color: roleColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: roleColor.withOpacity(0.3),
+                      color: roleColor.withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),
@@ -285,10 +285,10 @@ class _StaffDetailViewState extends State<StaffDetailView> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: roleColor.withOpacity(0.15),
+                          color: roleColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: roleColor.withOpacity(0.3),
+                            color: roleColor.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -321,11 +321,11 @@ class _StaffDetailViewState extends State<StaffDetailView> {
                         ),
                         decoration: BoxDecoration(
                           color: (staff.isActive ? Colors.green : Colors.red)
-                              .withOpacity(0.15),
+                              .withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: (staff.isActive ? Colors.green : Colors.red)
-                                .withOpacity(0.3),
+                                .withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -368,7 +368,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -434,7 +434,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 20, color: color),
@@ -481,7 +481,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -512,10 +512,10 @@ class _StaffDetailViewState extends State<StaffDetailView> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: roleColor.withOpacity(0.1),
+                  color: roleColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: roleColor.withOpacity(0.3),
+                    color: roleColor.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
@@ -536,7 +536,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -569,10 +569,10 @@ class _StaffDetailViewState extends State<StaffDetailView> {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: catColor.withOpacity(0.1),
+                      color: catColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: catColor.withOpacity(0.3),
+                        color: catColor.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),

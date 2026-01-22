@@ -18,7 +18,8 @@ class StaffListView extends StatefulWidget {
   State<StaffListView> createState() => _StaffListViewState();
 }
 
-class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserver {
+class _StaffListViewState extends State<StaffListView>
+    with WidgetsBindingObserver {
   bool _hasInitialized = false;
   Worker? _shopWorker;
   final TextEditingController _searchController = TextEditingController();
@@ -35,10 +36,12 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
     bool force = false,
   }) {
     if (authController.shop != null) {
-      if (force || (staffController.staffList.isEmpty && !staffController.isLoading)) {
+      if (force ||
+          (staffController.staffList.isEmpty && !staffController.isLoading)) {
         staffController.loadStaff(authController.shop!.id, force: force);
       }
-      if (categoryController.categories.isEmpty && !categoryController.isLoading) {
+      if (categoryController.categories.isEmpty &&
+          !categoryController.isLoading) {
         categoryController.loadCategories(authController.shop!.id);
       }
     }
@@ -48,7 +51,7 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     final authController = Get.find<AuthController>();
     final staffController = Get.put(StaffController());
     final categoryController = Get.put(CategoryController());
@@ -62,18 +65,19 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
     });
 
     // Use a worker to listen to shop changes and load staff when shop becomes available
-    _shopWorker = ever(
-      authController.shopRx,
-      (shop) {
-        if (shop != null && mounted) {
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (mounted) {
-              _loadDataIfNeeded(authController, staffController, categoryController);
-            }
-          });
-        }
-      },
-    );
+    _shopWorker = ever(authController.shopRx, (shop) {
+      if (shop != null && mounted) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _loadDataIfNeeded(
+              authController,
+              staffController,
+              categoryController,
+            );
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -84,7 +88,12 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
       final authController = Get.find<AuthController>();
       final staffController = Get.find<StaffController>();
       final categoryController = Get.find<CategoryController>();
-      _loadDataIfNeeded(authController, staffController, categoryController, force: true);
+      _loadDataIfNeeded(
+        authController,
+        staffController,
+        categoryController,
+        force: true,
+      );
     }
   }
 
@@ -108,9 +117,9 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
     return staffList.where((staff) {
       final nameMatch = staff.name.toLowerCase().contains(searchLower);
       final emailMatch = staff.email.toLowerCase().contains(searchLower);
-      final roleMatch = UserModel.roleDisplayName(staff.role)
-          .toLowerCase()
-          .contains(searchLower);
+      final roleMatch = UserModel.roleDisplayName(
+        staff.role,
+      ).toLowerCase().contains(searchLower);
       return nameMatch || emailMatch || roleMatch;
     }).toList();
   }
@@ -148,22 +157,22 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
               const SizedBox(height: 16),
               Text(
                 'No staff members yet',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.grey),
               ),
               const SizedBox(height: 8),
               Text(
                 'Add your first staff member to get started',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
               ),
               if (canManage) ...[
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
                   onPressed: () {
-                    Get.toNamed(AppRoutes.STAFF_CREATE);
+                    Get.toNamed(AppRoutes.staffCreate);
                   },
                   icon: const Icon(Icons.add),
                   label: const Text('Add Staff'),
@@ -205,17 +214,23 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
                         )
                       : null,
                   filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                  fillColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withValues(alpha: 0.2),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withValues(alpha: 0.2),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -236,20 +251,22 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.search_off, size: 64, color: Colors.grey),
+                          const Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
                           const SizedBox(height: 16),
                           Text(
                             'No staff found',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: Colors.grey,
-                                ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(color: Colors.grey),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Try adjusting your search',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey,
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey),
                           ),
                         ],
                       ),
@@ -259,126 +276,131 @@ class _StaffListViewState extends State<StaffListView> with WidgetsBindingObserv
                       itemCount: filteredStaff.length,
                       itemBuilder: (context, index) {
                         final staff = filteredStaff[index];
-            return StaffCardWidget(
-              staff: staff,
-              canManage: canManage,
-              onTap: () {
-                // Navigate to staff detail page
-                Get.toNamed(AppRoutes.STAFF_DETAIL.replaceAll(':id', staff.id));
-              },
-              onToggleActive: () async {
-                final newStatus = !staff.isActive;
-                final success = newStatus
-                    ? await staffController.updateStaff(
-                        UpdateStaffInput(
-                          id: staff.id,
-                          isActive: true,
-                        ),
-                      )
-                    : await staffController.deactivateStaff(staff.id);
+                        return StaffCardWidget(
+                          staff: staff,
+                          canManage: canManage,
+                          onTap: () {
+                            // Navigate to staff detail page
+                            Get.toNamed(
+                              AppRoutes.staffDetail.replaceAll(':id', staff.id),
+                            );
+                          },
+                          onToggleActive: () async {
+                            final newStatus = !staff.isActive;
+                            final success = newStatus
+                                ? await staffController.updateStaff(
+                                    UpdateStaffInput(
+                                      id: staff.id,
+                                      isActive: true,
+                                    ),
+                                  )
+                                : await staffController.deactivateStaff(
+                                    staff.id,
+                                  );
 
-                if (success) {
-                  Get.snackbar(
-                    'Success',
-                    'Staff member ${newStatus ? 'activated' : 'deactivated'} successfully',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.green,
-                    colorText: Colors.white,
-                  );
-                } else {
-                  Get.snackbar(
-                    'Error',
-                    staffController.errorMessage,
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.red,
-                    colorText: Colors.white,
-                  );
-                }
-              },
-              onManageCategories: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => CategoryPermissionsDialog(
-                    staff: staff,
-                    categories: categoryController.categories,
-                    selectedCategoryIds: staff.categoryPermissions
-                        .map((c) => c.id)
-                        .toList(),
-                    onSave: (categoryIds) async {
-                      if (authController.shop != null) {
-                        final success = await staffController.assignCategories(
-                          staff.id,
-                          authController.shop!.id,
-                          categoryIds,
+                            if (success) {
+                              Get.snackbar(
+                                'Success',
+                                'Staff member ${newStatus ? 'activated' : 'deactivated'} successfully',
+                                snackPosition: SnackPosition.BOTTOM,
+                                backgroundColor: Colors.green,
+                                colorText: Colors.white,
+                              );
+                            } else {
+                              Get.snackbar(
+                                'Error',
+                                staffController.errorMessage,
+                                snackPosition: SnackPosition.BOTTOM,
+                                backgroundColor: Colors.red,
+                                colorText: Colors.white,
+                              );
+                            }
+                          },
+                          onManageCategories: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => CategoryPermissionsDialog(
+                                staff: staff,
+                                categories: categoryController.categories,
+                                selectedCategoryIds: staff.categoryPermissions
+                                    .map((c) => c.id)
+                                    .toList(),
+                                onSave: (categoryIds) async {
+                                  if (authController.shop != null) {
+                                    final success = await staffController
+                                        .assignCategories(
+                                          staff.id,
+                                          authController.shop!.id,
+                                          categoryIds,
+                                        );
+                                    if (success) {
+                                      Get.back();
+                                      Get.snackbar(
+                                        'Success',
+                                        'Category permissions updated successfully',
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        backgroundColor: Colors.green,
+                                        colorText: Colors.white,
+                                      );
+                                    } else {
+                                      Get.snackbar(
+                                        'Error',
+                                        staffController.errorMessage,
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        backgroundColor: Colors.red,
+                                        colorText: Colors.white,
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                          onDelete: () {
+                            Get.dialog(
+                              AlertDialog(
+                                title: const Text('Delete Staff Member'),
+                                content: Text(
+                                  'Are you sure you want to permanently delete ${staff.name}? This action cannot be undone.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Get.back(),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Get.back();
+                                      final success = await staffController
+                                          .deleteStaff(staff.id);
+                                      if (success) {
+                                        Get.snackbar(
+                                          'Success',
+                                          'Staff member deleted permanently',
+                                          snackPosition: SnackPosition.BOTTOM,
+                                          backgroundColor: Colors.green,
+                                          colorText: Colors.white,
+                                        );
+                                      } else {
+                                        Get.snackbar(
+                                          'Error',
+                                          staffController.errorMessage,
+                                          snackPosition: SnackPosition.BOTTOM,
+                                          backgroundColor: Colors.red,
+                                          colorText: Colors.white,
+                                        );
+                                      }
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         );
-                        if (success) {
-                          Get.back();
-                          Get.snackbar(
-                            'Success',
-                            'Category permissions updated successfully',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.green,
-                            colorText: Colors.white,
-                          );
-                        } else {
-                          Get.snackbar(
-                            'Error',
-                            staffController.errorMessage,
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
-                          );
-                        }
-                      }
-                    },
-                  ),
-                );
-              },
-              onDelete: () {
-                Get.dialog(
-                  AlertDialog(
-                    title: const Text('Delete Staff Member'),
-                    content: Text(
-                      'Are you sure you want to permanently delete ${staff.name}? This action cannot be undone.',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Get.back(),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          Get.back();
-                          final success =
-                              await staffController.deleteStaff(staff.id);
-                          if (success) {
-                            Get.snackbar(
-                              'Success',
-                              'Staff member deleted permanently',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.green,
-                              colorText: Colors.white,
-                            );
-                          } else {
-                            Get.snackbar(
-                              'Error',
-                              staffController.errorMessage,
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.red,
-                              colorText: Colors.white,
-                            );
-                          }
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
-                        ),
-                        child: const Text('Delete'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
                       },
                     ),
             ),

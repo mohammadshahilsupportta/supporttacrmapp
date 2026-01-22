@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../viewmodels/staff_viewmodel.dart';
 import '../../data/models/staff_model.dart';
@@ -31,12 +32,12 @@ class StaffController extends GetxController {
     try {
       final staff = await _viewModel.getStaff(shopId);
       _staffList.value = staff;
-      print('Loaded ${staff.length} staff members'); // Debug
+      debugPrint('Loaded ${staff.length} staff members'); // Debug
     } catch (e, stackTrace) {
       _errorMessage.value = Helpers.handleError(e);
-      print('Error loading staff: ${_errorMessage.value}'); // Debug
-      print('Error details: $e'); // Debug
-      print('Stack trace: $stackTrace'); // Debug
+      debugPrint('Error loading staff: ${_errorMessage.value}'); // Debug
+      debugPrint('Error details: $e'); // Debug
+      debugPrint('Stack trace: $stackTrace'); // Debug
     } finally {
       _isLoading.value = false;
     }
@@ -84,7 +85,7 @@ class StaffController extends GetxController {
       // Try using Edge Function first (uses Admin API, bypasses email validation)
       bool edgeFunctionSucceeded = false;
       try {
-        print('Attempting to create staff via Edge Function (Admin API)');
+        debugPrint('Attempting to create staff via Edge Function (Admin API)');
         
         final functionResult = await SupabaseService.invokeFunction(
           'create_staff',
@@ -103,7 +104,7 @@ class StaffController extends GetxController {
         
         if (functionResult['success'] == true && functionResult['auth_user_id'] != null) {
           userId = functionResult['auth_user_id'] as String;
-          print('Successfully created staff via Edge Function with auth_user_id: $userId');
+          debugPrint('Successfully created staff via Edge Function with auth_user_id: $userId');
           
           // Staff record is already created by the Edge Function
           // Just reload the staff list
@@ -114,18 +115,18 @@ class StaffController extends GetxController {
           // Edge Function returned an error, fall back to direct signUp
           final errorMsg = functionResult['error']?.toString() ?? 
               'Failed to create staff via Edge Function';
-          print('Edge Function error: $errorMsg');
+          debugPrint('Edge Function error: $errorMsg');
         }
       } catch (functionError) {
         // Edge Function doesn't exist or failed, fall back to direct signUp
-        print('Edge Function not available or failed, falling back to direct signUp: $functionError');
+        debugPrint('Edge Function not available or failed, falling back to direct signUp: $functionError');
       }
       
       // Fall back to direct signUp if Edge Function failed or doesn't exist
       if (!edgeFunctionSucceeded) {
         // Try creating auth user directly
         try {
-          print('Attempting to create user with email: $normalizedEmail');
+          debugPrint('Attempting to create user with email: $normalizedEmail');
           authResponse = await SupabaseService.auth.signUp(
             email: normalizedEmail,
             password: input.password,
@@ -148,7 +149,7 @@ class StaffController extends GetxController {
           }
           
           userId = authResponse.user!.id;
-          print('Successfully created auth user with ID: $userId');
+          debugPrint('Successfully created auth user with ID: $userId');
         } catch (e) {
           final errorString = e.toString().toLowerCase();
           
@@ -165,13 +166,13 @@ class StaffController extends GetxController {
           if (errorString.contains('email_address_invalid') ||
               (errorString.contains('email address') && errorString.contains('invalid'))) {
             _errorMessage.value = 'Email validation failed: "${input.email}" is being rejected by Supabase\'s email validation. Please deploy the Edge Function to use Admin API, or use the website to create staff members.';
-            print('Email validation error: $e');
-            print('Email attempted: $normalizedEmail');
+            debugPrint('Email validation error: $e');
+            debugPrint('Email attempted: $normalizedEmail');
             return false;
           }
           
           // Re-throw other errors
-          print('Auth error: $e');
+          debugPrint('Auth error: $e');
           rethrow;
         }
         
@@ -205,8 +206,8 @@ class StaffController extends GetxController {
           return true;
         } catch (staffError) {
           // If staff creation fails, log the error
-          print('Staff record creation failed: $staffError');
-          print('Auth user was created with ID: $userId');
+          debugPrint('Staff record creation failed: $staffError');
+          debugPrint('Auth user was created with ID: $userId');
           rethrow;
         }
       }
@@ -215,7 +216,7 @@ class StaffController extends GetxController {
       // All code paths above should return true or false
       return false;
     } catch (e) {
-      print('Error creating staff: $e'); // Debug log
+      debugPrint('Error creating staff: $e'); // Debug log
       _errorMessage.value = Helpers.handleError(e);
       return false;
     } finally {

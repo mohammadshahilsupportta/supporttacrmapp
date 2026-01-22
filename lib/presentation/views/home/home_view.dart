@@ -374,30 +374,24 @@ class _HomeViewState extends State<HomeView> {
       _notchController.jumpTo(0);
     }
 
-    // Get system navigation bar height to add padding
-    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
-
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: 0),
-        child: AnimatedNotchBottomBar(
-          notchBottomBarController: _notchController,
-          color: theme.colorScheme.surface,
-          showLabel: true,
-          notchColor: theme.colorScheme.primary,
-          kIconSize: 24.0,
-          kBottomRadius: 30.0,
-          bottomBarItems: bottomBarItems,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            _notchController.jumpTo(index);
-            // Force filter correction when switching tabs
-            _correctFiltersForTab(index, authController);
-          },
-        ),
+      child: AnimatedNotchBottomBar(
+        notchBottomBarController: _notchController,
+        color: theme.colorScheme.surface,
+        showLabel: true,
+        notchColor: theme.colorScheme.primary,
+        kIconSize: 24.0,
+        kBottomRadius: 30.0,
+        bottomBarItems: bottomBarItems,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+          _notchController.jumpTo(index);
+          // Force filter correction when switching tabs
+          _correctFiltersForTab(index, authController);
+        },
       ),
     );
   }
@@ -412,7 +406,7 @@ class _HomeViewState extends State<HomeView> {
         // All users (including staff) can create leads
         return FloatingActionButton.extended(
           onPressed: () {
-            Get.toNamed(AppRoutes.LEAD_CREATE);
+            Get.toNamed(AppRoutes.leadCreate);
           },
           icon: const Icon(Icons.add),
           label: const Text('Add Lead'),
@@ -423,7 +417,7 @@ class _HomeViewState extends State<HomeView> {
         if (canViewStaff) {
           return FloatingActionButton.extended(
             onPressed: () {
-              Get.toNamed(AppRoutes.STAFF_CREATE);
+              Get.toNamed(AppRoutes.staffCreate);
             },
             icon: const Icon(Icons.add),
             label: const Text('Add Staff'),
@@ -626,7 +620,7 @@ class _HomeViewState extends State<HomeView> {
                   final canViewStaff = _canViewStaff(user);
                   if (canViewStaff) {
                     // Categories is not in bottom bar for admin, navigate via route
-                    Get.toNamed(AppRoutes.CATEGORIES);
+                    Get.toNamed(AppRoutes.categories);
                   } else {
                     // Categories is at index 3 when Staff is not visible
                     setState(() {
@@ -642,7 +636,7 @@ class _HomeViewState extends State<HomeView> {
                 title: const Text('Reports'),
                 onTap: () {
                   Navigator.pop(context);
-                  Get.toNamed(AppRoutes.REPORTS);
+                  Get.toNamed(AppRoutes.reports);
                 },
               ),
             const Divider(),
@@ -674,7 +668,7 @@ class _HomeViewState extends State<HomeView> {
               title: const Text('Profile'),
               onTap: () {
                 Navigator.pop(context);
-                Get.toNamed(AppRoutes.PROFILE);
+                Get.toNamed(AppRoutes.profile);
               },
             ),
             const Divider(),

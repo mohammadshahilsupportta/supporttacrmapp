@@ -23,12 +23,12 @@ class ShimmerWidget extends StatelessWidget {
     
     // Instagram-like colors: subtle base, bright highlight
     final defaultBaseColor = isDark
-        ? Colors.grey.shade800.withOpacity(0.3)
-        : Colors.grey.shade200.withOpacity(0.5);
+        ? Colors.grey.shade800.withValues(alpha: 0.3)
+        : Colors.grey.shade200.withValues(alpha: 0.5);
     
     final defaultHighlightColor = isDark
-        ? Colors.grey.shade700.withOpacity(0.5)
-        : Colors.grey.shade100.withOpacity(0.8);
+        ? Colors.grey.shade700.withValues(alpha: 0.5)
+        : Colors.grey.shade100.withValues(alpha: 0.8);
 
     return Shimmer.fromColors(
       period: period,
@@ -55,7 +55,7 @@ class LeadCardShimmer extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -266,7 +266,7 @@ class DashboardStatsCardShimmer extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -399,7 +399,7 @@ class DashboardShimmer extends StatelessWidget {
                     color: Theme.of(context)
                         .colorScheme
                         .outline
-                        .withOpacity(0.1),
+                        .withValues(alpha: 0.1),
                     width: 1,
                   ),
                 ),

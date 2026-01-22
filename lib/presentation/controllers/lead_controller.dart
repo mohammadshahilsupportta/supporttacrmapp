@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../viewmodels/lead_viewmodel.dart';
 import '../../data/models/lead_model.dart';
@@ -44,12 +45,12 @@ class LeadController extends GetxController {
 
   // Set filters (resets pagination)
   void setFilters(LeadFilters? filters) {
-    print('🔍 [CONTROLLER] setFilters called:');
-    print('  - Filters: $filters');
-    print('  - Country: ${filters?.country}');
-    print('  - State: ${filters?.state}');
-    print('  - City: ${filters?.city}');
-    print('  - District: ${filters?.district}');
+    debugPrint('🔍 [CONTROLLER] setFilters called:');
+    debugPrint('  - Filters: $filters');
+    debugPrint('  - Country: ${filters?.country}');
+    debugPrint('  - State: ${filters?.state}');
+    debugPrint('  - City: ${filters?.city}');
+    debugPrint('  - District: ${filters?.district}');
     _filters.value = filters;
     _currentOffset.value = 0;
     _hasMore.value = true;

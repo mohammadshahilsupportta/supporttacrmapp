@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/staff_model.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/helpers.dart';
@@ -56,8 +57,8 @@ class StaffRepository {
             json as Map<String, dynamic>,
           );
         } catch (e) {
-          print('Error parsing staff member: $e');
-          print('JSON data: $json');
+          debugPrint('Error parsing staff member: $e');
+          debugPrint('JSON data: $json');
           rethrow;
         }
       }).toList();

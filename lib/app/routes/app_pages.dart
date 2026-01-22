@@ -27,41 +27,41 @@ import '../bindings/activity_binding.dart';
 import '../bindings/report_binding.dart';
 
 class AppPages {
-  static const INITIAL = AppRoutes.SPLASH;
+  static const initial = AppRoutes.splash;
 
   static final routes = [
     GetPage(
-      name: AppRoutes.SPLASH,
+      name: AppRoutes.splash,
       page: () => const SplashView(),
       binding: InitialBinding(),
     ),
     GetPage(
-      name: AppRoutes.LOGIN,
+      name: AppRoutes.login,
       page: () => const LoginView(),
       binding: AuthBinding(),
     ),
     GetPage(
-      name: AppRoutes.REGISTER,
+      name: AppRoutes.register,
       page: () => const RegisterView(),
       binding: AuthBinding(),
     ),
     GetPage(
-      name: AppRoutes.HOME,
+      name: AppRoutes.home,
       page: () => const HomeView(),
       binding: DashboardBinding(),
     ),
     GetPage(
-      name: AppRoutes.LEADS,
+      name: AppRoutes.leads,
       page: () => const LeadsListView(),
       binding: LeadBinding(),
     ),
     GetPage(
-      name: AppRoutes.LEAD_CREATE,
+      name: AppRoutes.leadCreate,
       page: () => const LeadCreateView(),
       binding: LeadBinding(),
     ),
     GetPage(
-      name: AppRoutes.LEAD_DETAIL,
+      name: AppRoutes.leadDetail,
       page: () {
         final leadId = Get.parameters['id'] ?? '';
         return LeadDetailView(leadId: leadId);
@@ -69,7 +69,7 @@ class AppPages {
       binding: ActivityBinding(),
     ),
     GetPage(
-      name: AppRoutes.LEAD_EDIT,
+      name: AppRoutes.leadEdit,
       page: () {
         final leadId = Get.parameters['id'] ?? '';
         return LeadEditView(leadId: leadId);
@@ -77,17 +77,17 @@ class AppPages {
       binding: LeadBinding(),
     ),
     GetPage(
-      name: AppRoutes.STAFF,
+      name: AppRoutes.staff,
       page: () => const StaffListView(),
       binding: StaffBinding(),
     ),
     GetPage(
-      name: AppRoutes.STAFF_CREATE,
+      name: AppRoutes.staffCreate,
       page: () => const StaffCreateView(),
       binding: StaffBinding(),
     ),
     GetPage(
-      name: AppRoutes.STAFF_DETAIL,
+      name: AppRoutes.staffDetail,
       page: () {
         final staffId = Get.parameters['id'] ?? '';
         return StaffDetailView(staffId: staffId);
@@ -95,16 +95,19 @@ class AppPages {
       binding: StaffBinding(),
     ),
     GetPage(
-      name: AppRoutes.CATEGORIES,
+      name: AppRoutes.categories,
       page: () => const CategoriesView(),
       binding: CategoryBinding(),
     ),
-    GetPage(name: AppRoutes.SETTINGS, page: () => const SettingsView()),
-    GetPage(name: AppRoutes.PROFILE, page: () => const ProfileView()),
-    GetPage(name: AppRoutes.SHOP_INFORMATION, page: () => const ShopInformationView()),
-    GetPage(name: AppRoutes.HELP_SUPPORT, page: () => const HelpSupportView()),
+    GetPage(name: AppRoutes.settings, page: () => const SettingsView()),
+    GetPage(name: AppRoutes.profile, page: () => const ProfileView()),
     GetPage(
-      name: AppRoutes.REPORTS,
+      name: AppRoutes.shopInformation,
+      page: () => const ShopInformationView(),
+    ),
+    GetPage(name: AppRoutes.helpSupport, page: () => const HelpSupportView()),
+    GetPage(
+      name: AppRoutes.reports,
       page: () => const ReportsView(),
       binding: ReportBinding(),
     ),

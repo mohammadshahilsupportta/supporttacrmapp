@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/lead_model.dart';
 import '../models/category_model.dart';
 import '../../core/services/supabase_service.dart';
@@ -72,15 +73,15 @@ class LeadRepository {
   }) async {
     try {
       // DEBUG: Print filters received in repository
-      print('🔍 [REPOSITORY] findAll called with filters:');
-      print('  - Country: ${filters?.country}');
-      print('  - State: ${filters?.state}');
-      print('  - City: ${filters?.city}');
-      print('  - District: ${filters?.district}');
-      print('  - AssignedTo: ${filters?.assignedTo}');
-      print('  - Status: ${filters?.status}');
-      print('  - Source: ${filters?.source}');
-      print('  - Filters is null: ${filters == null}');
+      debugPrint('🔍 [REPOSITORY] findAll called with filters:');
+      debugPrint('  - Country: ${filters?.country}');
+      debugPrint('  - State: ${filters?.state}');
+      debugPrint('  - City: ${filters?.city}');
+      debugPrint('  - District: ${filters?.district}');
+      debugPrint('  - AssignedTo: ${filters?.assignedTo}');
+      debugPrint('  - Status: ${filters?.status}');
+      debugPrint('  - Source: ${filters?.source}');
+      debugPrint('  - Filters is null: ${filters == null}');
 
       // Build query with server-side filters
       // Note: Don't join assigned_user or created_by_user here because they can reference either users or staff table
@@ -192,34 +193,34 @@ class LeadRepository {
         // Filter by location (using ilike for partial matching like website)
         if (filters.country != null && filters.country!.isNotEmpty) {
           final countryTerm = '%${filters.country!.trim()}%';
-          print('🔍 [REPOSITORY] Applying country filter: $countryTerm');
+          debugPrint('🔍 [REPOSITORY] Applying country filter: $countryTerm');
           queryBuilder = queryBuilder.ilike('country', countryTerm);
         } else {
-          print('🔍 [REPOSITORY] Country filter NOT applied (null or empty)');
+          debugPrint('🔍 [REPOSITORY] Country filter NOT applied (null or empty)');
         }
         if (filters.state != null && filters.state!.isNotEmpty) {
           final stateTerm = '%${filters.state!.trim()}%';
-          print('🔍 [REPOSITORY] Applying state filter: $stateTerm');
+          debugPrint('🔍 [REPOSITORY] Applying state filter: $stateTerm');
           queryBuilder = queryBuilder.ilike('state', stateTerm);
         } else {
-          print('🔍 [REPOSITORY] State filter NOT applied (null or empty)');
+          debugPrint('🔍 [REPOSITORY] State filter NOT applied (null or empty)');
         }
         if (filters.city != null && filters.city!.isNotEmpty) {
           final cityTerm = '%${filters.city!.trim()}%';
-          print('🔍 [REPOSITORY] Applying city filter: $cityTerm');
+          debugPrint('🔍 [REPOSITORY] Applying city filter: $cityTerm');
           queryBuilder = queryBuilder.ilike('city', cityTerm);
         } else {
-          print('🔍 [REPOSITORY] City filter NOT applied (null or empty)');
+          debugPrint('🔍 [REPOSITORY] City filter NOT applied (null or empty)');
         }
         if (filters.district != null && filters.district!.isNotEmpty) {
           final districtTerm = '%${filters.district!.trim()}%';
-          print('🔍 [REPOSITORY] Applying district filter: $districtTerm');
+          debugPrint('🔍 [REPOSITORY] Applying district filter: $districtTerm');
           queryBuilder = queryBuilder.ilike('district', districtTerm);
         } else {
-          print('🔍 [REPOSITORY] District filter NOT applied (null or empty)');
+          debugPrint('🔍 [REPOSITORY] District filter NOT applied (null or empty)');
         }
       } else {
-        print('🔍 [REPOSITORY] No filters provided (filters is null)');
+        debugPrint('🔍 [REPOSITORY] No filters provided (filters is null)');
       }
 
       // Apply sorting (must be after filters, before pagination)
@@ -255,11 +256,11 @@ class LeadRepository {
       // Execute query (like website: don't join assigned_user, fetch separately)
       List<dynamic> data;
       try {
-        print('🔍 [REPOSITORY] Executing query...');
+        debugPrint('🔍 [REPOSITORY] Executing query...');
         data = await paginatedQuery as List<dynamic>? ?? [];
-        print('🔍 [REPOSITORY] Query executed successfully. Results: ${data.length} leads');
+        debugPrint('🔍 [REPOSITORY] Query executed successfully. Results: ${data.length} leads');
       } catch (e) {
-        print('🔍 [REPOSITORY] Query execution error: $e');
+        debugPrint('🔍 [REPOSITORY] Query execution error: $e');
         // Fallback: query without user relationships, but still apply filters
         var finalQuery = LeadRepositoryHelper.buildFilteredQuery(
           shopId,
@@ -317,7 +318,7 @@ class LeadRepository {
             }
           }
         } catch (e) {
-          print('🔍 [REPOSITORY] Error fetching assigned users: $e');
+          debugPrint('🔍 [REPOSITORY] Error fetching assigned users: $e');
         }
       }
       
@@ -333,7 +334,7 @@ class LeadRepository {
             createdByUsersMap[userMap['id'] as String] = userMap;
           }
         } catch (e) {
-          print('🔍 [REPOSITORY] Error fetching created_by users: $e');
+          debugPrint('🔍 [REPOSITORY] Error fetching created_by users: $e');
         }
       }
       

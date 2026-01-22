@@ -292,7 +292,7 @@ class _CategoriesViewState extends State<CategoriesView> {
             }).toList();
 
       // Check if we're being used as a standalone route (needs Scaffold) or in IndexedStack (no Scaffold needed)
-      final isStandaloneRoute = Get.currentRoute == AppRoutes.CATEGORIES;
+      final isStandaloneRoute = Get.currentRoute == AppRoutes.categories;
       
       final content = RefreshIndicator(
         onRefresh: () async {
@@ -306,7 +306,7 @@ class _CategoriesViewState extends State<CategoriesView> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Material(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
                 child: TextField(
                   controller: _searchController,
@@ -328,7 +328,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                       borderSide: BorderSide(
                         color: Theme.of(
                           context,
-                        ).colorScheme.outline.withOpacity(0.2),
+                        ).colorScheme.outline.withValues(alpha: 0.2),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
@@ -336,7 +336,7 @@ class _CategoriesViewState extends State<CategoriesView> {
                       borderSide: BorderSide(
                         color: Theme.of(
                           context,
-                        ).colorScheme.outline.withOpacity(0.2),
+                        ).colorScheme.outline.withValues(alpha: 0.2),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(

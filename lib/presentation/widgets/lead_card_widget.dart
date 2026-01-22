@@ -130,7 +130,7 @@ class LeadCardWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -152,10 +152,10 @@ class LeadCardWidget extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: statusColor.withOpacity(0.3),
+                        color: statusColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -293,10 +293,10 @@ class LeadCardWidget extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: _getScoreColor(lead.score!, lead.scoreCategory).withOpacity(0.15),
+                        color: _getScoreColor(lead.score!, lead.scoreCategory).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: _getScoreColor(lead.score!, lead.scoreCategory).withOpacity(0.3),
+                          color: _getScoreColor(lead.score!, lead.scoreCategory).withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -374,10 +374,10 @@ class LeadCardWidget extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: categoryColor.withOpacity(0.1),
+                        color: categoryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: categoryColor.withOpacity(0.3),
+                          color: categoryColor.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -422,10 +422,10 @@ class LeadCardWidget extends StatelessWidget {
       height: 32, // Fixed height to match assigned-to widget
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.15),
+        color: statusColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: statusColor.withOpacity(0.3),
+          color: statusColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -538,10 +538,10 @@ class LeadCardWidget extends StatelessWidget {
       height: 32, // Fixed height to match status widget
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: assignedColor.withOpacity(0.15),
+        color: assignedColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: assignedColor.withOpacity(0.3),
+          color: assignedColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),

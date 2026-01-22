@@ -180,8 +180,8 @@ class HelpSupportView extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      theme.primaryColor.withOpacity(0.1),
-                      theme.primaryColor.withOpacity(0.05),
+                      theme.primaryColor.withValues(alpha: 0.1),
+                      theme.primaryColor.withValues(alpha: 0.05),
                     ],
                   ),
                 ),
@@ -191,7 +191,7 @@ class HelpSupportView extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.primaryColor.withOpacity(0.2),
+                        color: theme.primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -297,7 +297,7 @@ class HelpSupportView extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -363,7 +363,7 @@ class HelpSupportView extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: FaIcon(

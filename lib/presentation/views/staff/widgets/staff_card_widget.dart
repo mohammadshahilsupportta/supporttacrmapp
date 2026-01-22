@@ -82,7 +82,7 @@ class StaffCardWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -98,8 +98,8 @@ class StaffCardWidget extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                theme.colorScheme.primary.withOpacity(0.03),
-                theme.colorScheme.primary.withOpacity(0.01),
+                theme.colorScheme.primary.withValues(alpha: 0.03),
+                theme.colorScheme.primary.withValues(alpha: 0.01),
               ],
             ),
           ),
@@ -116,10 +116,10 @@ class StaffCardWidget extends StatelessWidget {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: roleColor.withOpacity(0.1),
+                      color: roleColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: roleColor.withOpacity(0.3),
+                        color: roleColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -177,7 +177,7 @@ class StaffCardWidget extends StatelessWidget {
                     PopupMenuButton<String>(
                       icon: Icon(
                         Icons.more_vert,
-                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -246,10 +246,10 @@ class StaffCardWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLowest.withOpacity(0.5),
+                  color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: theme.colorScheme.outline.withOpacity(0.1),
+                    color: theme.colorScheme.outline.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Column(
@@ -289,10 +289,10 @@ class StaffCardWidget extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: catColor.withOpacity(0.1),
+                              color: catColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: catColor.withOpacity(0.3),
+                                color: catColor.withValues(alpha: 0.3),
                                 width: 1,
                               ),
                             ),
@@ -361,7 +361,7 @@ class StaffCardWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -394,10 +394,10 @@ class StaffCardWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: roleColor.withOpacity(0.15),
+        color: roleColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: roleColor.withOpacity(0.3),
+          color: roleColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -430,10 +430,10 @@ class StaffCardWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.15),
+        color: statusColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: statusColor.withOpacity(0.3),
+          color: statusColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),

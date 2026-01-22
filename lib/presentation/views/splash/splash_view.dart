@@ -109,7 +109,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                   ]
                 : [
                     theme.colorScheme.surface,
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     theme.colorScheme.surface,
                   ],
           ),
@@ -128,8 +128,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                       scale: _logoScaleAnimation.value,
                       child: Transform.rotate(
                         angle: _logoRotationAnimation.value * 0.1,
-                        child: Opacity(
-                          opacity: _logoFadeAnimation.value,
+                        child: FadeTransition(
+                          opacity: _logoFadeAnimation,
                           child: Container(
                             width: 140,
                             height: 140,
@@ -137,8 +137,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: theme.colorScheme.primary.withOpacity(
-                                    0.3,
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.3,
                                   ),
                                   blurRadius: 30,
                                   spreadRadius: 5,
@@ -175,8 +175,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                 AnimatedBuilder(
                   animation: _textController,
                   builder: (context, child) {
-                    return Opacity(
-                      opacity: _textFadeAnimation.value,
+                    return FadeTransition(
+                      opacity: _textFadeAnimation,
                       child: Transform.translate(
                         offset: Offset(0, _textSlideAnimation.value),
                         child: Column(
@@ -229,7 +229,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                             height: 20,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.1),
                             ),
                           ),
                         ],
