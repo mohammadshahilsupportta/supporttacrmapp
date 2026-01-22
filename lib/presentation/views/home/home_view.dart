@@ -516,173 +516,180 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Widget _buildDrawer(BuildContext context, AuthController authController) {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: BoxDecoration(color: Theme.of(context).primaryColor),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (authController.user != null)
-                  CircleAvatar(
-                    radius: 30,
-                    child: Text(
-                      authController.user!.name
-                          .split(' ')
-                          .map((n) => n.isNotEmpty ? n[0] : '')
-                          .join('')
-                          .toUpperCase()
-                          .substring(
-                            0,
-                            authController.user!.name.split(' ').length > 1
-                                ? 2
-                                : 1,
-                          ),
-                      style: const TextStyle(fontSize: 24),
+    // Make drawer reactive to user changes (like bottom nav bar)
+    return Obx(() {
+      // Access user reactively - Obx will rebuild when userRx changes
+      final user = authController.userRx.value;
+      final shop = authController.shopRx.value;
+      
+      return Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(color: Theme.of(context).primaryColor),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (user != null)
+                    CircleAvatar(
+                      radius: 30,
+                      child: Text(
+                        user.name
+                            .split(' ')
+                            .map((n) => n.isNotEmpty ? n[0] : '')
+                            .join('')
+                            .toUpperCase()
+                            .substring(
+                              0,
+                              user.name.split(' ').length > 1
+                                  ? 2
+                                  : 1,
+                            ),
+                        style: const TextStyle(fontSize: 24),
+                      ),
                     ),
-                  ),
-                const SizedBox(height: 8),
-                if (authController.user != null)
-                  Text(
-                    authController.user!.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 8),
+                  if (user != null)
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                if (authController.shop != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    authController.shop!.name,
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
+                  if (shop != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      shop.name,
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.dashboard),
-            title: const Text('Dashboard'),
-            onTap: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentIndex = 0;
-              });
-              _notchController.jumpTo(0);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.people),
-            title: const Text('Leads'),
-            onTap: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentIndex = 1;
-              });
-              _notchController.jumpTo(1);
-            },
-          ),
-          // My Tasks now visible for ALL roles
-          ListTile(
-            leading: const Icon(Icons.task),
-            title: const Text('My Tasks'),
-            onTap: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentIndex = 2;
-              });
-              _notchController.jumpTo(2);
-            },
-          ),
-          if (_canViewStaff(authController.user))
             ListTile(
-              leading: const Icon(Icons.group),
-              title: const Text('Staff'),
+              leading: const Icon(Icons.dashboard),
+              title: const Text('Dashboard'),
               onTap: () {
                 Navigator.pop(context);
-                // Staff is at index 3 for all roles that can view it
                 setState(() {
-                  _currentIndex = 3;
+                  _currentIndex = 0;
                 });
-                _notchController.jumpTo(3);
+                _notchController.jumpTo(0);
               },
             ),
-          if (_canViewCategories(authController.user))
             ListTile(
-              leading: const Icon(Icons.category),
-              title: const Text('Categories'),
+              leading: const Icon(Icons.people),
+              title: const Text('Leads'),
               onTap: () {
                 Navigator.pop(context);
-                final canViewStaff = _canViewStaff(authController.user);
-                if (canViewStaff) {
-                  // Categories is not in bottom bar for admin, navigate via route
-                  Get.toNamed(AppRoutes.CATEGORIES);
-                } else {
-                  // Categories is at index 3 when Staff is not visible
+                setState(() {
+                  _currentIndex = 1;
+                });
+                _notchController.jumpTo(1);
+              },
+            ),
+            // My Tasks now visible for ALL roles
+            ListTile(
+              leading: const Icon(Icons.task),
+              title: const Text('My Tasks'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _currentIndex = 2;
+                });
+                _notchController.jumpTo(2);
+              },
+            ),
+            if (_canViewStaff(user))
+              ListTile(
+                leading: const Icon(Icons.group),
+                title: const Text('Staff'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Staff is at index 3 for all roles that can view it
                   setState(() {
                     _currentIndex = 3;
                   });
                   _notchController.jumpTo(3);
-                }
-              },
-            ),
-          if (_canViewStaff(authController.user))
+                },
+              ),
+            if (_canViewCategories(user))
+              ListTile(
+                leading: const Icon(Icons.category),
+                title: const Text('Categories'),
+                onTap: () {
+                  Navigator.pop(context);
+                  final canViewStaff = _canViewStaff(user);
+                  if (canViewStaff) {
+                    // Categories is not in bottom bar for admin, navigate via route
+                    Get.toNamed(AppRoutes.CATEGORIES);
+                  } else {
+                    // Categories is at index 3 when Staff is not visible
+                    setState(() {
+                      _currentIndex = 3;
+                    });
+                    _notchController.jumpTo(3);
+                  }
+                },
+              ),
+            if (_canViewStaff(user))
+              ListTile(
+                leading: const Icon(Icons.bar_chart),
+                title: const Text('Reports'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.REPORTS);
+                },
+              ),
+            const Divider(),
             ListTile(
-              leading: const Icon(Icons.bar_chart),
-              title: const Text('Reports'),
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
               onTap: () {
                 Navigator.pop(context);
-                Get.toNamed(AppRoutes.REPORTS);
+                final canViewStaff = _canViewStaff(user);
+                final canViewCategories = _canViewCategories(user);
+                // Settings index depends on what's in bottom bar
+                // For admin with Staff: Dashboard(0), Leads(1), MyTasks(2), Staff(3), Settings(4)
+                // For staff with Categories: Dashboard(0), Leads(1), MyTasks(2), Categories(3), Settings(4)
+                // For staff without Categories: Dashboard(0), Leads(1), MyTasks(2), Settings(3)
+                int settingsIndex = 3; // Base: after My Tasks
+                if (canViewStaff) {
+                  settingsIndex = 4; // Staff at 3, Settings at 4
+                } else if (canViewCategories) {
+                  settingsIndex = 4; // Categories at 3, Settings at 4
+                }
+                setState(() {
+                  _currentIndex = settingsIndex;
+                });
+                _notchController.jumpTo(settingsIndex);
               },
             ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
-            onTap: () {
-              Navigator.pop(context);
-              final canViewStaff = _canViewStaff(authController.user);
-              final canViewCategories = _canViewCategories(authController.user);
-              // Settings index depends on what's in bottom bar
-              // For admin with Staff: Dashboard(0), Leads(1), MyTasks(2), Staff(3), Settings(4)
-              // For staff with Categories: Dashboard(0), Leads(1), MyTasks(2), Categories(3), Settings(4)
-              // For staff without Categories: Dashboard(0), Leads(1), MyTasks(2), Settings(3)
-              int settingsIndex = 3; // Base: after My Tasks
-              if (canViewStaff) {
-                settingsIndex = 4; // Staff at 3, Settings at 4
-              } else if (canViewCategories) {
-                settingsIndex = 4; // Categories at 3, Settings at 4
-              }
-              setState(() {
-                _currentIndex = settingsIndex;
-              });
-              _notchController.jumpTo(settingsIndex);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Profile'),
-            onTap: () {
-              Navigator.pop(context);
-              Get.toNamed(AppRoutes.PROFILE);
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Sign Out', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context);
-              authController.signOut();
-            },
-          ),
-        ],
-      ),
-    );
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                Get.toNamed(AppRoutes.PROFILE);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Sign Out', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                authController.signOut();
+              },
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildDashboardContent(
