@@ -251,3 +251,215 @@ class LeadTableRowShimmer extends TableRow {
     );
   }
 }
+
+/// Instagram-style dashboard stats card shimmer
+class DashboardStatsCardShimmer extends StatelessWidget {
+  const DashboardStatsCardShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: theme.colorScheme.outline.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0), // Match actual card padding
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Allow column to size to content
+          children: [
+            // Icon and title row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ShimmerWidget(
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                ShimmerWidget(
+                  child: Container(
+                    width: 60,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8), // Match actual card spacing
+            // Value
+            ShimmerWidget(
+              child: Container(
+                width: 70,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
+            const SizedBox(height: 2), // Match actual card spacing
+            // Subtitle
+            ShimmerWidget(
+              child: Container(
+                width: 100,
+                height: 11,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Instagram-style dashboard page shimmer
+class DashboardShimmer extends StatelessWidget {
+  const DashboardShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Welcome text shimmer
+          ShimmerWidget(
+            child: Container(
+              height: 20,
+              width: 200,
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[800]
+                    : Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Stats cards shimmer
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.4,
+            children: List.generate(
+              4,
+              (index) => const DashboardStatsCardShimmer(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Recent leads section shimmer
+          ShimmerWidget(
+            child: Container(
+              height: 24,
+              width: 150,
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[800]
+                    : Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Recent leads cards shimmer
+          ...List.generate(
+            3,
+            (index) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      ShimmerWidget(
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[800]
+                                : Colors.grey[300],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerWidget(
+                              child: Container(
+                                height: 16,
+                                width: 150,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Colors.grey[800]
+                                      : Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ShimmerWidget(
+                              child: Container(
+                                height: 14,
+                                width: 100,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Colors.grey[800]
+                                      : Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

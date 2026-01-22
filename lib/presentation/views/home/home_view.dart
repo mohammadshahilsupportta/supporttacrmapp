@@ -4,8 +4,8 @@ import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../widgets/stats_card_widget.dart';
-import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
+import '../../../core/widgets/shimmer_widget.dart';
 import '../../../data/models/lead_model.dart';
 import '../../../data/models/shop_model.dart';
 import '../../../data/models/user_model.dart';
@@ -704,7 +704,7 @@ class _HomeViewState extends State<HomeView> {
       }
 
       if (authController.isLoading || (isLoading && stats == null)) {
-        return const LoadingWidget();
+        return const DashboardShimmer();
       }
 
       if (authController.user == null || shop == null) {
@@ -790,7 +790,7 @@ class _HomeViewState extends State<HomeView> {
                     user?.role != UserRole.shopOwner &&
                     user?.role != UserRole.admin;
 
-                // Show loading state only if actively loading and no stats
+                // Show shimmer state only if actively loading and no stats
                 if (isLoading && stats == null) {
                   return GridView.count(
                     crossAxisCount: 2,
@@ -801,14 +801,7 @@ class _HomeViewState extends State<HomeView> {
                     childAspectRatio: 1.4,
                     children: List.generate(
                       4,
-                      (index) => const Card(
-                        child: Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                      ),
+                      (index) => const DashboardStatsCardShimmer(),
                     ),
                   );
                 }
@@ -886,7 +879,59 @@ class _HomeViewState extends State<HomeView> {
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: const Center(child: CircularProgressIndicator()),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShimmerWidget(
+                            child: Container(
+                              height: 24,
+                              width: 180,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[300],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ...List.generate(
+                            5,
+                            (index) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                children: [
+                                  ShimmerWidget(
+                                    child: Container(
+                                      height: 16,
+                                      width: 100,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.grey[800]
+                                            : Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  ShimmerWidget(
+                                    child: Container(
+                                      height: 16,
+                                      width: 40,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.grey[800]
+                                            : Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
