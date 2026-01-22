@@ -35,6 +35,7 @@ class CategoryCardWidget extends StatelessWidget {
 
     return Card(
       elevation: 0,
+      color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(

@@ -6,6 +6,7 @@ import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
 import '../../../data/models/category_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../app/routes/app_routes.dart';
 import '../../widgets/category_card_widget.dart';
 import 'widgets/category_form_dialog.dart';
 
@@ -290,7 +291,10 @@ class _CategoriesViewState extends State<CategoriesView> {
               return nameMatch || descMatch;
             }).toList();
 
-      return RefreshIndicator(
+      // Check if we're being used as a standalone route (needs Scaffold) or in IndexedStack (no Scaffold needed)
+      final isStandaloneRoute = Get.currentRoute == AppRoutes.CATEGORIES;
+      
+      final content = RefreshIndicator(
         onRefresh: () async {
           if (authController.shop != null) {
             await categoryController.loadCategories(authController.shop!.id);
@@ -301,50 +305,52 @@ class _CategoriesViewState extends State<CategoriesView> {
             // Search field
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search categories...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            setState(() => _searchController.clear());
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.outline.withOpacity(0.2),
+              child: Material(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(12),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search categories...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              setState(() => _searchController.clear());
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.transparent,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withOpacity(0.2),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withOpacity(0.2),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
                     ),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
+                  onChanged: (value) {
+                    setState(() {});
+                  },
                 ),
-                onChanged: (value) {
-                  setState(() {});
-                },
               ),
             ),
             // Categories list
@@ -409,6 +415,32 @@ class _CategoriesViewState extends State<CategoriesView> {
             ),
           ],
         ),
+      );
+
+      // Wrap in Scaffold only if accessed as standalone route
+      if (isStandaloneRoute) {
+        return Scaffold(
+          backgroundColor: Theme.of(context).colorScheme.background,
+          appBar: AppBar(
+            title: const Text('Categories'),
+            elevation: 0,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+          ),
+          floatingActionButton: canAdd
+              ? FloatingActionButton.extended(
+                  onPressed: () => _openFormDialog(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Category'),
+                )
+              : null,
+          body: content,
+        );
+      }
+
+      // When used in IndexedStack, wrap in Container with background (HomeView provides Scaffold)
+      return Container(
+        color: Theme.of(context).colorScheme.background,
+        child: content,
       );
     });
   }
