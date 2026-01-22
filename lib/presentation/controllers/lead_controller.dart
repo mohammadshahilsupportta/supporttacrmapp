@@ -10,6 +10,7 @@ class LeadController extends GetxController {
   final _leads = <LeadWithRelationsModel>[].obs;
   final _isLoading = false.obs;
   final _isLoadingMore = false.obs;
+  final _isFiltering = false.obs; // Track when filtering is happening
   final _errorMessage = ''.obs;
   final _selectedLead = Rxn<LeadWithRelationsModel>();
   final _filters = Rxn<LeadFilters>();
@@ -29,6 +30,7 @@ class LeadController extends GetxController {
   List<LeadWithRelationsModel> get leads => _leads;
   bool get isLoading => _isLoading.value;
   bool get isLoadingMore => _isLoadingMore.value;
+  bool get isFiltering => _isFiltering.value; // Getter for filtering state
   bool get hasMore => _hasMore.value;
   String get errorMessage => _errorMessage.value;
   LeadWithRelationsModel? get selectedLead => _selectedLead.value;
@@ -56,15 +58,20 @@ class LeadController extends GetxController {
 
   // Load leads (initial load or refresh)
   Future<void> loadLeads(String shopId, {bool reset = true, bool silent = false}) async {
+    // Set filtering state FIRST (before clearing) to ensure shimmer shows immediately
+    if (!silent) {
+      _isLoading.value = true;
+    } else {
+      // Show shimmer when filtering (silent mode)
+      _isFiltering.value = true;
+    }
+    
     if (reset) {
       _currentOffset.value = 0;
       _hasMore.value = true;
-      _leads.clear();
+      _leads.clear(); // Clear leads after setting isFiltering
     }
     
-    if (!silent) {
-      _isLoading.value = true;
-    }
     _errorMessage.value = '';
 
     try {
@@ -104,6 +111,8 @@ class LeadController extends GetxController {
     } finally {
       if (!silent) {
         _isLoading.value = false;
+      } else {
+        _isFiltering.value = false;
       }
     }
   }

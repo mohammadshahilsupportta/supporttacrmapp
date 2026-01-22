@@ -8,6 +8,7 @@ import '../../controllers/category_controller.dart';
 import '../../controllers/staff_controller.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
+import '../../../core/widgets/shimmer_widget.dart';
 import '../../widgets/lead_card_widget.dart';
 import '../../widgets/lead_table_widget.dart';
 import '../../../app/routes/app_routes.dart';
@@ -504,6 +505,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                           country: _selectedCountry!,
                         );
                       }
+                      Future.microtask(() => _applyFiltersAndLoad(silent: true));
                     },
                   );
                 }),
@@ -556,6 +558,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                                 state: _selectedState!,
                               );
                             }
+                            Future.microtask(() => _applyFiltersAndLoad(silent: true));
                           },
                   );
                 }),
@@ -610,6 +613,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                                 city: _selectedCity!,
                               );
                             }
+                            Future.microtask(() => _applyFiltersAndLoad(silent: true));
                           },
                   );
                 }),
@@ -649,6 +653,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                         ? null
                         : (value) {
                             setState(() => _selectedDistrict = value == null ? null : _normalizeLocationValue(value));
+                            Future.microtask(() => _applyFiltersAndLoad(silent: true));
                           },
                   );
                 }),
@@ -898,7 +903,50 @@ class _LeadsListViewState extends State<LeadsListView> {
               ),
             ),
             // Content - Table for desktop, Cards for mobile
-            if (leadController.leads.isEmpty)
+            // Show shimmer when filtering (even if leads exist, we want to show shimmer during filter transition)
+            if (leadController.isFiltering)
+              SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.crossAxisExtent >= 768) {
+                    // Desktop - Table Shimmer
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outline
+                                  .withOpacity(0.2),
+                            ),
+                          ),
+                          child: Table(
+                            children: List.generate(
+                              5,
+                              (index) => LeadTableRowShimmer(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  } else {
+                    // Mobile - Card Shimmer
+                    return SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => const LeadCardShimmer(),
+                          childCount: 5,
+                        ),
+                      ),
+                    );
+                  }
+                },
+              )
+            else if (leadController.leads.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(
@@ -937,10 +985,17 @@ class _LeadsListViewState extends State<LeadsListView> {
                                   .withOpacity(0.2),
                             ),
                           ),
-                          child: LeadTableWidget(
-                            leads: leadController.leads,
-                            isLoading: leadController.isLoading,
-                          ),
+                          child: leadController.isFiltering
+                              ? Table(
+                                  children: List.generate(
+                                    leadController.leads.length.clamp(0, 10),
+                                    (index) => LeadTableRowShimmer(),
+                                  ),
+                                )
+                              : LeadTableWidget(
+                                  leads: leadController.leads,
+                                  isLoading: leadController.isLoading,
+                                ),
                         ),
                       ),
                     );
@@ -962,6 +1017,10 @@ class _LeadsListViewState extends State<LeadsListView> {
                                 );
                               }
                               return const SizedBox.shrink();
+                            }
+                            // Show shimmer if filtering, otherwise show actual lead
+                            if (leadController.isFiltering) {
+                              return const LeadCardShimmer();
                             }
                             final lead = leadController.leads[index];
                             return Padding(
