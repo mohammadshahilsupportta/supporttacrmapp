@@ -42,6 +42,12 @@ class LeadController extends GetxController {
 
   // Set filters (resets pagination)
   void setFilters(LeadFilters? filters) {
+    print('🔍 [CONTROLLER] setFilters called:');
+    print('  - Filters: $filters');
+    print('  - Country: ${filters?.country}');
+    print('  - State: ${filters?.state}');
+    print('  - City: ${filters?.city}');
+    print('  - District: ${filters?.district}');
     _filters.value = filters;
     _currentOffset.value = 0;
     _hasMore.value = true;

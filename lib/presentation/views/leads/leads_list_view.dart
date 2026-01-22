@@ -165,26 +165,55 @@ class _LeadsListViewState extends State<LeadsListView> {
         ? authController.user!.id 
         : null;
 
-    leadController.setFilters(
-      LeadFilters(
-        status: _selectedStatuses.isEmpty ? null : _selectedStatuses.toList(),
-        source: _selectedSource,
-        categoryIds:
-            _selectedCategoryId != null ? <String>[_selectedCategoryId!] : null,
-        search: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-        scoreCategories: _selectedScoreCategories.isEmpty
-            ? null
-            : _selectedScoreCategories.toList(),
-        country: _selectedCountry,
-        state: _selectedState,
-        city: _selectedCity,
-        district: _selectedDistrict,
-        assignedTo: _selectedAssignedTo,
-        createdBy: createdBy, // Filter by createdBy for staff role
-      ),
+    // Ensure location filters are null if empty (not empty strings)
+    final countryFilter = _selectedCountry != null && _selectedCountry!.trim().isNotEmpty 
+        ? _selectedCountry!.trim() 
+        : null;
+    final stateFilter = _selectedState != null && _selectedState!.trim().isNotEmpty 
+        ? _selectedState!.trim() 
+        : null;
+    final cityFilter = _selectedCity != null && _selectedCity!.trim().isNotEmpty 
+        ? _selectedCity!.trim() 
+        : null;
+    final districtFilter = _selectedDistrict != null && _selectedDistrict!.trim().isNotEmpty 
+        ? _selectedDistrict!.trim() 
+        : null;
+    final assignedToFilter = _selectedAssignedTo != null && _selectedAssignedTo!.trim().isNotEmpty 
+        ? _selectedAssignedTo!.trim() 
+        : null;
+
+    final filters = LeadFilters(
+      status: _selectedStatuses.isEmpty ? null : _selectedStatuses.toList(),
+      source: _selectedSource,
+      categoryIds:
+          _selectedCategoryId != null ? <String>[_selectedCategoryId!] : null,
+      search: _searchController.text.trim().isEmpty
+          ? null
+          : _searchController.text.trim(),
+      scoreCategories: _selectedScoreCategories.isEmpty
+          ? null
+          : _selectedScoreCategories.toList(),
+      country: countryFilter,
+      state: stateFilter,
+      city: cityFilter,
+      district: districtFilter,
+      assignedTo: assignedToFilter,
+      createdBy: createdBy, // Filter by createdBy for staff role
     );
+
+    // DEBUG: Print filters being set
+    print('🔍 [FILTER DEBUG] Setting filters:');
+    print('  - Country: ${filters.country}');
+    print('  - State: ${filters.state}');
+    print('  - City: ${filters.city}');
+    print('  - District: ${filters.district}');
+    print('  - AssignedTo: ${filters.assignedTo}');
+    print('  - Status: ${filters.status}');
+    print('  - Source: ${filters.source}');
+    print('  - CategoryIds: ${filters.categoryIds}');
+    print('  - Search: ${filters.search}');
+
+    leadController.setFilters(filters);
     leadController.loadLeads(authController.shop!.id, reset: true, silent: silent);
     // Only load stats if not silent (search doesn't need stats refresh)
     if (!silent) {
@@ -225,12 +254,6 @@ class _LeadsListViewState extends State<LeadsListView> {
         final mediaQuery = MediaQuery.of(context);
         final bottomInset = mediaQuery.viewInsets.bottom;
 
-        final countryValues = leadController.countries;
-        final stateValues = leadController.states;
-        final cityValues = leadController.cities;
-        final districtValues = leadController.districts;
-        final categories = categoryController.categories;
-
         return Padding(
           padding: EdgeInsets.only(
             left: 16,
@@ -262,29 +285,32 @@ class _LeadsListViewState extends State<LeadsListView> {
                 const SizedBox(height: 12),
 
                 // Category
-                DropdownButtonFormField<String>(
-                  value: _selectedCategoryId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    prefixIcon: Icon(Icons.category_outlined),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('All Categories'),
+                Obx(() {
+                  final categories = categoryController.categories;
+                  return DropdownButtonFormField<String>(
+                    value: _selectedCategoryId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Category',
+                      prefixIcon: Icon(Icons.category_outlined),
                     ),
-                    ...categories.map(
-                      (cat) => DropdownMenuItem<String>(
-                        value: cat.id,
-                        child: Text(cat.name),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('All Categories'),
                       ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _selectedCategoryId = value);
-                  },
-                ),
+                      ...categories.map(
+                        (cat) => DropdownMenuItem<String>(
+                          value: cat.id,
+                          child: Text(cat.name),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _selectedCategoryId = value);
+                    },
+                  );
+                }),
                 const SizedBox(height: 12),
 
                 // Source
@@ -343,158 +369,203 @@ class _LeadsListViewState extends State<LeadsListView> {
                 }),
                 const SizedBox(height: 16),
 
-                // Country
-                DropdownButtonFormField<String>(
-                  value: _selectedCountry,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Country',
-                    prefixIcon: Icon(Icons.public_outlined),
+                // Location Filters Section
+                const Text(
+                  'Location',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('All Countries'),
-                    ),
-                    ...countryValues.map(
-                      (v) => DropdownMenuItem<String>(
-                        value: v,
-                        child: Text(v),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    final shopId = authController.shop?.id;
-                    setState(() {
-                      _selectedCountry = value?.trim();
-                      _selectedState = null;
-                      _selectedCity = null;
-                      _selectedDistrict = null;
-                    });
-                    leadController.clearLocationOptionsBelowCountry();
-                    if (shopId != null && _selectedCountry != null) {
-                      leadController.loadStates(
-                        shopId,
-                        country: _selectedCountry!,
-                      );
-                    }
-                  },
                 ),
+                const SizedBox(height: 8),
+
+                // Country
+                Obx(() {
+                  final countryValues = leadController.countries.isNotEmpty
+                      ? leadController.countries
+                      : _getUniqueLocationValuesFromLeads('country');
+                  return DropdownButtonFormField<String>(
+                    value: _selectedCountry,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Country',
+                      prefixIcon: Icon(Icons.public_outlined),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('All Countries'),
+                      ),
+                      ...countryValues.map(
+                        (v) => DropdownMenuItem<String>(
+                          value: v,
+                          child: Text(v),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      final shopId = authController.shop?.id;
+                      setState(() {
+                        _selectedCountry = value == null ? null : _normalizeLocationValue(value);
+                        _selectedState = null;
+                        _selectedCity = null;
+                        _selectedDistrict = null;
+                      });
+                      leadController.clearLocationOptionsBelowCountry();
+                      if (shopId != null && _selectedCountry != null) {
+                        leadController.loadStates(
+                          shopId,
+                          country: _selectedCountry!,
+                        );
+                      }
+                    },
+                  );
+                }),
                 const SizedBox(height: 12),
 
                 // State
-                DropdownButtonFormField<String>(
-                  value: _selectedState,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'State',
-                    prefixIcon: Icon(Icons.map_outlined),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('All States'),
+                Obx(() {
+                  final stateValues = leadController.states.isNotEmpty
+                      ? leadController.states
+                      : _getUniqueLocationValuesFromLeads(
+                          'state',
+                          country: _selectedCountry,
+                        );
+                  return DropdownButtonFormField<String>(
+                    value: _selectedState,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'State',
+                      prefixIcon: const Icon(Icons.map_outlined),
+                      enabled: _selectedCountry != null,
                     ),
-                    ...stateValues.map(
-                      (v) => DropdownMenuItem<String>(
-                        value: v,
-                        child: Text(v),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('All States'),
                       ),
-                    ),
-                  ],
-                  onChanged: _selectedCountry == null
-                      ? null
-                      : (value) {
-                          final shopId = authController.shop?.id;
-                          setState(() {
-                            _selectedState = value?.trim();
-                            _selectedCity = null;
-                            _selectedDistrict = null;
-                          });
-                          leadController.clearLocationOptionsBelowState();
-                          if (shopId != null &&
-                              _selectedCountry != null &&
-                              _selectedState != null) {
-                            leadController.loadCities(
-                              shopId,
-                              country: _selectedCountry!,
-                              state: _selectedState!,
-                            );
-                          }
-                        },
-                ),
+                      ...stateValues.map(
+                        (v) => DropdownMenuItem<String>(
+                          value: v,
+                          child: Text(v),
+                        ),
+                      ),
+                    ],
+                    onChanged: _selectedCountry == null
+                        ? null
+                        : (value) {
+                            final shopId = authController.shop?.id;
+                            setState(() {
+                              _selectedState = value == null ? null : _normalizeLocationValue(value);
+                              _selectedCity = null;
+                              _selectedDistrict = null;
+                            });
+                            leadController.clearLocationOptionsBelowState();
+                            if (shopId != null &&
+                                _selectedCountry != null &&
+                                _selectedState != null) {
+                              leadController.loadCities(
+                                shopId,
+                                country: _selectedCountry!,
+                                state: _selectedState!,
+                              );
+                            }
+                          },
+                  );
+                }),
                 const SizedBox(height: 12),
 
                 // City
-                DropdownButtonFormField<String>(
-                  value: _selectedCity,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'City',
-                    prefixIcon: Icon(Icons.location_city_outlined),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('All Cities'),
+                Obx(() {
+                  final cityValues = leadController.cities.isNotEmpty
+                      ? leadController.cities
+                      : _getUniqueLocationValuesFromLeads(
+                          'city',
+                          country: _selectedCountry,
+                          state: _selectedState,
+                        );
+                  return DropdownButtonFormField<String>(
+                    value: _selectedCity,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'City',
+                      prefixIcon: const Icon(Icons.location_city_outlined),
+                      enabled: _selectedState != null,
                     ),
-                    ...cityValues.map(
-                      (v) => DropdownMenuItem<String>(
-                        value: v,
-                        child: Text(v),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('All Cities'),
                       ),
-                    ),
-                  ],
-                  onChanged: _selectedState == null
-                      ? null
-                      : (value) {
-                          final shopId = authController.shop?.id;
-                          setState(() {
-                            _selectedCity = value?.trim();
-                            _selectedDistrict = null;
-                          });
-                          leadController.clearLocationOptionsBelowCity();
-                          if (shopId != null &&
-                              _selectedCountry != null &&
-                              _selectedState != null &&
-                              _selectedCity != null) {
-                            leadController.loadDistricts(
-                              shopId,
-                              country: _selectedCountry!,
-                              state: _selectedState!,
-                              city: _selectedCity!,
-                            );
-                          }
-                        },
-                ),
+                      ...cityValues.map(
+                        (v) => DropdownMenuItem<String>(
+                          value: v,
+                          child: Text(v),
+                        ),
+                      ),
+                    ],
+                    onChanged: _selectedState == null
+                        ? null
+                        : (value) {
+                            final shopId = authController.shop?.id;
+                            setState(() {
+                              _selectedCity = value == null ? null : _normalizeLocationValue(value);
+                              _selectedDistrict = null;
+                            });
+                            leadController.clearLocationOptionsBelowCity();
+                            if (shopId != null &&
+                                _selectedCountry != null &&
+                                _selectedState != null &&
+                                _selectedCity != null) {
+                              leadController.loadDistricts(
+                                shopId,
+                                country: _selectedCountry!,
+                                state: _selectedState!,
+                                city: _selectedCity!,
+                              );
+                            }
+                          },
+                  );
+                }),
                 const SizedBox(height: 12),
 
                 // District
-                DropdownButtonFormField<String>(
-                  value: _selectedDistrict,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'District',
-                    prefixIcon: Icon(Icons.place_outlined),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('All Districts'),
+                Obx(() {
+                  final districtValues = leadController.districts.isNotEmpty
+                      ? leadController.districts
+                      : _getUniqueLocationValuesFromLeads(
+                          'district',
+                          country: _selectedCountry,
+                          state: _selectedState,
+                          city: _selectedCity,
+                        );
+                  return DropdownButtonFormField<String>(
+                    value: _selectedDistrict,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'District',
+                      prefixIcon: const Icon(Icons.place_outlined),
+                      enabled: _selectedCity != null,
                     ),
-                    ...districtValues.map(
-                      (v) => DropdownMenuItem<String>(
-                        value: v,
-                        child: Text(v),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('All Districts'),
                       ),
-                    ),
-                  ],
-                  onChanged: _selectedCity == null
-                      ? null
-                      : (value) {
-                          setState(() => _selectedDistrict = value?.trim());
-                        },
-                ),
+                      ...districtValues.map(
+                        (v) => DropdownMenuItem<String>(
+                          value: v,
+                          child: Text(v),
+                        ),
+                      ),
+                    ],
+                    onChanged: _selectedCity == null
+                        ? null
+                        : (value) {
+                            setState(() => _selectedDistrict = value == null ? null : _normalizeLocationValue(value));
+                          },
+                  );
+                }),
                 const SizedBox(height: 20),
 
                 Row(
@@ -673,15 +744,18 @@ class _LeadsListViewState extends State<LeadsListView> {
       });
     }
 
-    final currentFilters = leadController.filters;
     final isStaffRole = _isStaffRole(authController);
     final shouldHaveCreatedBy = isStaffRole && authController.user != null 
         ? authController.user!.id 
         : null;
     
-    if (currentFilters != null && 
-        (currentFilters.assignedTo != _selectedAssignedTo ||
-         currentFilters.createdBy != shouldHaveCreatedBy)) {
+    // Check if filters need to be reapplied
+    // Only fix if there's a mismatch in critical filters (assignedTo, createdBy)
+    // Don't override user's active filters
+    final currentFiltersCheck = leadController.filters;
+    if (currentFiltersCheck != null && 
+        (currentFiltersCheck.assignedTo != _selectedAssignedTo ||
+         currentFiltersCheck.createdBy != shouldHaveCreatedBy)) {
       // Filters are incorrect, fix immediately
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {

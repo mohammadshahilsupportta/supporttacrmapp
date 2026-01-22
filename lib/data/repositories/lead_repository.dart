@@ -25,23 +25,24 @@ class LeadRepository {
           .isFilter('deleted_at', null)
           .not(type, 'is', null);
 
-      // Cascading filters (exact match like website endpoint)
+      // Cascading filters (use ilike for case-insensitive partial matching like website filtering)
+      // This ensures normalized values from UI can match database values with different formatting
       if (type == 'state' && country != null && country.trim().isNotEmpty) {
-        query = query.eq('country', country.trim());
+        query = query.ilike('country', '%${country.trim()}%');
       }
       if (type == 'city' && state != null && state.trim().isNotEmpty) {
-        query = query.eq('state', state.trim());
+        query = query.ilike('state', '%${state.trim()}%');
         if (country != null && country.trim().isNotEmpty) {
-          query = query.eq('country', country.trim());
+          query = query.ilike('country', '%${country.trim()}%');
         }
       }
       if (type == 'district' && city != null && city.trim().isNotEmpty) {
-        query = query.eq('city', city.trim());
+        query = query.ilike('city', '%${city.trim()}%');
         if (state != null && state.trim().isNotEmpty) {
-          query = query.eq('state', state.trim());
+          query = query.ilike('state', '%${state.trim()}%');
         }
         if (country != null && country.trim().isNotEmpty) {
-          query = query.eq('country', country.trim());
+          query = query.ilike('country', '%${country.trim()}%');
         }
       }
 
@@ -70,12 +71,23 @@ class LeadRepository {
     LeadFilters? filters,
   }) async {
     try {
+      // DEBUG: Print filters received in repository
+      print('🔍 [REPOSITORY] findAll called with filters:');
+      print('  - Country: ${filters?.country}');
+      print('  - State: ${filters?.state}');
+      print('  - City: ${filters?.city}');
+      print('  - District: ${filters?.district}');
+      print('  - AssignedTo: ${filters?.assignedTo}');
+      print('  - Status: ${filters?.status}');
+      print('  - Source: ${filters?.source}');
+      print('  - Filters is null: ${filters == null}');
+
       // Build query with server-side filters
+      // Note: Don't join assigned_user or created_by_user here because they can reference either users or staff table
+      // We'll fetch user data separately after getting leads (like website does)
       var queryBuilder = SupabaseService.from('leads')
           .select('''
             *,
-            assigned_user:staff!assigned_to(id, name, email),
-            created_by_user:users!created_by(id, name),
             lead_categories(
               category:categories(*)
             )
@@ -180,20 +192,34 @@ class LeadRepository {
         // Filter by location (using ilike for partial matching like website)
         if (filters.country != null && filters.country!.isNotEmpty) {
           final countryTerm = '%${filters.country!.trim()}%';
+          print('🔍 [REPOSITORY] Applying country filter: $countryTerm');
           queryBuilder = queryBuilder.ilike('country', countryTerm);
+        } else {
+          print('🔍 [REPOSITORY] Country filter NOT applied (null or empty)');
         }
         if (filters.state != null && filters.state!.isNotEmpty) {
           final stateTerm = '%${filters.state!.trim()}%';
+          print('🔍 [REPOSITORY] Applying state filter: $stateTerm');
           queryBuilder = queryBuilder.ilike('state', stateTerm);
+        } else {
+          print('🔍 [REPOSITORY] State filter NOT applied (null or empty)');
         }
         if (filters.city != null && filters.city!.isNotEmpty) {
           final cityTerm = '%${filters.city!.trim()}%';
+          print('🔍 [REPOSITORY] Applying city filter: $cityTerm');
           queryBuilder = queryBuilder.ilike('city', cityTerm);
+        } else {
+          print('🔍 [REPOSITORY] City filter NOT applied (null or empty)');
         }
         if (filters.district != null && filters.district!.isNotEmpty) {
           final districtTerm = '%${filters.district!.trim()}%';
+          print('🔍 [REPOSITORY] Applying district filter: $districtTerm');
           queryBuilder = queryBuilder.ilike('district', districtTerm);
+        } else {
+          print('🔍 [REPOSITORY] District filter NOT applied (null or empty)');
         }
+      } else {
+        print('🔍 [REPOSITORY] No filters provided (filters is null)');
       }
 
       // Apply sorting (must be after filters, before pagination)
@@ -226,111 +252,102 @@ class LeadRepository {
       final offset = filters?.offset ?? 0;
       var paginatedQuery = orderedQuery.range(offset, offset + limit - 1);
 
-      // Execute query
+      // Execute query (like website: don't join assigned_user, fetch separately)
       List<dynamic> data;
       try {
+        print('🔍 [REPOSITORY] Executing query...');
         data = await paginatedQuery as List<dynamic>? ?? [];
+        print('🔍 [REPOSITORY] Query executed successfully. Results: ${data.length} leads');
       } catch (e) {
-        // If main query fails, rebuild with filters in fallback
+        print('🔍 [REPOSITORY] Query execution error: $e');
+        // Fallback: query without user relationships, but still apply filters
+        var finalQuery = LeadRepositoryHelper.buildFilteredQuery(
+          shopId,
+          filters,
+          '''
+            *,
+            lead_categories(
+              category:categories(*)
+            )
+          ''',
+        );
+        finalQuery = LeadRepositoryHelper.applySortingAndPagination(finalQuery, filters);
+        data = await finalQuery as List<dynamic>? ?? [];
+      }
+      
+      // PARALLEL: Resolve assigned_user for all leads simultaneously (like website)
+      // This is more efficient than sequential lookups
+      final assignedToIds = data
+          .map((l) => (l as Map<String, dynamic>)['assigned_to'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+      final createdByIds = data
+          .map((l) => (l as Map<String, dynamic>)['created_by'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+      
+      // Fetch all users and staff in parallel (like website)
+      Map<String, Map<String, dynamic>> assignedUsersMap = {};
+      Map<String, Map<String, dynamic>> createdByUsersMap = {};
+      
+      if (assignedToIds.isNotEmpty) {
         try {
-          // Second try: Join with users table, rebuild query with filters
-          var fallbackQuery = LeadRepositoryHelper.buildFilteredQuery(
-            shopId,
-            filters,
-            '''
-              *,
-              assigned_user:users!assigned_to(id, name, email),
-              created_by_user:users!created_by(id, name),
-              lead_categories(
-                category:categories(*)
-              )
-            ''',
-          );
-          fallbackQuery = LeadRepositoryHelper.applySortingAndPagination(fallbackQuery, filters);
-          data = await fallbackQuery as List<dynamic>? ?? [];
-        } catch (e2) {
-          // Final fallback: query without user relationships, but still apply filters
-          var finalQuery = LeadRepositoryHelper.buildFilteredQuery(
-            shopId,
-            filters,
-            '''
-              *,
-              lead_categories(
-                category:categories(*)
-              )
-            ''',
-          );
-          finalQuery = LeadRepositoryHelper.applySortingAndPagination(finalQuery, filters);
-          data = await finalQuery as List<dynamic>? ?? [];
+          // Try fetching from both tables in parallel
+          final staffResults = await SupabaseService.from('staff')
+              .select('id, name, email')
+              .inFilter('id', assignedToIds) as List<dynamic>? ?? [];
           
-          // Fetch user data separately for assigned_to and created_by
-          final assignedToIds = data
-              .map((l) => (l as Map<String, dynamic>)['assigned_to'] as String?)
-              .whereType<String>()
-              .toSet()
-              .toList();
-          final createdByIds = data
-              .map((l) => (l as Map<String, dynamic>)['created_by'] as String?)
-              .whereType<String>()
-              .toSet()
-              .toList();
+          final usersResults = await SupabaseService.from('users')
+              .select('id, name, email')
+              .inFilter('id', assignedToIds) as List<dynamic>? ?? [];
           
-          Map<String, Map<String, dynamic>> assignedUsersMap = {};
-          Map<String, Map<String, dynamic>> createdByUsersMap = {};
-          
-          // Try fetching from staff table first, then fallback to users table
-          for (final userId in assignedToIds) {
-            try {
-              // Try staff table first
-              var user = await SupabaseService.from('staff')
-                  .select('id, name, email')
-                  .eq('id', userId)
-                  .maybeSingle();
-              if (user == null) {
-                // Fallback to users table
-                user = await SupabaseService.from('users')
-                    .select('id, name, email')
-                    .eq('id', userId)
-                    .maybeSingle();
-              }
-              if (user != null) {
-                assignedUsersMap[userId] = Map<String, dynamic>.from(user);
-              }
-            } catch (e3) {
-              // Skip if user not found
-              continue;
+          // Create lookup maps (prefer staff over users if both exist)
+          for (final user in staffResults) {
+            final userMap = user as Map<String, dynamic>;
+            assignedUsersMap[userMap['id'] as String] = userMap;
+          }
+          for (final user in usersResults) {
+            final userMap = user as Map<String, dynamic>;
+            final userId = userMap['id'] as String;
+            // Only add if not already in map (staff takes precedence)
+            if (!assignedUsersMap.containsKey(userId)) {
+              assignedUsersMap[userId] = userMap;
             }
           }
+        } catch (e) {
+          print('🔍 [REPOSITORY] Error fetching assigned users: $e');
+        }
+      }
+      
+      // Fetch created by users
+      if (createdByIds.isNotEmpty) {
+        try {
+          final usersResults = await SupabaseService.from('users')
+              .select('id, name')
+              .inFilter('id', createdByIds) as List<dynamic>? ?? [];
           
-          // Fetch created by users
-          for (final userId in createdByIds) {
-            try {
-              final user = await SupabaseService.from('users')
-                  .select('id, name')
-                  .eq('id', userId)
-                  .maybeSingle();
-              if (user != null) {
-                createdByUsersMap[userId] = Map<String, dynamic>.from(user);
-              }
-            } catch (e4) {
-              // Skip if user not found
-              continue;
-            }
+          for (final user in usersResults) {
+            final userMap = user as Map<String, dynamic>;
+            createdByUsersMap[userMap['id'] as String] = userMap;
           }
-          
-          // Merge user data into leads
-          for (var lead in data) {
-            final leadMap = lead as Map<String, dynamic>;
-            final assignedTo = leadMap['assigned_to'] as String?;
-            final createdBy = leadMap['created_by'] as String?;
-            
-            if (assignedTo != null && assignedUsersMap.containsKey(assignedTo)) {
-              leadMap['assigned_user'] = assignedUsersMap[assignedTo];
-            }
-            if (createdBy != null && createdByUsersMap.containsKey(createdBy)) {
-              leadMap['created_by_user'] = createdByUsersMap[createdBy];
-            }
-          }
+        } catch (e) {
+          print('🔍 [REPOSITORY] Error fetching created_by users: $e');
+        }
+      }
+      
+      // Merge user data into leads (like website)
+      for (var lead in data) {
+        final leadMap = lead as Map<String, dynamic>;
+        final assignedTo = leadMap['assigned_to'] as String?;
+        final createdBy = leadMap['created_by'] as String?;
+        
+        if (assignedTo != null && assignedUsersMap.containsKey(assignedTo)) {
+          leadMap['assigned_user'] = assignedUsersMap[assignedTo];
+        }
+        if (createdBy != null && createdByUsersMap.containsKey(createdBy)) {
+          leadMap['created_by_user'] = createdByUsersMap[createdBy];
         }
       }
 
