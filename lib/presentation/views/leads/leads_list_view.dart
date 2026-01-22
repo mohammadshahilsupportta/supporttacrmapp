@@ -31,6 +31,7 @@ class _LeadsListViewState extends State<LeadsListView> {
   String? _selectedState;
   String? _selectedCity;
   String? _selectedDistrict;
+  String? _selectedAssignedTo;
   Timer? _searchDebounceTimer;
   bool _initialLoadAttempted = false;
 
@@ -121,7 +122,7 @@ class _LeadsListViewState extends State<LeadsListView> {
       }
       // Load staff for assignment dropdown
       final staffController = Get.find<StaffController>();
-      if (staffController.staffList.isEmpty) {
+      if (staffController.staffList.isEmpty && !staffController.isLoading) {
         staffController.loadStaff(authController.shop!.id);
       }
     }
@@ -180,7 +181,7 @@ class _LeadsListViewState extends State<LeadsListView> {
         state: _selectedState,
         city: _selectedCity,
         district: _selectedDistrict,
-        assignedTo: null, // Always clear assignedTo filter in Leads screen
+        assignedTo: _selectedAssignedTo,
         createdBy: createdBy, // Filter by createdBy for staff role
       ),
     );
@@ -202,6 +203,7 @@ class _LeadsListViewState extends State<LeadsListView> {
       _selectedState = null;
       _selectedCity = null;
       _selectedDistrict = null;
+      _selectedAssignedTo = null;
     });
     // Use silent loading for filter clearing
     _applyFiltersAndLoad(silent: true);
@@ -309,6 +311,36 @@ class _LeadsListViewState extends State<LeadsListView> {
                     setState(() => _selectedSource = value);
                   },
                 ),
+                const SizedBox(height: 12),
+
+                // Assigned To
+                Obx(() {
+                  final staffController = Get.find<StaffController>();
+                  final staffList = staffController.staffList;
+                  return DropdownButtonFormField<String>(
+                    value: _selectedAssignedTo,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Assigned To',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('All Assignments'),
+                      ),
+                      ...staffList.map(
+                        (staff) => DropdownMenuItem<String>(
+                          value: staff.id,
+                          child: Text(staff.name),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _selectedAssignedTo = value);
+                    },
+                  );
+                }),
                 const SizedBox(height: 16),
 
                 // Country
@@ -629,6 +661,18 @@ class _LeadsListViewState extends State<LeadsListView> {
       });
     }
 
+    // Ensure staff list loads once shop is available (for assigned to filter)
+    final staffController = Get.find<StaffController>();
+    if (authController.shop != null &&
+        staffController.staffList.isEmpty &&
+        !staffController.isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && authController.shop != null) {
+          staffController.loadStaff(authController.shop!.id);
+        }
+      });
+    }
+
     final currentFilters = leadController.filters;
     final isStaffRole = _isStaffRole(authController);
     final shouldHaveCreatedBy = isStaffRole && authController.user != null 
@@ -636,7 +680,7 @@ class _LeadsListViewState extends State<LeadsListView> {
         : null;
     
     if (currentFilters != null && 
-        (currentFilters.assignedTo != null || 
+        (currentFilters.assignedTo != _selectedAssignedTo ||
          currentFilters.createdBy != shouldHaveCreatedBy)) {
       // Filters are incorrect, fix immediately
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -805,7 +849,8 @@ class _LeadsListViewState extends State<LeadsListView> {
         (_selectedCountry != null ? 1 : 0) +
         (_selectedState != null ? 1 : 0) +
         (_selectedCity != null ? 1 : 0) +
-        (_selectedDistrict != null ? 1 : 0);
+        (_selectedDistrict != null ? 1 : 0) +
+        (_selectedAssignedTo != null ? 1 : 0);
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -1091,6 +1136,78 @@ class _LeadsListViewState extends State<LeadsListView> {
               ),
             ],
           ),
+
+          // Assigned To Filter
+          const SizedBox(height: 12),
+          Obx(() {
+            final staffController = Get.find<StaffController>();
+            final staffList = staffController.staffList;
+            return InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'Assigned To',
+                prefixIcon: const Icon(Icons.person_outline, size: 18),
+                filled: true,
+                fillColor: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withOpacity(0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withOpacity(0.2),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withOpacity(0.2),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                constraints: const BoxConstraints(minHeight: 36),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedAssignedTo,
+                  isExpanded: true,
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('All Assignments'),
+                    ),
+                    ...staffList.map(
+                      (staff) => DropdownMenuItem<String>(
+                        value: staff.id,
+                        child: Text(staff.name),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedAssignedTo = value);
+                    Future.microtask(
+                        () => _applyFiltersAndLoad(silent: true));
+                  },
+                ),
+              ),
+            );
+          }),
 
           // Location Filters (inline only on larger screens)
           const SizedBox(height: 12),
