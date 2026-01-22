@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import '../../controllers/lead_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
@@ -23,6 +24,9 @@ class LeadsListView extends StatefulWidget {
 class _LeadsListViewState extends State<LeadsListView> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final _storage = GetStorage();
+  static const String _filterStorageKey = 'lead_filters';
+  
   LeadSource? _selectedSource;
   String? _selectedCategoryId;
   final Set<LeadStatus> _selectedStatuses = <LeadStatus>{};
@@ -82,6 +86,9 @@ class _LeadsListViewState extends State<LeadsListView> {
       Get.put(StaffController());
     }
 
+    // Load persisted filters
+    _loadPersistedFilters();
+
     // Setup scroll listener for pagination
     _scrollController.addListener(_onScroll);
 
@@ -94,6 +101,81 @@ class _LeadsListViewState extends State<LeadsListView> {
         leadController.loadCountries(authController.shop!.id);
       }
     });
+  }
+
+  void _loadPersistedFilters() {
+    try {
+      final savedFilters = _storage.read(_filterStorageKey);
+      if (savedFilters != null && savedFilters is Map) {
+        setState(() {
+          // Restore search
+          if (savedFilters['search'] != null) {
+            _searchController.text = savedFilters['search'] as String;
+          }
+          // Restore status
+          if (savedFilters['status'] != null && savedFilters['status'] is List) {
+            _selectedStatuses.clear();
+            for (var statusStr in savedFilters['status'] as List) {
+              try {
+                _selectedStatuses.add(LeadStatus.values.firstWhere(
+                  (s) => s.toString() == statusStr,
+                ));
+              } catch (e) {
+                // Skip invalid status
+              }
+            }
+          }
+          // Restore category
+          _selectedCategoryId = savedFilters['category_id'] as String?;
+          // Restore source
+          if (savedFilters['source'] != null) {
+            try {
+              _selectedSource = LeadSource.values.firstWhere(
+                (s) => s.toString() == savedFilters['source'],
+              );
+            } catch (e) {
+              // Skip invalid source
+            }
+          }
+          // Restore location filters
+          _selectedCountry = savedFilters['country'] as String?;
+          _selectedState = savedFilters['state'] as String?;
+          _selectedCity = savedFilters['city'] as String?;
+          _selectedDistrict = savedFilters['district'] as String?;
+          // Restore assigned to
+          _selectedAssignedTo = savedFilters['assigned_to'] as String?;
+          // Restore score categories
+          if (savedFilters['score_categories'] != null && savedFilters['score_categories'] is List) {
+            _selectedScoreCategories.clear();
+            _selectedScoreCategories.addAll(
+              (savedFilters['score_categories'] as List).cast<String>(),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      // If loading fails, just continue with default filters
+      debugPrint('Error loading persisted filters: $e');
+    }
+  }
+
+  void _saveFilters() {
+    try {
+      _storage.write(_filterStorageKey, {
+        'search': _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+        'status': _selectedStatuses.map((s) => s.toString()).toList(),
+        'category_id': _selectedCategoryId,
+        'source': _selectedSource?.toString(),
+        'country': _selectedCountry,
+        'state': _selectedState,
+        'city': _selectedCity,
+        'district': _selectedDistrict,
+        'assigned_to': _selectedAssignedTo,
+        'score_categories': _selectedScoreCategories.toList(),
+      });
+    } catch (e) {
+      debugPrint('Error saving filters: $e');
+    }
   }
 
   @override
@@ -219,6 +301,9 @@ class _LeadsListViewState extends State<LeadsListView> {
     if (!silent) {
       leadController.loadStats(authController.shop!.id);
     }
+    
+    // Save filters after applying them
+    _saveFilters();
   }
 
   void _clearFilters() {
@@ -234,6 +319,7 @@ class _LeadsListViewState extends State<LeadsListView> {
       _selectedDistrict = null;
       _selectedAssignedTo = null;
     });
+    _saveFilters(); // Save cleared filters
     // Use silent loading for filter clearing
     _applyFiltersAndLoad(silent: true);
   }
@@ -945,6 +1031,7 @@ class _LeadsListViewState extends State<LeadsListView> {
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             setState(() => _searchController.clear());
+                            _saveFilters();
                             _applyFiltersAndLoad();
                           },
                         )
@@ -1677,6 +1764,30 @@ class _LeadsListViewState extends State<LeadsListView> {
                       labelPadding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
                   ),
+                if (_selectedAssignedTo != null)
+                  Obx(() {
+                    final staffController = Get.find<StaffController>();
+                    final staff = staffController.staffList.firstWhereOrNull(
+                      (s) => s.id == _selectedAssignedTo,
+                    );
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Chip(
+                        label: Text(
+                          'Assigned: ${staff?.name ?? _selectedAssignedTo}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        onDeleted: () {
+                          setState(() => _selectedAssignedTo = null);
+                          Future.microtask(() => _applyFiltersAndLoad(silent: true));
+                        },
+                        deleteIcon: const Icon(Icons.close, size: 14),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    );
+                  }),
               ],
             ),
           ),
