@@ -590,9 +590,9 @@ class LeadRepository {
   // Get lead statistics
   Future<LeadStats> getStats(String shopId, {String? userId}) async {
     try {
-      // Build query for all leads
+      // Build query for all leads (include value for total lead value sum)
       var allLeadsQuery = SupabaseService.from('leads')
-          .select('id, status')
+          .select('id, status, value')
           .eq('shop_id', shopId)
           .isFilter('deleted_at', null);
       
@@ -604,6 +604,15 @@ class LeadRepository {
       final allLeads = await allLeadsQuery as List<dynamic>? ?? [];
 
       final total = allLeads.length;
+
+      // Total lead value: sum of value for visible leads (like website)
+      double totalLeadValue = 0;
+      for (final item in allLeads) {
+        final v = (item as Map<String, dynamic>)['value'];
+        if (v != null) {
+          totalLeadValue += (v is num) ? v.toDouble() : (double.tryParse(v.toString()) ?? 0);
+        }
+      }
 
       // Count by status (raw string for dashboard 8-status overview + enum for backward compat)
       final statusData = allLeads;
@@ -684,6 +693,7 @@ class LeadRepository {
         byCategory: byCategory,
         recentCount: recentCount,
         assignedCount: assignedCount,
+        totalLeadValue: totalLeadValue,
       );
     } catch (e) {
       throw Helpers.handleError(e);

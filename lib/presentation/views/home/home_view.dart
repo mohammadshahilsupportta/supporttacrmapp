@@ -1,6 +1,7 @@
 import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../widgets/stats_card_widget.dart';
@@ -814,7 +815,7 @@ class _HomeViewState extends State<HomeView> {
                     mainAxisSpacing: 16,
                     childAspectRatio: 1.4,
                     children: List.generate(
-                      4,
+                      5,
                       (index) => const DashboardStatsCardShimmer(),
                     ),
                   );
@@ -866,6 +867,15 @@ class _HomeViewState extends State<HomeView> {
                           : 'Leads added this week',
                       icon: Icons.person_add,
                       iconColor: Colors.orange,
+                    ),
+                    StatsCardWidget(
+                      title: isStaffRole ? 'My Lead Value' : 'Total Lead Value',
+                      value: '₹ ${NumberFormat('#,###').format((stats?.totalLeadValue ?? 0).round())}',
+                      subtitle: isStaffRole
+                          ? 'Sum of your leads\' potential values'
+                          : 'Sum of all lead potential values',
+                      icon: Icons.currency_rupee,
+                      iconColor: Colors.teal,
                     ),
                     // Show different card for staff vs admin/owner
                     if (isStaffRole)

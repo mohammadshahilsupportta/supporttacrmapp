@@ -475,6 +475,8 @@ class LeadStats {
   final List<CategoryCount> byCategory;
   final int recentCount;
   final int assignedCount; // Count of leads assigned to user (for staff roles)
+  /// Sum of lead value for visible leads (admin: all shop leads, staff: their leads). Like website.
+  final double totalLeadValue;
 
   LeadStats({
     required this.total,
@@ -483,6 +485,7 @@ class LeadStats {
     required this.recentCount,
     this.assignedCount = 0, // Default to 0 if not provided
     Map<String, int>? byStatusString,
+    this.totalLeadValue = 0,
   }) : byStatusString = byStatusString ?? {};
 }
 
