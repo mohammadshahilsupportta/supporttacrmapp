@@ -22,11 +22,13 @@ class DashboardController extends GetxController {
   bool get isLoading => _isLoading.value;
   String get errorMessage => _errorMessage.value;
 
-  // Calculate conversion rate
+  // Calculate conversion rate (proposal_sent is primary, closed_won fallback)
   double get conversionRate {
     if (_stats.value == null || _stats.value!.total == 0) return 0.0;
-    final converted = _stats.value!.byStatus[LeadStatus.converted] ?? 0;
-    return (converted / _stats.value!.total * 100);
+    final proposalSent = _stats.value!.byStatus[LeadStatus.proposalSent] ?? 0;
+    final closedWon = _stats.value!.byStatus[LeadStatus.closedWon] ?? 0;
+    final conversionCount = proposalSent > 0 ? proposalSent : closedWon;
+    return (conversionCount / _stats.value!.total * 100);
   }
 
   @override

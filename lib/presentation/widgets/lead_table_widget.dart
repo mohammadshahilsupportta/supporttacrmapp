@@ -21,16 +21,22 @@ class LeadTableWidget extends StatelessWidget {
 
   Color _getStatusColor(LeadStatus status) {
     switch (status) {
-      case LeadStatus.newLead:
-        return Colors.blue;
-      case LeadStatus.contacted:
-        return Colors.orange;
-      case LeadStatus.qualified:
-        return Colors.purple;
-      case LeadStatus.converted:
-        return Colors.green;
-      case LeadStatus.lost:
-        return Colors.red;
+      case LeadStatus.willContact:
+        return Colors.blue.shade600;
+      case LeadStatus.needFollowUp:
+        return Colors.blue.shade500;
+      case LeadStatus.appointmentScheduled:
+        return Colors.yellow.shade700;
+      case LeadStatus.proposalSent:
+        return Colors.green.shade600;
+      case LeadStatus.alreadyHas:
+        return Colors.purple.shade600;
+      case LeadStatus.noNeedNow:
+        return Colors.orange.shade600;
+      case LeadStatus.closedWon:
+        return Colors.green.shade800;
+      case LeadStatus.closedLost:
+        return Colors.red.shade600;
     }
   }
 

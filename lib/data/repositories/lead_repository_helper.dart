@@ -17,21 +17,7 @@ class LeadRepositoryHelper {
       // Filter by status
       if (filters.status != null && filters.status!.isNotEmpty) {
         final statusStrings = filters.status!
-            .map((s) {
-              // Convert enum to database format: newLead -> 'new', contacted -> 'contacted', etc.
-              switch (s) {
-                case LeadStatus.newLead:
-                  return 'new';
-                case LeadStatus.contacted:
-                  return 'contacted';
-                case LeadStatus.qualified:
-                  return 'qualified';
-                case LeadStatus.converted:
-                  return 'converted';
-                case LeadStatus.lost:
-                  return 'lost';
-              }
-            })
+            .map((s) => LeadModel.statusToString(s))
             .toList();
         query = query.inFilter('status', statusStrings);
       }

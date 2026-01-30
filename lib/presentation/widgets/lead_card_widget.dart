@@ -26,46 +26,64 @@ class LeadCardWidget extends StatelessWidget {
 
   Color _getStatusColor(LeadStatus status) {
     switch (status) {
-      case LeadStatus.newLead:
-        return Colors.blue;
-      case LeadStatus.contacted:
-        return Colors.orange;
-      case LeadStatus.qualified:
-        return Colors.purple;
-      case LeadStatus.converted:
-        return Colors.green;
-      case LeadStatus.lost:
-        return Colors.red;
+      case LeadStatus.willContact:
+        return Colors.blue.shade600;
+      case LeadStatus.needFollowUp:
+        return Colors.blue.shade500;
+      case LeadStatus.appointmentScheduled:
+        return Colors.yellow.shade700;
+      case LeadStatus.proposalSent:
+        return Colors.green.shade600;
+      case LeadStatus.alreadyHas:
+        return Colors.purple.shade600;
+      case LeadStatus.noNeedNow:
+        return Colors.orange.shade600;
+      case LeadStatus.closedWon:
+        return Colors.green.shade800;
+      case LeadStatus.closedLost:
+        return Colors.red.shade600;
     }
   }
 
   IconData _getStatusIcon(LeadStatus status) {
     switch (status) {
-      case LeadStatus.newLead:
-        return Icons.fiber_new;
-      case LeadStatus.contacted:
-        return Icons.phone;
-      case LeadStatus.qualified:
-        return Icons.verified;
-      case LeadStatus.converted:
+      case LeadStatus.willContact:
+        return Icons.phone_in_talk;
+      case LeadStatus.needFollowUp:
+        return Icons.schedule;
+      case LeadStatus.appointmentScheduled:
+        return Icons.event;
+      case LeadStatus.proposalSent:
+        return Icons.description;
+      case LeadStatus.alreadyHas:
+        return Icons.check_box;
+      case LeadStatus.noNeedNow:
+        return Icons.watch_later;
+      case LeadStatus.closedWon:
         return Icons.check_circle;
-      case LeadStatus.lost:
+      case LeadStatus.closedLost:
         return Icons.cancel;
     }
   }
 
   String _getStatusLabel(LeadStatus status) {
     switch (status) {
-      case LeadStatus.newLead:
-        return 'New';
-      case LeadStatus.contacted:
-        return 'Contacted';
-      case LeadStatus.qualified:
-        return 'Qualified';
-      case LeadStatus.converted:
-        return 'Converted';
-      case LeadStatus.lost:
-        return 'Lost';
+      case LeadStatus.willContact:
+        return 'Will Contact';
+      case LeadStatus.needFollowUp:
+        return 'Need Follow-Up';
+      case LeadStatus.appointmentScheduled:
+        return 'Appointment Scheduled';
+      case LeadStatus.proposalSent:
+        return 'Proposal Sent';
+      case LeadStatus.alreadyHas:
+        return 'Already Has';
+      case LeadStatus.noNeedNow:
+        return 'No Need Now';
+      case LeadStatus.closedWon:
+        return 'Closed – Won';
+      case LeadStatus.closedLost:
+        return 'Closed – Lost';
     }
   }
 

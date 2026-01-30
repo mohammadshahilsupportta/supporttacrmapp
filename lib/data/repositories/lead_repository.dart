@@ -101,21 +101,7 @@ class LeadRepository {
         // Filter by status
         if (filters.status != null && filters.status!.isNotEmpty) {
           final statusStrings = filters.status!
-              .map((s) {
-                // Convert enum to database format: newLead -> 'new', contacted -> 'contacted', etc.
-                switch (s) {
-                  case LeadStatus.newLead:
-                    return 'new';
-                  case LeadStatus.contacted:
-                    return 'contacted';
-                  case LeadStatus.qualified:
-                    return 'qualified';
-                  case LeadStatus.converted:
-                    return 'converted';
-                  case LeadStatus.lost:
-                    return 'lost';
-                }
-              })
+              .map((s) => LeadModel.statusToString(s))
               .toList();
           queryBuilder = queryBuilder.inFilter('status', statusStrings);
         }
@@ -620,37 +606,11 @@ class LeadRepository {
       final byStatusString = <String, int>{};
 
       for (final item in statusData) {
-        final statusStr = ((item as Map<String, dynamic>)['status'] as String?) ?? 'new';
-        // Raw count for dashboard (matches website: will_contact, need_follow_up, etc.)
+        final statusStr = ((item as Map<String, dynamic>)['status'] as String?) ?? 'will_contact';
+        // Raw count for dashboard
         byStatusString[statusStr] = (byStatusString[statusStr] ?? 0) + 1;
-        // Parse to enum for backward compat (conversion rate, etc.)
-        LeadStatus status;
-        switch (statusStr) {
-          case 'contacted':
-            status = LeadStatus.contacted;
-            break;
-          case 'qualified':
-            status = LeadStatus.qualified;
-            break;
-          case 'converted':
-          case 'closed_won':
-            status = LeadStatus.converted;
-            break;
-          case 'lost':
-          case 'closed_lost':
-          case 'already_has':
-          case 'no_need_now':
-            status = LeadStatus.lost;
-            break;
-          case 'will_contact':
-          case 'need_follow_up':
-          case 'appointment_scheduled':
-          case 'proposal_sent':
-            status = LeadStatus.contacted;
-            break;
-          default:
-            status = LeadStatus.newLead;
-        }
+        // Parse to 8-status enum (with legacy 5-status support)
+        final status = LeadModel.statusFromString(statusStr);
         byStatus[status] = (byStatus[status] ?? 0) + 1;
       }
 

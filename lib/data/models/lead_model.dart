@@ -1,6 +1,16 @@
 import 'category_model.dart';
 
-enum LeadStatus { newLead, contacted, qualified, converted, lost }
+/// Lead status matching website's 8 statuses
+enum LeadStatus {
+  willContact,
+  needFollowUp,
+  appointmentScheduled,
+  proposalSent,
+  alreadyHas,
+  noNeedNow,
+  closedWon,
+  closedLost,
+}
 
 enum LeadSource { website, phone, walkIn, referral, socialMedia, email, other }
 
@@ -79,7 +89,7 @@ class LeadModel {
       fieldOfWork: json['field_of_work'],
       source: json['source'] != null ? _sourceFromString(json['source']) : null,
       notes: json['notes'],
-      status: _statusFromString(json['status'] ?? 'newLead'),
+      status: statusFromString(json['status'] ?? 'will_contact'),
       assignedTo: json['assigned_to'],
       products: json['products'] != null
           ? List<String>.from(json['products'] as List)
@@ -98,18 +108,37 @@ class LeadModel {
     );
   }
 
-  static LeadStatus _statusFromString(String status) {
+  static LeadStatus statusFromString(String status) {
     switch (status) {
+      case 'will_contact':
+        return LeadStatus.willContact;
+      case 'need_follow_up':
+        return LeadStatus.needFollowUp;
+      case 'appointment_scheduled':
+        return LeadStatus.appointmentScheduled;
+      case 'proposal_sent':
+        return LeadStatus.proposalSent;
+      case 'already_has':
+        return LeadStatus.alreadyHas;
+      case 'no_need_now':
+        return LeadStatus.noNeedNow;
+      case 'closed_won':
+        return LeadStatus.closedWon;
+      case 'closed_lost':
+        return LeadStatus.closedLost;
+      // Legacy 5-status support (map to closest 8-status equivalent)
+      case 'new':
+        return LeadStatus.willContact;
       case 'contacted':
-        return LeadStatus.contacted;
+        return LeadStatus.needFollowUp;
       case 'qualified':
-        return LeadStatus.qualified;
+        return LeadStatus.appointmentScheduled;
       case 'converted':
-        return LeadStatus.converted;
+        return LeadStatus.closedWon;
       case 'lost':
-        return LeadStatus.lost;
+        return LeadStatus.closedLost;
       default:
-        return LeadStatus.newLead;
+        return LeadStatus.willContact;
     }
   }
 
@@ -134,16 +163,22 @@ class LeadModel {
 
   String get statusString {
     switch (status) {
-      case LeadStatus.newLead:
-        return 'new';
-      case LeadStatus.contacted:
-        return 'contacted';
-      case LeadStatus.qualified:
-        return 'qualified';
-      case LeadStatus.converted:
-        return 'converted';
-      case LeadStatus.lost:
-        return 'lost';
+      case LeadStatus.willContact:
+        return 'will_contact';
+      case LeadStatus.needFollowUp:
+        return 'need_follow_up';
+      case LeadStatus.appointmentScheduled:
+        return 'appointment_scheduled';
+      case LeadStatus.proposalSent:
+        return 'proposal_sent';
+      case LeadStatus.alreadyHas:
+        return 'already_has';
+      case LeadStatus.noNeedNow:
+        return 'no_need_now';
+      case LeadStatus.closedWon:
+        return 'closed_won';
+      case LeadStatus.closedLost:
+        return 'closed_lost';
     }
   }
 
@@ -169,16 +204,22 @@ class LeadModel {
 
   static String statusToString(LeadStatus status) {
     switch (status) {
-      case LeadStatus.newLead:
-        return 'new';
-      case LeadStatus.contacted:
-        return 'contacted';
-      case LeadStatus.qualified:
-        return 'qualified';
-      case LeadStatus.converted:
-        return 'converted';
-      case LeadStatus.lost:
-        return 'lost';
+      case LeadStatus.willContact:
+        return 'will_contact';
+      case LeadStatus.needFollowUp:
+        return 'need_follow_up';
+      case LeadStatus.appointmentScheduled:
+        return 'appointment_scheduled';
+      case LeadStatus.proposalSent:
+        return 'proposal_sent';
+      case LeadStatus.alreadyHas:
+        return 'already_has';
+      case LeadStatus.noNeedNow:
+        return 'no_need_now';
+      case LeadStatus.closedWon:
+        return 'closed_won';
+      case LeadStatus.closedLost:
+        return 'closed_lost';
     }
   }
 
@@ -290,7 +331,7 @@ class LeadWithRelationsModel extends LeadModel {
           ? LeadModel._sourceFromString(json['source'])
           : null,
       notes: json['notes'],
-      status: LeadModel._statusFromString(json['status'] ?? 'new'),
+      status: LeadModel.statusFromString(json['status'] ?? 'will_contact'),
       assignedTo: json['assigned_to'],
       products: json['products'] != null
           ? List<String>.from(json['products'] as List)
@@ -412,18 +453,9 @@ class CreateLeadInput {
   }
 }
 
-enum LeadSortBy {
-  name,
-  createdAt,
-  updatedAt,
-  score,
-  status,
-}
+enum LeadSortBy { name, createdAt, updatedAt, score, status }
 
-enum LeadSortOrder {
-  asc,
-  desc,
-}
+enum LeadSortOrder { asc, desc }
 
 class LeadFilters {
   final List<LeadStatus>? status;
@@ -468,6 +500,7 @@ class LeadFilters {
 class LeadStats {
   final int total;
   final Map<LeadStatus, int> byStatus;
+
   /// Counts by raw status string from DB. Used for dashboard Lead Status Overview
   /// to match website's 8 statuses: will_contact, need_follow_up, appointment_scheduled,
   /// proposal_sent, already_has, no_need_now, closed_won, closed_lost.

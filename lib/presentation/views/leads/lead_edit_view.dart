@@ -188,7 +188,7 @@ class _LeadEditViewState extends State<LeadEditView> {
       notes: _notesController.text.trim().isNotEmpty
           ? _notesController.text.trim()
           : null,
-      status: _selectedStatus ?? LeadStatus.newLead,
+      status: _selectedStatus ?? LeadStatus.willContact,
       assignedTo: _selectedAssignedTo,
       categoryIds:
           _selectedCategoryIds.isNotEmpty ? _selectedCategoryIds : null,
@@ -555,16 +555,22 @@ class _LeadEditViewState extends State<LeadEditView> {
 
   String _statusLabel(LeadStatus status) {
     switch (status) {
-      case LeadStatus.newLead:
-        return 'New';
-      case LeadStatus.contacted:
-        return 'Contacted';
-      case LeadStatus.qualified:
-        return 'Qualified';
-      case LeadStatus.converted:
-        return 'Converted';
-      case LeadStatus.lost:
-        return 'Lost';
+      case LeadStatus.willContact:
+        return 'Will Contact';
+      case LeadStatus.needFollowUp:
+        return 'Need Follow-Up';
+      case LeadStatus.appointmentScheduled:
+        return 'Appointment Scheduled';
+      case LeadStatus.proposalSent:
+        return 'Proposal Sent';
+      case LeadStatus.alreadyHas:
+        return 'Already Has';
+      case LeadStatus.noNeedNow:
+        return 'No Need Now';
+      case LeadStatus.closedWon:
+        return 'Closed – Won';
+      case LeadStatus.closedLost:
+        return 'Closed – Lost';
     }
   }
 }

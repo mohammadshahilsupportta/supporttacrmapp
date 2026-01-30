@@ -822,15 +822,15 @@ class _HomeViewState extends State<HomeView> {
                 }
 
                 // Always show stats (even if 0 or null)
-                // Conversion rate: website uses proposal_sent; fallback to closed_won/converted
+                // Conversion rate: website uses proposal_sent; fallback to closed_won
                 final totalLeads = stats?.total ?? 0;
                 final recentCount = stats?.recentCount ?? 0;
-                final conversionCount = stats != null
-                    ? (stats.byStatusString['proposal_sent'] ??
-                          stats.byStatusString['closed_won'] ??
-                          stats.byStatus[LeadStatus.converted] ??
-                          0)
-                    : 0;
+                final proposalSent =
+                    stats?.byStatus[LeadStatus.proposalSent] ?? 0;
+                final closedWon = stats?.byStatus[LeadStatus.closedWon] ?? 0;
+                final conversionCount = proposalSent > 0
+                    ? proposalSent
+                    : closedWon;
                 final conversionRate = stats != null && stats.total > 0
                     ? (conversionCount / stats.total * 100)
                     : 0.0;
@@ -982,21 +982,11 @@ class _HomeViewState extends State<HomeView> {
 
                 if (!shouldShowOverview) return const SizedBox.shrink();
 
-                // Lead Status Overview: 8 statuses same as website (order, labels, colors)
-                final byStatusString = stats?.byStatusString ?? <String, int>{};
+                // Lead Status Overview: 8 statuses (using enum directly now)
+                final byStatus = stats?.byStatus ?? <LeadStatus, int>{};
                 final isStaffRole =
                     user?.role != UserRole.shopOwner &&
                     user?.role != UserRole.admin;
-                final hasWebsiteStatuses =
-                    (byStatusString['will_contact'] ?? 0) +
-                        (byStatusString['need_follow_up'] ?? 0) +
-                        (byStatusString['appointment_scheduled'] ?? 0) +
-                        (byStatusString['proposal_sent'] ?? 0) +
-                        (byStatusString['already_has'] ?? 0) +
-                        (byStatusString['no_need_now'] ?? 0) +
-                        (byStatusString['closed_won'] ?? 0) +
-                        (byStatusString['closed_lost'] ?? 0) >
-                    0;
 
                 final isNarrow = MediaQuery.of(context).size.width < 400;
                 return Card(
@@ -1027,117 +1017,60 @@ class _HomeViewState extends State<HomeView> {
                         ),
                         const SizedBox(height: 16),
                         // 2 columns so full label text fits like website
-                        if (hasWebsiteStatuses)
-                          GridView.count(
-                            crossAxisCount: 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 2,
-                            children: [
-                              _buildStatusCard(
-                                context,
-                                'Will Contact',
-                                (byStatusString['will_contact'] ?? 0)
-                                    .toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Need Follow-Up',
-                                (byStatusString['need_follow_up'] ?? 0)
-                                    .toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Appt. Scheduled',
-                                (byStatusString['appointment_scheduled'] ?? 0)
-                                    .toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Proposal Sent',
-                                (byStatusString['proposal_sent'] ?? 0)
-                                    .toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Already Has',
-                                (byStatusString['already_has'] ?? 0).toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'No Need Now',
-                                (byStatusString['no_need_now'] ?? 0).toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Closed – Won',
-                                (byStatusString['closed_won'] ?? 0).toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Closed – Lost',
-                                (byStatusString['closed_lost'] ?? 0).toString(),
-                              ),
-                            ],
-                          ),
-                        // Fallback: when DB uses old 5 statuses
-                        if (!hasWebsiteStatuses && stats != null)
-                          GridView.count(
-                            crossAxisCount: 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 1.4,
-                            children: [
-                              _buildStatusCard(
-                                context,
-                                'New',
-                                (stats.byStatus[LeadStatus.newLead] ?? 0)
-                                    .toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Contacted',
-                                (stats.byStatus[LeadStatus.contacted] ?? 0)
-                                    .toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Qualified',
-                                (stats.byStatus[LeadStatus.qualified] ?? 0)
-                                    .toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Converted',
-                                (stats.byStatus[LeadStatus.converted] ?? 0)
-                                    .toString(),
-                              ),
-                              _buildStatusCard(
-                                context,
-                                'Lost',
-                                (stats.byStatus[LeadStatus.lost] ?? 0)
-                                    .toString(),
-                              ),
-                            ],
-                          ),
-                        // No leads
-                        if (!hasWebsiteStatuses && (stats?.total ?? 0) == 0)
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 24.0,
-                              ),
-                              child: Text(
-                                'No leads yet',
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(color: Colors.grey),
-                              ),
+                        GridView.count(
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          childAspectRatio: 1.4,
+                          children: [
+                            _buildStatusCard(
+                              context,
+                              'Will Contact',
+                              (byStatus[LeadStatus.willContact] ?? 0)
+                                  .toString(),
                             ),
-                          ),
+                            _buildStatusCard(
+                              context,
+                              'Need Follow-Up',
+                              (byStatus[LeadStatus.needFollowUp] ?? 0)
+                                  .toString(),
+                            ),
+                            _buildStatusCard(
+                              context,
+                              'Appt. Scheduled',
+                              (byStatus[LeadStatus.appointmentScheduled] ?? 0)
+                                  .toString(),
+                            ),
+                            _buildStatusCard(
+                              context,
+                              'Proposal Sent',
+                              (byStatus[LeadStatus.proposalSent] ?? 0)
+                                  .toString(),
+                            ),
+                            _buildStatusCard(
+                              context,
+                              'Already Has',
+                              (byStatus[LeadStatus.alreadyHas] ?? 0).toString(),
+                            ),
+                            _buildStatusCard(
+                              context,
+                              'No Need Now',
+                              (byStatus[LeadStatus.noNeedNow] ?? 0).toString(),
+                            ),
+                            _buildStatusCard(
+                              context,
+                              'Closed – Won',
+                              (byStatus[LeadStatus.closedWon] ?? 0).toString(),
+                            ),
+                            _buildStatusCard(
+                              context,
+                              'Closed – Lost',
+                              (byStatus[LeadStatus.closedLost] ?? 0).toString(),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
