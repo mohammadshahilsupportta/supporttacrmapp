@@ -542,12 +542,29 @@ class LeadRepository {
     }
   }
 
-  // Delete lead (soft delete)
+  // Delete lead (hard delete - matches website behavior)
   Future<void> delete(String leadId) async {
     try {
-      await SupabaseService.from('leads')
-          .update({'deleted_at': DateTime.now().toIso8601String()})
-          .eq('id', leadId);
+      // Use select() to get the deleted row - if RLS blocks, this returns empty
+      final result = await SupabaseService.from('leads')
+          .delete()
+          .eq('id', leadId)
+          .select('id');
+      
+      // Check if any row was actually deleted
+      if ((result as List).isEmpty) {
+        // Check if the lead still exists (RLS might have blocked delete)
+        final check = await SupabaseService.from('leads')
+            .select('id')
+            .eq('id', leadId)
+            .maybeSingle();
+        
+        if (check != null) {
+          // Lead still exists - delete was blocked by RLS
+          throw Exception('You do not have permission to delete this lead. Only shop owners, admins, or the lead creator can delete.');
+        }
+        // Lead doesn't exist - it was deleted or never existed
+      }
     } catch (e) {
       throw Helpers.handleError(e);
     }

@@ -228,18 +228,19 @@ class LeadController extends GetxController {
 
   // Delete lead
   Future<bool> deleteLead(String leadId, String shopId) async {
-    _isLoading.value = true;
     _errorMessage.value = '';
 
     try {
       await _viewModel.deleteLead(leadId);
-      await loadLeads(shopId);
+      // Optimistically remove from list so UI updates immediately
+      _leads.removeWhere((l) => l.id == leadId);
+      _selectedLead.value = null;
+      // Refresh list from server to ensure consistency
+      await loadLeads(shopId, reset: true, silent: true);
       return true;
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
       return false;
-    } finally {
-      _isLoading.value = false;
     }
   }
 
