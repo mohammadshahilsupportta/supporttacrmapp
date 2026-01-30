@@ -50,7 +50,7 @@ class LeadTableWidget extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Text(
-        LeadModel.statusToString(status),
+        LeadModel.statusToDisplayLabel(status),
         style: TextStyle(
           color: color,
           fontSize: 11,
@@ -333,7 +333,7 @@ class LeadTableWidget extends StatelessWidget {
           itemBuilder: (context) => LeadStatus.values.map((status) {
             return PopupMenuItem<LeadStatus>(
               value: status,
-              child: Text(LeadModel.statusToString(status)),
+              child: Text(LeadModel.statusToDisplayLabel(status)),
             );
           }).toList(),
         ),

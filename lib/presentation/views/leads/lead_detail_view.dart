@@ -35,10 +35,16 @@ class _LeadDetailViewState extends State<LeadDetailView>
 
   String _activityFilter = 'all'; // all, tasks, meetings, calls, notes
 
+  // Requirement add/edit (website parity)
+  bool _isEditingRequirement = false;
+  bool _isSavingRequirement = false;
+  late TextEditingController _requirementController;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _requirementController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadData();
@@ -58,7 +64,90 @@ class _LeadDetailViewState extends State<LeadDetailView>
   @override
   void dispose() {
     _tabController.dispose();
+    _requirementController.dispose();
     super.dispose();
+  }
+
+  void _startEditingRequirement(String? currentRequirement) {
+    _requirementController.text = currentRequirement ?? '';
+    setState(() => _isEditingRequirement = true);
+  }
+
+  void _cancelEditingRequirement() {
+    setState(() => _isEditingRequirement = false);
+  }
+
+  Future<void> _saveRequirement(LeadWithRelationsModel lead, String additionalNotes) async {
+    if (_isSavingRequirement) return;
+    setState(() => _isSavingRequirement = true);
+    try {
+      final notesContent = buildLeadNotes(_requirementController.text.trim(), additionalNotes);
+      final input = CreateLeadInput(
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        whatsapp: lead.whatsapp,
+        company: lead.company,
+        alternativePhone: lead.alternativePhone,
+        businessPhone: lead.businessPhone,
+        companyPhone: lead.companyPhone,
+        alternativeEmails: lead.alternativeEmails,
+        address: lead.address,
+        homeAddress: lead.homeAddress,
+        businessAddress: lead.businessAddress,
+        country: lead.country,
+        state: lead.state,
+        city: lead.city,
+        district: lead.district,
+        occupation: lead.occupation,
+        fieldOfWork: lead.fieldOfWork,
+        source: lead.source,
+        notes: notesContent,
+        status: lead.status,
+        assignedTo: lead.assignedTo,
+        categoryIds: lead.categories.map((c) => c.id).toList(),
+        products: lead.products,
+        value: lead.value,
+      );
+      final success = await _leadController.updateLead(lead.id, input);
+      if (mounted) {
+        setState(() {
+          _isEditingRequirement = false;
+          _isSavingRequirement = false;
+        });
+        if (success) {
+          Get.snackbar(
+            'Success',
+            'Requirement updated',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
+        } else {
+          Get.snackbar(
+            'Error',
+            _leadController.errorMessage,
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isEditingRequirement = false;
+          _isSavingRequirement = false;
+        });
+        Get.snackbar(
+          'Error',
+          e.toString(),
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    }
   }
 
   Color _getStatusColor(LeadStatus status) {
@@ -326,16 +415,9 @@ class _LeadDetailViewState extends State<LeadDetailView>
   }
 
   Widget _buildOverviewTab(LeadWithRelationsModel lead, ThemeData theme) {
-    // Extract requirement from notes
-    String? requirement;
-    if (lead.notes != null && lead.notes!.isNotEmpty) {
-      final requirementMatch = RegExp(r'REQUIREMENT:\n([\s\S]*?)(?:\n\n|$)')
-          .firstMatch(lead.notes!);
-      requirement = requirementMatch?.group(1)?.trim();
-      if (requirement != null && requirement.isEmpty) {
-        requirement = null;
-      }
-    }
+    final parsed = parseLeadNotes(lead.notes);
+    final requirement = parsed.requirement.isNotEmpty ? parsed.requirement : null;
+    final additionalNotes = parsed.additionalNotes;
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -379,8 +461,9 @@ class _LeadDetailViewState extends State<LeadDetailView>
                         ),
                         child: Center(
                           child: Text(
-                            lead.name.isNotEmpty
-                                ? lead.name[0].toUpperCase()
+                            getLeadDisplayName(lead).isNotEmpty &&
+                                    getLeadDisplayName(lead) != '—'
+                                ? getLeadDisplayName(lead)[0].toUpperCase()
                                 : 'L',
                             style: TextStyle(
                               fontSize: 28,
@@ -396,7 +479,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              lead.name,
+                              getLeadDisplayName(lead),
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -428,8 +511,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    LeadModel.statusToString(lead.status)
-                                        .toUpperCase(),
+                                    LeadModel.statusToDisplayLabel(lead.status),
                                     style: TextStyle(
                                       color: _getStatusColor(lead.status),
                                       fontSize: 12,
@@ -607,56 +689,92 @@ class _LeadDetailViewState extends State<LeadDetailView>
                         onTap: () => _openWhatsApp(lead.whatsapp!)),
                   if (lead.company != null)
                     _buildInfoRow(Icons.business_outlined, 'Company', lead.company!),
+                  if (lead.value != null && lead.value! > 0)
+                    _buildInfoRow(
+                      Icons.currency_rupee,
+                      'Lead value (potential)',
+                      '₹ ${NumberFormat('#,###').format(lead.value!.round())}',
+                    ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
 
-          // Additional Information
-          if (lead.address != null ||
-              lead.country != null ||
-              lead.state != null ||
-              lead.city != null ||
-              lead.district != null ||
-              lead.occupation != null ||
-              lead.fieldOfWork != null ||
-              lead.source != null) ...[
-            _buildSectionHeader('Additional Information'),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                  width: 1,
+          // Professional Information (expandable - always shown like website)
+          _buildExpandableSection(
+            context,
+            title: 'Professional Information',
+            theme: theme,
+            hasContent: lead.occupation != null ||
+                lead.fieldOfWork != null ||
+                lead.businessPhone != null ||
+                lead.companyPhone != null ||
+                lead.alternativePhone != null ||
+                (lead.alternativeEmails != null && lead.alternativeEmails!.isNotEmpty) ||
+                lead.address != null ||
+                lead.homeAddress != null ||
+                lead.businessAddress != null ||
+                lead.source != null,
+            alwaysShow: true,
+            children: [
+              if (lead.occupation != null)
+                _buildInfoRow(Icons.work_outline, 'Occupation', lead.occupation!),
+              if (lead.fieldOfWork != null)
+                _buildInfoRow(
+                    Icons.category_outlined, 'Field of Work', lead.fieldOfWork!),
+              if (lead.businessPhone != null)
+                _buildInfoRow(Icons.phone_outlined, 'Business Phone',
+                    lead.businessPhone!, onTap: () => _makeCall(lead.businessPhone!)),
+              if (lead.companyPhone != null)
+                _buildInfoRow(Icons.phone_outlined, 'Company Phone',
+                    lead.companyPhone!, onTap: () => _makeCall(lead.companyPhone!)),
+              if (lead.alternativePhone != null)
+                _buildInfoRow(Icons.phone_outlined, 'Alternative Phone',
+                    lead.alternativePhone!, onTap: () => _makeCall(lead.alternativePhone!)),
+              if (lead.alternativeEmails != null && lead.alternativeEmails!.isNotEmpty)
+                _buildInfoRow(
+                  Icons.email_outlined,
+                  'Alternative Emails',
+                  lead.alternativeEmails!.join(', '),
+                  onTap: () => _sendEmail(lead.alternativeEmails!.first),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    if (lead.source != null)
-                      _buildInfoRow(
-                        Icons.source,
-                        'Source',
-                        LeadModel.sourceToString(lead.source!),
-                      ),
-                    if (lead.address != null)
-                      _buildInfoRow(
-                          Icons.location_on_outlined, 'Address', lead.address!),
-                    if (lead.occupation != null)
-                      _buildInfoRow(
-                          Icons.work_outline, 'Occupation', lead.occupation!),
-                    if (lead.fieldOfWork != null)
-                      _buildInfoRow(Icons.category_outlined, 'Field of Work',
-                          lead.fieldOfWork!),
-                  ],
+              if (lead.address != null)
+                _buildInfoRow(Icons.location_on_outlined, 'Primary Address', lead.address!),
+              if (lead.homeAddress != null)
+                _buildInfoRow(Icons.home_outlined, 'Home Address', lead.homeAddress!),
+              if (lead.businessAddress != null)
+                _buildInfoRow(Icons.business_outlined, 'Business Address', lead.businessAddress!),
+              if (lead.source != null)
+                _buildInfoRow(
+                  Icons.source,
+                  'Source',
+                  _sourceLabel(lead.source!),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+            ],
+          ),
+
+          // Location Details (expandable - always shown like website)
+          _buildExpandableSection(
+            context,
+            title: 'Location Details',
+            theme: theme,
+            hasContent: lead.country != null ||
+                lead.state != null ||
+                lead.city != null ||
+                lead.district != null,
+            alwaysShow: true,
+            children: [
+              if (lead.country != null)
+                _buildInfoRow(Icons.public_outlined, 'Country', lead.country!),
+              if (lead.state != null)
+                _buildInfoRow(Icons.map_outlined, 'State', lead.state!),
+              if (lead.city != null)
+                _buildInfoRow(Icons.location_city_outlined, 'City', lead.city!),
+              if (lead.district != null)
+                _buildInfoRow(Icons.place_outlined, 'District', lead.district!),
+            ],
+          ),
 
           // Categories
           if (lead.categories.isNotEmpty) ...[
@@ -724,127 +842,81 @@ class _LeadDetailViewState extends State<LeadDetailView>
             const SizedBox(height: 16),
           ],
 
-          // Requirement (extracted from notes)
-          if (requirement != null && requirement.isNotEmpty) ...[
-            _buildSectionHeader('Requirement'),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'What the lead is looking for',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      requirement,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+          // Requirement (extracted from notes) - add/edit like website
+          _buildRequirementCard(theme, requirement, additionalNotes, lead),
+          const SizedBox(height: 16),
 
-          // Products
-          if (lead.products != null && lead.products!.isNotEmpty) ...[
-            _buildSectionHeader('Products'),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: lead.products!.map((product) {
-                    return Chip(
-                      label: Text(product),
-                      avatar: const Icon(Icons.shopping_bag_outlined, size: 16),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+          // Products (expandable - always shown like website)
+          _buildExpandableSection(
+            context,
+            title: 'Products',
+            theme: theme,
+            hasContent: lead.products != null && lead.products!.isNotEmpty,
+            alwaysShow: true,
+            children: lead.products != null && lead.products!.isNotEmpty
+                ? [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: lead.products!.map((product) {
+                        return Chip(
+                          label: Text(product),
+                          avatar: const Icon(Icons.shopping_bag_outlined, size: 16),
+                        );
+                      }).toList(),
+                    ),
+                  ]
+                : [],
+          ),
 
-          // Notes
-          if (lead.notes != null && lead.notes!.isNotEmpty) ...[
-            _buildSectionHeader('Notes'),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  lead.notes!,
+          // Additional Notes (expandable - always shown like website)
+          _buildExpandableSection(
+            context,
+            title: 'Additional Notes',
+            theme: theme,
+            hasContent: additionalNotes.isNotEmpty,
+            alwaysShow: true,
+            children: [
+              if (additionalNotes.isNotEmpty)
+                Text(
+                  additionalNotes,
                   style: theme.textTheme.bodyMedium,
+                )
+              else
+                Text(
+                  'No additional notes',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+            ],
+          ),
 
-          // Metadata
-          _buildSectionHeader('Metadata'),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                width: 1,
+          // System Information (expandable - always shown like website)
+          _buildExpandableSection(
+            context,
+            title: 'System Information',
+            theme: theme,
+            hasContent: true,
+            alwaysShow: true,
+            children: [
+              _buildInfoRow(
+                Icons.calendar_today_outlined,
+                'Created',
+                DateFormat('MMM dd, yyyy HH:mm').format(lead.createdAt),
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildInfoRow(
-                    Icons.calendar_today_outlined,
-                    'Created',
-                    DateFormat('MMM dd, yyyy HH:mm').format(lead.createdAt),
-                  ),
-                  _buildInfoRow(
-                    Icons.update_outlined,
-                    'Last Updated',
-                    DateFormat('MMM dd, yyyy HH:mm').format(lead.updatedAt),
-                  ),
-                  if (lead.createdByUser != null)
-                    _buildInfoRow(
-                      Icons.person_outline,
-                      'Created By',
-                      lead.createdByUser!.name,
-                    ),
-                ],
+              _buildInfoRow(
+                Icons.update_outlined,
+                'Last Updated',
+                DateFormat('MMM dd, yyyy HH:mm').format(lead.updatedAt),
               ),
-            ),
+              if (lead.createdByUser != null)
+                _buildInfoRow(
+                  Icons.person_outline,
+                  'Created By',
+                  lead.createdByUser!.name,
+                ),
+            ],
           ),
         ],
       ),
@@ -1130,15 +1202,16 @@ class _LeadDetailViewState extends State<LeadDetailView>
       label: Text(
         label,
         style: TextStyle(
-          color: isSelected 
-              ? Colors.white 
+          color: isSelected
+              ? theme.colorScheme.onPrimary
               : theme.colorScheme.onSurface,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
         ),
       ),
       selected: isSelected,
+      backgroundColor: theme.colorScheme.surfaceContainerHighest,
       selectedColor: theme.colorScheme.primary,
-      backgroundColor: theme.colorScheme.surface,
-      checkmarkColor: Colors.white,
+      checkmarkColor: theme.colorScheme.onPrimary,
       onSelected: (selected) {
         setState(() {
           _activityFilter = value;
@@ -1579,6 +1652,71 @@ class _LeadDetailViewState extends State<LeadDetailView>
     }
   }
 
+  String _sourceLabel(LeadSource source) {
+    switch (source) {
+      case LeadSource.website:
+        return 'Website';
+      case LeadSource.phone:
+        return 'Phone';
+      case LeadSource.walkIn:
+        return 'Walk-in';
+      case LeadSource.referral:
+        return 'Referral';
+      case LeadSource.socialMedia:
+        return 'Social Media';
+      case LeadSource.email:
+        return 'Email';
+      case LeadSource.other:
+        return 'Other';
+    }
+  }
+
+  Widget _buildExpandableSection(
+    BuildContext context, {
+    required String title,
+    required ThemeData theme,
+    required bool hasContent,
+    required List<Widget> children,
+    bool alwaysShow = false,
+  }) {
+    if (!alwaysShow && !hasContent && children.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: hasContent,
+        title: Text(
+          title,
+          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children.isEmpty
+                  ? [
+                      Text(
+                        'No data',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ]
+                  : children,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, top: 8),
@@ -1588,6 +1726,130 @@ class _LeadDetailViewState extends State<LeadDetailView>
               fontWeight: FontWeight.bold,
             ),
       ),
+    );
+  }
+
+  Widget _buildRequirementCard(
+    ThemeData theme,
+    String? requirement,
+    String additionalNotes,
+    LeadWithRelationsModel lead,
+  ) {
+    final hasContent = requirement != null && requirement.trim().isNotEmpty;
+    final displayText = requirement ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Requirement'),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: theme.colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'What the lead is looking for',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                      ),
+                    ),
+                    if (!_isEditingRequirement)
+                      TextButton.icon(
+                        onPressed: () => _startEditingRequirement(displayText),
+                        icon: Icon(
+                          hasContent ? Icons.edit_outlined : Icons.add,
+                          size: 18,
+                          color: theme.colorScheme.primary,
+                        ),
+                        label: Text(
+                          hasContent ? 'Edit' : 'Add Requirement',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_isEditingRequirement) ...[
+                  TextField(
+                    controller: _requirementController,
+                    maxLines: 6,
+                    minLines: 3,
+                    decoration: InputDecoration(
+                      hintText:
+                          "What is this lead looking for? (This is the most important field for sales workflow)",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: _isSavingRequirement
+                            ? null
+                            : _cancelEditingRequirement,
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _isSavingRequirement
+                            ? null
+                            : () => _saveRequirement(lead, additionalNotes),
+                        icon: _isSavingRequirement
+                            ? SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: theme.colorScheme.onPrimary,
+                                ),
+                              )
+                            : const Icon(Icons.save_outlined, size: 18),
+                        label: Text(
+                          _isSavingRequirement ? 'Saving...' : 'Save',
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (hasContent)
+                  Text(
+                    displayText,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      height: 1.5,
+                    ),
+                  )
+                else
+                  Text(
+                    'No requirement specified',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontStyle: FontStyle.italic,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1841,7 +2103,7 @@ class _LeadDetailViewState extends State<LeadDetailView>
               mainAxisSize: MainAxisSize.min,
               children: LeadStatus.values.map((status) {
                 return RadioListTile<LeadStatus>(
-                  title: Text(LeadModel.statusToString(status)),
+                  title: Text(LeadModel.statusToDisplayLabel(status)),
                   value: status,
                   groupValue: selectedStatus,
                   onChanged: (value) {

@@ -34,6 +34,13 @@ class LeadModel {
   final LeadStatus status;
   final String? assignedTo;
   final List<String>? products;
+  final double? value;
+  final String? alternativePhone;
+  final String? businessPhone;
+  final String? companyPhone;
+  final List<String>? alternativeEmails;
+  final String? homeAddress;
+  final String? businessAddress;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? createdBy;
@@ -62,6 +69,13 @@ class LeadModel {
     required this.status,
     this.assignedTo,
     this.products,
+    this.value,
+    this.alternativePhone,
+    this.businessPhone,
+    this.companyPhone,
+    this.alternativeEmails,
+    this.homeAddress,
+    this.businessAddress,
     required this.createdAt,
     required this.updatedAt,
     this.createdBy,
@@ -94,6 +108,19 @@ class LeadModel {
       products: json['products'] != null
           ? List<String>.from(json['products'] as List)
           : null,
+      value: json['value'] != null
+          ? (json['value'] is num
+                ? (json['value'] as num).toDouble()
+                : double.tryParse(json['value'].toString()))
+          : null,
+      alternativePhone: json['alternative_phone'] as String?,
+      businessPhone: json['business_phone'] as String?,
+      companyPhone: json['company_phone'] as String?,
+      alternativeEmails: json['alternative_emails'] != null
+          ? List<String>.from(json['alternative_emails'] as List)
+          : null,
+      homeAddress: json['home_address'] as String?,
+      businessAddress: json['business_address'] as String?,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       createdBy: json['created_by'],
@@ -223,6 +250,28 @@ class LeadModel {
     }
   }
 
+  /// Human-readable status label for display (no underscores).
+  static String statusToDisplayLabel(LeadStatus status) {
+    switch (status) {
+      case LeadStatus.willContact:
+        return 'Will Contact';
+      case LeadStatus.needFollowUp:
+        return 'Need Follow-Up';
+      case LeadStatus.appointmentScheduled:
+        return 'Appointment Scheduled';
+      case LeadStatus.proposalSent:
+        return 'Proposal Sent';
+      case LeadStatus.alreadyHas:
+        return 'Already Has';
+      case LeadStatus.noNeedNow:
+        return 'No Need Now';
+      case LeadStatus.closedWon:
+        return 'Closed – Won';
+      case LeadStatus.closedLost:
+        return 'Closed – Lost';
+    }
+  }
+
   static String sourceToString(LeadSource source) {
     switch (source) {
       case LeadSource.website:
@@ -299,6 +348,13 @@ class LeadWithRelationsModel extends LeadModel {
     required super.status,
     super.assignedTo,
     super.products,
+    super.value,
+    super.alternativePhone,
+    super.businessPhone,
+    super.companyPhone,
+    super.alternativeEmails,
+    super.homeAddress,
+    super.businessAddress,
     required super.createdAt,
     required super.updatedAt,
     super.createdBy,
@@ -336,6 +392,19 @@ class LeadWithRelationsModel extends LeadModel {
       products: json['products'] != null
           ? List<String>.from(json['products'] as List)
           : null,
+      value: json['value'] != null
+          ? (json['value'] is num
+                ? (json['value'] as num).toDouble()
+                : double.tryParse(json['value'].toString()))
+          : null,
+      alternativePhone: json['alternative_phone'] as String?,
+      businessPhone: json['business_phone'] as String?,
+      companyPhone: json['company_phone'] as String?,
+      alternativeEmails: json['alternative_emails'] != null
+          ? List<String>.from(json['alternative_emails'] as List)
+          : null,
+      homeAddress: json['home_address'] as String?,
+      businessAddress: json['business_address'] as String?,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       createdBy: json['created_by'],
@@ -488,6 +557,32 @@ String buildLeadNotes(String? requirement, String? additionalNotes) {
     parts.add('ADDITIONAL NOTES:\n${additionalNotes.trim()}');
   }
   return parts.isEmpty ? '' : parts.join('\n\n');
+}
+
+/// Parse notes into requirement and additional notes (website format).
+({String requirement, String additionalNotes}) parseLeadNotes(String? notes) {
+  if (notes == null || notes.trim().isEmpty) {
+    return (requirement: '', additionalNotes: '');
+  }
+  final requirementMatch = RegExp(
+    r'REQUIREMENT:\n([\s\S]*?)(?:\n\n|$)',
+  ).firstMatch(notes);
+  final requirement = requirementMatch?.group(1)?.trim() ?? '';
+  var additionalNotes = notes
+      .replaceFirst(RegExp(r'REQUIREMENT:\n[\s\S]*?(\n\n|$)'), '')
+      .replaceFirst(RegExp(r'ADDITIONAL NOTES:\n?'), '')
+      .trim();
+  return (requirement: requirement, additionalNotes: additionalNotes);
+}
+
+/// Get display name: company or name (website style).
+String getLeadDisplayName(LeadModel lead) {
+  final name = (lead.name).trim();
+  final company = (lead.company ?? '').trim();
+  if (company.isNotEmpty && name.isNotEmpty) return '$company - $name';
+  if (company.isNotEmpty) return company;
+  if (name.isNotEmpty) return name;
+  return '—';
 }
 
 enum LeadSortBy { name, createdAt, updatedAt, score, status }
