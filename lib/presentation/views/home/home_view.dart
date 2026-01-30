@@ -515,7 +515,7 @@ class _HomeViewState extends State<HomeView> {
       // Access user reactively - Obx will rebuild when userRx changes
       final user = authController.userRx.value;
       final shop = authController.shopRx.value;
-      
+
       return Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -537,9 +537,7 @@ class _HomeViewState extends State<HomeView> {
                             .toUpperCase()
                             .substring(
                               0,
-                              user.name.split(' ').length > 1
-                                  ? 2
-                                  : 1,
+                              user.name.split(' ').length > 1 ? 2 : 1,
                             ),
                         style: const TextStyle(fontSize: 24),
                       ),
@@ -558,7 +556,10 @@ class _HomeViewState extends State<HomeView> {
                     const SizedBox(height: 4),
                     Text(
                       shop.name,
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ],
@@ -683,7 +684,10 @@ class _HomeViewState extends State<HomeView> {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Sign Out', style: TextStyle(color: Colors.red)),
+              title: const Text(
+                'Sign Out',
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 authController.signOut();
@@ -822,9 +826,9 @@ class _HomeViewState extends State<HomeView> {
                 final recentCount = stats?.recentCount ?? 0;
                 final conversionCount = stats != null
                     ? (stats.byStatusString['proposal_sent'] ??
-                        stats.byStatusString['closed_won'] ??
-                        stats.byStatus[LeadStatus.converted] ??
-                        0)
+                          stats.byStatusString['closed_won'] ??
+                          stats.byStatus[LeadStatus.converted] ??
+                          0)
                     : 0;
                 final conversionRate = stats != null && stats.total > 0
                     ? (conversionCount / stats.total * 100)
@@ -890,8 +894,10 @@ class _HomeViewState extends State<HomeView> {
                 final stats = dashboardController.stats;
                 final isLoading = dashboardController.isLoading;
                 final user = authController.user;
-                final isAdmin = user != null &&
-                    (user.role == UserRole.shopOwner || user.role == UserRole.admin);
+                final isAdmin =
+                    user != null &&
+                    (user.role == UserRole.shopOwner ||
+                        user.role == UserRole.admin);
                 final shouldShowOverview = isAdmin
                     ? (stats != null)
                     : ((stats?.total ?? 0) > 0);
@@ -908,7 +914,9 @@ class _HomeViewState extends State<HomeView> {
                               height: 24,
                               width: 180,
                               decoration: BoxDecoration(
-                                color: Theme.of(context).brightness == Brightness.dark
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
                                     ? Colors.grey[800]
                                     : Colors.grey[300],
                                 borderRadius: BorderRadius.circular(4),
@@ -927,7 +935,9 @@ class _HomeViewState extends State<HomeView> {
                                       height: 16,
                                       width: 100,
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).brightness == Brightness.dark
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark
                                             ? Colors.grey[800]
                                             : Colors.grey[300],
                                         borderRadius: BorderRadius.circular(4),
@@ -940,7 +950,9 @@ class _HomeViewState extends State<HomeView> {
                                       height: 16,
                                       width: 40,
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).brightness == Brightness.dark
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark
                                             ? Colors.grey[800]
                                             : Colors.grey[300],
                                         borderRadius: BorderRadius.circular(4),
@@ -961,9 +973,11 @@ class _HomeViewState extends State<HomeView> {
 
                 // Lead Status Overview: 8 statuses same as website (order, labels, colors)
                 final byStatusString = stats?.byStatusString ?? <String, int>{};
-                final isStaffRole = user?.role != UserRole.shopOwner &&
+                final isStaffRole =
+                    user?.role != UserRole.shopOwner &&
                     user?.role != UserRole.admin;
-                final hasWebsiteStatuses = (byStatusString['will_contact'] ?? 0) +
+                final hasWebsiteStatuses =
+                    (byStatusString['will_contact'] ?? 0) +
                         (byStatusString['need_follow_up'] ?? 0) +
                         (byStatusString['appointment_scheduled'] ?? 0) +
                         (byStatusString['proposal_sent'] ?? 0) +
@@ -973,9 +987,14 @@ class _HomeViewState extends State<HomeView> {
                         (byStatusString['closed_lost'] ?? 0) >
                     0;
 
+                final isNarrow = MediaQuery.of(context).size.width < 400;
                 return Card(
+                  margin: EdgeInsets.only(
+                    left: isNarrow ? 12 : 0,
+                    right: isNarrow ? 12 : 0,
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(isNarrow ? 14.0 : 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -996,108 +1015,101 @@ class _HomeViewState extends State<HomeView> {
                           ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                         ),
                         const SizedBox(height: 16),
-                        // When DB has website 8 statuses: show 8-status grid
+                        // 2 columns so full label text fits like website
                         if (hasWebsiteStatuses)
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final crossCount = constraints.maxWidth > 600
-                                  ? 8
-                                  : (constraints.maxWidth > 400 ? 4 : 2);
-                              return GridView.count(
-                                crossAxisCount: crossCount,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                mainAxisSpacing: 12,
-                                crossAxisSpacing: 12,
-                                childAspectRatio: 0.9,
-                                children: [
-                                  _buildStatusItem(
-                                    context,
-                                    'Will Contact',
-                                    (byStatusString['will_contact'] ?? 0).toString(),
-                                    Colors.blue.shade600,
-                                  ),
-                                  _buildStatusItem(
-                                    context,
-                                    'Need Follow-Up',
-                                    (byStatusString['need_follow_up'] ?? 0).toString(),
-                                    Colors.blue.shade500,
-                                  ),
-                                  _buildStatusItem(
-                                    context,
-                                    'Appt. Scheduled',
-                                    (byStatusString['appointment_scheduled'] ?? 0).toString(),
-                                    Colors.yellow.shade700,
-                                  ),
-                                  _buildStatusItem(
-                                    context,
-                                    'Proposal Sent',
-                                    (byStatusString['proposal_sent'] ?? 0).toString(),
-                                    Colors.green.shade600,
-                                  ),
-                                  _buildStatusItem(
-                                    context,
-                                    'Already Has',
-                                    (byStatusString['already_has'] ?? 0).toString(),
-                                    Colors.purple.shade600,
-                                  ),
-                                  _buildStatusItem(
-                                    context,
-                                    'No Need Now',
-                                    (byStatusString['no_need_now'] ?? 0).toString(),
-                                    Colors.orange.shade600,
-                                  ),
-                                  _buildStatusItem(
-                                    context,
-                                    'Closed – Won',
-                                    (byStatusString['closed_won'] ?? 0).toString(),
-                                    Colors.green.shade800,
-                                  ),
-                                  _buildStatusItem(
-                                    context,
-                                    'Closed – Lost',
-                                    (byStatusString['closed_lost'] ?? 0).toString(),
-                                    Colors.red.shade600,
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        // Fallback: when DB uses old 5 statuses, show legacy breakdown
-                        if (!hasWebsiteStatuses && stats != null)
-                          Wrap(
-                            spacing: 16,
-                            runSpacing: 12,
+                          GridView.count(
+                            crossAxisCount: 2,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 2,
                             children: [
-                              _buildStatusItem(
+                              _buildStatusCard(
+                                context,
+                                'Will Contact',
+                                (byStatusString['will_contact'] ?? 0)
+                                    .toString(),
+                              ),
+                              _buildStatusCard(
+                                context,
+                                'Need Follow-Up',
+                                (byStatusString['need_follow_up'] ?? 0)
+                                    .toString(),
+                              ),
+                              _buildStatusCard(
+                                context,
+                                'Appt. Scheduled',
+                                (byStatusString['appointment_scheduled'] ?? 0)
+                                    .toString(),
+                              ),
+                              _buildStatusCard(
+                                context,
+                                'Proposal Sent',
+                                (byStatusString['proposal_sent'] ?? 0)
+                                    .toString(),
+                              ),
+                              _buildStatusCard(
+                                context,
+                                'Already Has',
+                                (byStatusString['already_has'] ?? 0).toString(),
+                              ),
+                              _buildStatusCard(
+                                context,
+                                'No Need Now',
+                                (byStatusString['no_need_now'] ?? 0).toString(),
+                              ),
+                              _buildStatusCard(
+                                context,
+                                'Closed – Won',
+                                (byStatusString['closed_won'] ?? 0).toString(),
+                              ),
+                              _buildStatusCard(
+                                context,
+                                'Closed – Lost',
+                                (byStatusString['closed_lost'] ?? 0).toString(),
+                              ),
+                            ],
+                          ),
+                        // Fallback: when DB uses old 5 statuses
+                        if (!hasWebsiteStatuses && stats != null)
+                          GridView.count(
+                            crossAxisCount: 2,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 1.4,
+                            children: [
+                              _buildStatusCard(
                                 context,
                                 'New',
-                                (stats.byStatus[LeadStatus.newLead] ?? 0).toString(),
-                                Colors.blue,
+                                (stats.byStatus[LeadStatus.newLead] ?? 0)
+                                    .toString(),
                               ),
-                              _buildStatusItem(
+                              _buildStatusCard(
                                 context,
                                 'Contacted',
-                                (stats.byStatus[LeadStatus.contacted] ?? 0).toString(),
-                                Colors.orange,
+                                (stats.byStatus[LeadStatus.contacted] ?? 0)
+                                    .toString(),
                               ),
-                              _buildStatusItem(
+                              _buildStatusCard(
                                 context,
                                 'Qualified',
-                                (stats.byStatus[LeadStatus.qualified] ?? 0).toString(),
-                                Colors.purple,
+                                (stats.byStatus[LeadStatus.qualified] ?? 0)
+                                    .toString(),
                               ),
-                              _buildStatusItem(
+                              _buildStatusCard(
                                 context,
                                 'Converted',
-                                (stats.byStatus[LeadStatus.converted] ?? 0).toString(),
-                                Colors.green,
+                                (stats.byStatus[LeadStatus.converted] ?? 0)
+                                    .toString(),
                               ),
-                              _buildStatusItem(
+                              _buildStatusCard(
                                 context,
                                 'Lost',
-                                (stats.byStatus[LeadStatus.lost] ?? 0).toString(),
-                                Colors.red,
+                                (stats.byStatus[LeadStatus.lost] ?? 0)
+                                    .toString(),
                               ),
                             ],
                           ),
@@ -1105,12 +1117,13 @@ class _HomeViewState extends State<HomeView> {
                         if (!hasWebsiteStatuses && (stats?.total ?? 0) == 0)
                           Center(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 24.0),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 24.0,
+                              ),
                               child: Text(
                                 'No leads yet',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey,
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: Colors.grey),
                               ),
                             ),
                           ),
@@ -1145,29 +1158,47 @@ class _HomeViewState extends State<HomeView> {
     });
   }
 
-  Widget _buildStatusItem(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
+  /// Status card: full label text like website, theme colors.
+  Widget _buildStatusCard(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final surface = isDark
+        ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.4)
+        : theme.colorScheme.surfaceContainerLow;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border(
+          left: BorderSide(color: theme.colorScheme.outlineVariant, width: 2),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.grey),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.2,
+            ),
+            maxLines: 2,
+            softWrap: true,
+          ),
+        ],
+      ),
     );
   }
 }
