@@ -97,19 +97,30 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 ),
                 const SizedBox(height: 20),
 
-                // Period filter chips
+                // Period filter chips (readable text: contrast for selected/unselected)
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: LeaderboardPeriod.values.map((p) {
                     final isSelected = _controller.period == p;
                     return FilterChip(
-                      label: Text(p.label),
+                      label: Text(
+                        p.label,
+                        style: TextStyle(
+                          color: isSelected
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurface,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
                       selected: isSelected,
                       onSelected: (_) {
                         _controller.setPeriod(p);
                         _loadLeaderboard();
                       },
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      selectedColor: theme.colorScheme.primary,
+                      checkmarkColor: theme.colorScheme.onPrimary,
                     );
                   }).toList(),
                 ),
@@ -179,60 +190,18 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                             ),
                           )
                         else
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              columnSpacing: 24,
-                              columns: const [
-                                DataColumn(label: Text('Rank')),
-                                DataColumn(label: Text('Name')),
-                                DataColumn(label: Text('Role')),
-                                DataColumn(
-                                  label: Text('Closed – Won'),
-                                  numeric: true,
-                                ),
-                              ],
-                              rows: _controller.leaderboard.map((entry) {
-                                return DataRow(
-                                  cells: [
-                                    DataCell(
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          _RankIcon(rank: entry.rank),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '${entry.rank}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    DataCell(Text(entry.staffName)),
-                                    DataCell(
-                                      Chip(
-                                        label: Text(
-                                          entry.role.replaceAll('_', ' '),
-                                          style: theme.textTheme.labelSmall,
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                    ),
-                                    DataCell(
-                                      Text(
-                                        '${entry.conversions}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              }).toList(),
-                            ),
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _controller.leaderboard.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final entry = _controller.leaderboard[index];
+                              return _LeaderboardTile(
+                                entry: entry,
+                                theme: theme,
+                              );
+                            },
                           ),
                       ],
                     ),
@@ -247,22 +216,113 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   }
 }
 
-class _RankIcon extends StatelessWidget {
-  final int rank;
+class _LeaderboardTile extends StatelessWidget {
+  final LeaderboardEntry entry;
+  final ThemeData theme;
 
-  const _RankIcon({required this.rank});
+  const _LeaderboardTile({
+    required this.entry,
+    required this.theme,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (rank == 1) {
-      return Icon(Icons.emoji_events, size: 22, color: Colors.amber.shade700);
-    }
-    if (rank == 2) {
-      return Icon(Icons.emoji_events, size: 22, color: Colors.grey.shade500);
-    }
-    if (rank == 3) {
-      return Icon(Icons.emoji_events, size: 22, color: Colors.brown.shade400);
-    }
-    return const SizedBox.shrink();
+    final isDark = theme.brightness == Brightness.dark;
+    final rankColor = _rankColor(entry.rank);
+    final surface = isDark
+        ? theme.colorScheme.surfaceContainerHigh
+        : theme.colorScheme.surfaceContainerLow;
+
+    return Material(
+      color: surface,
+      borderRadius: BorderRadius.circular(12),
+      elevation: isDark ? 0 : 1,
+      shadowColor: Colors.black.withOpacity(0.06),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            // Rank badge
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: rankColor.withOpacity(0.15),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: rankColor.withOpacity(0.5),
+                  width: 1.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: entry.rank <= 3
+                  ? Icon(_rankIcon(entry.rank), size: 24, color: rankColor)
+                  : Text(
+                      '${entry.rank}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: rankColor,
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 12),
+            // Name & role
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    entry.staffName,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    entry.role.replaceAll('_', ' '),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            // Closed – Won count
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${entry.conversions}',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _rankColor(int rank) {
+    if (rank == 1) return Colors.amber.shade700;
+    if (rank == 2) return Colors.grey.shade600;
+    if (rank == 3) return Colors.brown.shade600;
+    return Colors.grey.shade500;
+  }
+
+  IconData _rankIcon(int rank) {
+    if (rank == 1) return Icons.emoji_events;
+    if (rank == 2) return Icons.emoji_events;
+    if (rank == 3) return Icons.emoji_events;
+    return Icons.emoji_events;
   }
 }

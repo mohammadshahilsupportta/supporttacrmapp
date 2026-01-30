@@ -870,7 +870,8 @@ class _HomeViewState extends State<HomeView> {
                     ),
                     StatsCardWidget(
                       title: isStaffRole ? 'My Lead Value' : 'Total Lead Value',
-                      value: '₹ ${NumberFormat('#,###').format((stats?.totalLeadValue ?? 0).round())}',
+                      value:
+                          '₹ ${NumberFormat('#,###').format((stats?.totalLeadValue ?? 0).round())}',
                       subtitle: isStaffRole
                           ? 'Sum of your leads\' potential values'
                           : 'Sum of all lead potential values',
