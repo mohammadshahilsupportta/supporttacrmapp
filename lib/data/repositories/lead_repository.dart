@@ -494,7 +494,7 @@ class LeadRepository {
             'created_by': userId,
             'status': input.status != null
                 ? LeadModel.statusToString(input.status!)
-                : 'new',
+                : 'need_follow_up',
           })
           .select()
           .single();

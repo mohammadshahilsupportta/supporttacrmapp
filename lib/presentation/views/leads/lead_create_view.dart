@@ -3,8 +3,10 @@ import 'package:get/get.dart';
 import '../../controllers/lead_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
+import '../../controllers/staff_controller.dart';
 import '../../../data/models/lead_model.dart';
 import '../../../data/models/category_model.dart';
+import '../../../data/models/user_model.dart';
 import '../../../core/widgets/loading_widget.dart';
 
 class LeadCreateView extends StatefulWidget {
@@ -16,24 +18,35 @@ class LeadCreateView extends StatefulWidget {
 
 class _LeadCreateViewState extends State<LeadCreateView> {
   final _formKey = GlobalKey<FormState>();
+  final _phoneController = TextEditingController();
+  final _companyController = TextEditingController();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _whatsappController = TextEditingController();
-  final _companyController = TextEditingController();
+  final _alternativePhoneController = TextEditingController();
+  final _requirementController = TextEditingController();
+  final _businessPhoneController = TextEditingController();
+  final _companyPhoneController = TextEditingController();
+  final _occupationController = TextEditingController();
+  final _fieldOfWorkController = TextEditingController();
   final _addressController = TextEditingController();
+  final _homeAddressController = TextEditingController();
+  final _businessAddressController = TextEditingController();
   final _countryController = TextEditingController();
   final _stateController = TextEditingController();
   final _cityController = TextEditingController();
   final _districtController = TextEditingController();
-  final _occupationController = TextEditingController();
-  final _fieldOfWorkController = TextEditingController();
   final _notesController = TextEditingController();
-  final _productsController = TextEditingController();
+  final _currentProductController = TextEditingController();
+  final _currentAlternativeEmailController = TextEditingController();
+  final _valueController = TextEditingController();
 
   LeadSource? _selectedSource;
-  LeadStatus _selectedStatus = LeadStatus.willContact;
+  LeadStatus _selectedStatus = LeadStatus.needFollowUp;
   List<String> _selectedCategoryIds = [];
+  List<String> _products = [];
+  List<String> _alternativeEmails = [];
+  String? _selectedAssignedTo;
 
   bool _submitting = false;
 
@@ -42,74 +55,147 @@ class _LeadCreateViewState extends State<LeadCreateView> {
     super.initState();
     final categoryController = Get.put(CategoryController());
     final authController = Get.find<AuthController>();
+    if (!Get.isRegistered<StaffController>()) {
+      Get.put(StaffController());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (authController.shop != null &&
-          categoryController.categories.isEmpty &&
-          !categoryController.isLoading) {
-        categoryController.loadCategories(authController.shop!.id);
+      if (authController.shop != null) {
+        if (categoryController.categories.isEmpty && !categoryController.isLoading) {
+          categoryController.loadCategories(authController.shop!.id);
+        }
+        final staffController = Get.find<StaffController>();
+        if (staffController.staffList.isEmpty && !staffController.isLoading) {
+          staffController.loadStaff(authController.shop!.id);
+        }
       }
     });
   }
 
   @override
   void dispose() {
+    _phoneController.dispose();
+    _companyController.dispose();
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _whatsappController.dispose();
-    _companyController.dispose();
+    _alternativePhoneController.dispose();
+    _requirementController.dispose();
+    _businessPhoneController.dispose();
+    _companyPhoneController.dispose();
+    _occupationController.dispose();
+    _fieldOfWorkController.dispose();
     _addressController.dispose();
+    _homeAddressController.dispose();
+    _businessAddressController.dispose();
     _countryController.dispose();
     _stateController.dispose();
     _cityController.dispose();
     _districtController.dispose();
-    _occupationController.dispose();
-    _fieldOfWorkController.dispose();
     _notesController.dispose();
-    _productsController.dispose();
+    _currentProductController.dispose();
+    _currentAlternativeEmailController.dispose();
+    _valueController.dispose();
     super.dispose();
+  }
+
+  void _addProduct() {
+    final p = _currentProductController.text.trim();
+    if (p.isNotEmpty && !_products.contains(p)) {
+      setState(() {
+        _products.add(p);
+        _currentProductController.clear();
+      });
+    }
+  }
+
+  void _removeProduct(String p) {
+    setState(() => _products.remove(p));
+  }
+
+  void _addAlternativeEmail() {
+    final e = _currentAlternativeEmailController.text.trim();
+    if (e.isNotEmpty && !_alternativeEmails.contains(e)) {
+      final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+      if (emailRegex.hasMatch(e)) {
+        setState(() {
+          _alternativeEmails.add(e);
+          _currentAlternativeEmailController.clear();
+        });
+      }
+    }
+  }
+
+  void _removeAlternativeEmail(String e) {
+    setState(() => _alternativeEmails.remove(e));
   }
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    final name = _nameController.text.trim();
+    final company = _companyController.text.trim();
+    if (name.isEmpty && company.isEmpty) {
+      Get.snackbar(
+        'Validation',
+        'Provide at least Company name or Owner/Contact name',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return;
+    }
     final authController = Get.find<AuthController>();
     final leadController = Get.find<LeadController>();
 
     if (authController.shop == null || authController.user == null) {
-      Get.snackbar(
-        'Error',
-        'Shop or user info not available',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      Get.snackbar('Error', 'Shop or user info not available',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
       return;
     }
 
     setState(() => _submitting = true);
 
-    final products = _productsController.text
-        .split(',')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
+    final effectiveName = name.isNotEmpty ? name : company;
+
+    final notes = buildLeadNotes(
+      _requirementController.text.trim().isNotEmpty ? _requirementController.text.trim() : null,
+      _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+    );
+
+    final valueText = _valueController.text.trim();
+    final value = valueText.isEmpty ? null : (double.tryParse(valueText));
 
     final input = CreateLeadInput(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim().isNotEmpty
-          ? _emailController.text.trim()
+      name: effectiveName,
+      phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
+      email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
+      whatsapp: _whatsappController.text.trim().isNotEmpty ? _whatsappController.text.trim() : null,
+      company: company.isNotEmpty ? company : null,
+      alternativePhone: _alternativePhoneController.text.trim().isNotEmpty
+          ? _alternativePhoneController.text.trim()
           : null,
-      phone: _phoneController.text.trim().isNotEmpty
-          ? _phoneController.text.trim()
+      businessPhone: _businessPhoneController.text.trim().isNotEmpty
+          ? _businessPhoneController.text.trim()
           : null,
-      whatsapp: _whatsappController.text.trim().isNotEmpty
-          ? _whatsappController.text.trim()
+      companyPhone: _companyPhoneController.text.trim().isNotEmpty
+          ? _companyPhoneController.text.trim()
           : null,
-      company: _companyController.text.trim().isNotEmpty
-          ? _companyController.text.trim()
+      alternativeEmails: _alternativeEmails.isNotEmpty ? _alternativeEmails : null,
+      occupation: _occupationController.text.trim().isNotEmpty
+          ? _occupationController.text.trim()
+          : null,
+      fieldOfWork: _fieldOfWorkController.text.trim().isNotEmpty
+          ? _fieldOfWorkController.text.trim()
           : null,
       address: _addressController.text.trim().isNotEmpty
           ? _addressController.text.trim()
+          : null,
+      homeAddress: _homeAddressController.text.trim().isNotEmpty
+          ? _homeAddressController.text.trim()
+          : null,
+      businessAddress: _businessAddressController.text.trim().isNotEmpty
+          ? _businessAddressController.text.trim()
           : null,
       country: _countryController.text.trim().isNotEmpty
           ? _countryController.text.trim()
@@ -123,22 +209,13 @@ class _LeadCreateViewState extends State<LeadCreateView> {
       district: _districtController.text.trim().isNotEmpty
           ? _districtController.text.trim()
           : null,
-      occupation: _occupationController.text.trim().isNotEmpty
-          ? _occupationController.text.trim()
-          : null,
-      fieldOfWork: _fieldOfWorkController.text.trim().isNotEmpty
-          ? _fieldOfWorkController.text.trim()
-          : null,
       source: _selectedSource,
-      notes: _notesController.text.trim().isNotEmpty
-          ? _notesController.text.trim()
-          : null,
+      notes: notes.isNotEmpty ? notes : null,
       status: _selectedStatus,
-      assignedTo: null,
-      categoryIds: _selectedCategoryIds.isNotEmpty
-          ? _selectedCategoryIds
-          : null,
-      products: products.isNotEmpty ? products : null,
+      assignedTo: _selectedAssignedTo,
+      categoryIds: _selectedCategoryIds.isNotEmpty ? _selectedCategoryIds : null,
+      products: _products.isNotEmpty ? _products : null,
+      value: value,
     );
 
     final ok = await leadController.createLead(
@@ -150,53 +227,54 @@ class _LeadCreateViewState extends State<LeadCreateView> {
     setState(() => _submitting = false);
 
     if (ok) {
-      // Navigate back to previous screen
       Get.back();
-
-      // Show success message after navigation completes
       Future.delayed(const Duration(milliseconds: 500), () {
-        Get.snackbar(
-          'Success',
-          'Lead created successfully',
+        Get.snackbar('Success', 'Lead created successfully',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3),
+            margin: const EdgeInsets.all(16),
+            icon: const Icon(Icons.check_circle, color: Colors.white),
+            shouldIconPulse: false);
+      });
+    } else {
+      Get.snackbar('Error',
+          leadController.errorMessage.isNotEmpty
+              ? leadController.errorMessage
+              : 'Failed to create lead',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.red,
           colorText: Colors.white,
           duration: const Duration(seconds: 3),
           margin: const EdgeInsets.all(16),
-          icon: const Icon(Icons.check_circle, color: Colors.white),
-          shouldIconPulse: false,
-        );
-      });
-    } else {
-      Get.snackbar(
-        'Error',
-        leadController.errorMessage.isNotEmpty
-            ? leadController.errorMessage
-            : 'Failed to create lead',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 3),
-        margin: const EdgeInsets.all(16),
-        icon: const Icon(Icons.error, color: Colors.white),
-        shouldIconPulse: false,
-      );
+          icon: const Icon(Icons.error, color: Colors.white),
+          shouldIconPulse: false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final categoryController = Get.find<CategoryController>();
+    final authController = Get.find<AuthController>();
+    final isAdmin = authController.user?.role == UserRole.shopOwner ||
+        authController.user?.role == UserRole.admin;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Lead')),
+      appBar: AppBar(
+        title: const Text('Add New Lead'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Get.back(),
+        ),
+      ),
       body: Obx(() {
-        if (categoryController.isLoading &&
-            categoryController.categories.isEmpty) {
+        if (categoryController.isLoading && categoryController.categories.isEmpty) {
           return const LoadingWidget();
         }
 
         final categories = categoryController.categories;
+        final staffList = isAdmin ? Get.find<StaffController>().staffList : <dynamic>[];
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -205,68 +283,203 @@ class _LeadCreateViewState extends State<LeadCreateView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSection(
-                  title: 'Contact',
+                // 1. Contact Information (always open)
+                _buildCard(
+                  context,
+                  title: 'Contact Information',
+                  description: 'Basic contact details for the lead',
                   children: [
                     TextFormField(
-                      controller: _nameController,
+                      controller: _phoneController,
                       decoration: const InputDecoration(
-                        labelText: 'Name *',
-                        prefixIcon: Icon(Icons.person_outline),
+                        labelText: 'Phone Number *',
+                        hintText: '+1 234 567 8900',
+                        prefixIcon: Icon(Icons.phone_outlined),
                       ),
-                      validator: (v) => v == null || v.trim().isEmpty
-                          ? 'Name is required'
-                          : null,
+                      keyboardType: TextInputType.phone,
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Phone is required' : null,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _companyController,
+                            decoration: const InputDecoration(
+                              labelText: 'Company name',
+                              hintText: 'Optional if owner name is given',
+                              prefixIcon: Icon(Icons.business_outlined),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Owner / Contact name',
+                              hintText: 'Optional if company name is given',
+                              prefixIcon: Icon(Icons.person_outline),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'At least one of Company name or Owner/Contact name is required.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
                       decoration: const InputDecoration(
-                        labelText: 'Email',
+                        labelText: 'Email Address',
+                        hintText: 'john.doe@example.com',
                         prefixIcon: Icon(Icons.email_outlined),
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone',
-                        prefixIcon: Icon(Icons.phone_outlined),
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _whatsappController,
                       decoration: const InputDecoration(
-                        labelText: 'WhatsApp',
+                        labelText: 'WhatsApp Number',
+                        hintText: '+1 234 567 8900',
                         prefixIcon: Icon(Icons.chat_outlined),
                       ),
                       keyboardType: TextInputType.phone,
                     ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _alternativePhoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Alternative Phone',
+                        hintText: '+1 234 567 8900',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildChipInput(
+                      context,
+                      label: 'Alternative Emails',
+                      hint: 'alternative@example.com',
+                      controller: _currentAlternativeEmailController,
+                      chips: _alternativeEmails,
+                      onAdd: _addAlternativeEmail,
+                      onRemove: _removeAlternativeEmail,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildSection(
-                  title: 'Company & Work',
+
+                // 2. Requirement (always open)
+                _buildCard(
+                  context,
+                  title: 'Requirement',
+                  description: 'Optional. What is the lead looking for?',
                   children: [
                     TextFormField(
-                      controller: _companyController,
+                      controller: _requirementController,
                       decoration: const InputDecoration(
-                        labelText: 'Company',
-                        prefixIcon: Icon(Icons.business_outlined),
+                        hintText:
+                            "Describe the lead's requirement or need in detail (optional)...",
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 5,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 3. Professional Information (collapsible)
+                _buildExpandableCard(
+                  context,
+                  title: 'Professional Information',
+                  description: 'Optional professional details',
+                  initiallyExpanded: false,
+                  children: [
+                    TextFormField(
+                      controller: _businessPhoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Business Phone',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _companyPhoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Company Phone',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _occupationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Occupation',
+                        hintText: 'Job title',
+                        prefixIcon: Icon(Icons.work_outline),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _fieldOfWorkController,
+                      decoration: const InputDecoration(
+                        labelText: 'Field of Work',
+                        hintText: 'Industry or field',
+                        prefixIcon: Icon(Icons.engineering_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _addressController,
                       decoration: const InputDecoration(
-                        labelText: 'Address',
+                        labelText: 'Primary Address',
+                        hintText: 'Full address',
                         prefixIcon: Icon(Icons.location_on_outlined),
+                        alignLabelWithHint: true,
                       ),
+                      maxLines: 3,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _homeAddressController,
+                      decoration: const InputDecoration(
+                        labelText: 'Home Address',
+                        prefixIcon: Icon(Icons.home_outlined),
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _businessAddressController,
+                      decoration: const InputDecoration(
+                        labelText: 'Business Address',
+                        prefixIcon: Icon(Icons.business_outlined),
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 4. Location Details (collapsible)
+                _buildExpandableCard(
+                  context,
+                  title: 'Location Details',
+                  description: 'Location information for this lead',
+                  initiallyExpanded: false,
+                  children: [
                     TextFormField(
                       controller: _countryController,
                       decoration: const InputDecoration(
@@ -274,7 +487,7 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                         prefixIcon: Icon(Icons.public_outlined),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _stateController,
                       decoration: const InputDecoration(
@@ -282,7 +495,7 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                         prefixIcon: Icon(Icons.map_outlined),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _cityController,
                       decoration: const InputDecoration(
@@ -290,7 +503,7 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                         prefixIcon: Icon(Icons.location_city_outlined),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _districtController,
                       decoration: const InputDecoration(
@@ -298,35 +511,16 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                         prefixIcon: Icon(Icons.place_outlined),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _occupationController,
-                      decoration: const InputDecoration(
-                        labelText: 'Occupation',
-                        prefixIcon: Icon(Icons.work_outline),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _fieldOfWorkController,
-                      decoration: const InputDecoration(
-                        labelText: 'Field of Work',
-                        prefixIcon: Icon(Icons.engineering_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _productsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Products (comma separated)',
-                        prefixIcon: Icon(Icons.shopping_bag_outlined),
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildSection(
-                  title: 'Status & Categories',
+
+                // 5. Source & Category (collapsible)
+                _buildExpandableCard(
+                  context,
+                  title: 'Source & Category',
+                  description: 'Lead source and categorization',
+                  initiallyExpanded: false,
                   children: [
                     DropdownButtonFormField<LeadSource>(
                       value: _selectedSource,
@@ -338,7 +532,7 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                       items: [
                         const DropdownMenuItem<LeadSource>(
                           value: null,
-                          child: Text('Select source'),
+                          child: Text('None'),
                         ),
                         ...LeadSource.values.map(
                           (s) => DropdownMenuItem<LeadSource>(
@@ -349,7 +543,24 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                       ],
                       onChanged: (val) => setState(() => _selectedSource = val),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _valueController,
+                      decoration: const InputDecoration(
+                        labelText: 'Potential value (₹)',
+                        hintText: '0',
+                        prefixIcon: Icon(Icons.currency_rupee),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'How valuable this lead is. Optional.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
                     DropdownButtonFormField<LeadStatus>(
                       value: _selectedStatus,
                       decoration: const InputDecoration(
@@ -366,63 +577,114 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                           )
                           .toList(),
                       onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _selectedStatus = val);
-                        }
+                        if (val != null) setState(() => _selectedStatus = val);
                       },
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Categories',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: categories
-                          .map(
-                            (CategoryModel cat) => FilterChip(
-                              label: Text(cat.name),
-                              selected: _selectedCategoryIds.contains(cat.id),
-                              labelStyle: TextStyle(
-                                color: _selectedCategoryIds.contains(cat.id)
-                                    ? Colors.white
-                                    : Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color,
-                              ),
-                              selectedColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                              checkmarkColor: Colors.white,
-                              onSelected: (selected) {
-                                setState(() {
-                                  if (selected) {
-                                    _selectedCategoryIds.add(cat.id);
-                                  } else {
-                                    _selectedCategoryIds.remove(cat.id);
-                                  }
-                                });
-                              },
+                    if (isAdmin && staffList.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String?>(
+                        value: _selectedAssignedTo,
+                        decoration: const InputDecoration(
+                          labelText: 'Assigned To',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        isExpanded: true,
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('Unassigned'),
+                          ),
+                          ...staffList.map(
+                            (s) => DropdownMenuItem<String?>(
+                              value: s.id,
+                              child: Text(s.name),
                             ),
-                          )
-                          .toList(),
+                          ),
+                        ],
+                        onChanged: (val) => setState(() => _selectedAssignedTo = val),
+                      ),
+                    ],
+                    if (categories.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Categories',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: categories
+                            .map(
+                              (CategoryModel cat) {
+                                final isSelected = _selectedCategoryIds.contains(cat.id);
+                                final theme = Theme.of(context);
+                                return FilterChip(
+                                  label: Text(
+                                    cat.name,
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? theme.colorScheme.onPrimary
+                                          : theme.colorScheme.onSurface,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      if (selected) {
+                                        _selectedCategoryIds.add(cat.id);
+                                      } else {
+                                        _selectedCategoryIds.remove(cat.id);
+                                      }
+                                    });
+                                  },
+                                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                                  selectedColor: theme.colorScheme.primary,
+                                  checkmarkColor: theme.colorScheme.onPrimary,
+                                );
+                              },
+                            )
+                            .toList(),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 6. Products & Additional Notes (collapsible)
+                _buildExpandableCard(
+                  context,
+                  title: 'Products & Additional Notes',
+                  description: 'Optional additional information',
+                  initiallyExpanded: false,
+                  children: [
+                    _buildChipInput(
+                      context,
+                      label: 'Products',
+                      hint: 'Product name',
+                      controller: _currentProductController,
+                      chips: _products,
+                      onAdd: _addProduct,
+                      onRemove: _removeProduct,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _notesController,
                       decoration: const InputDecoration(
-                        labelText: 'Notes',
-                        prefixIcon: Icon(Icons.notes_outlined),
+                        labelText: 'Additional Notes',
+                        hintText: 'Any additional notes or information...',
+                        alignLabelWithHint: true,
                       ),
-                      maxLines: 3,
+                      maxLines: 4,
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
+
+                // Submit
                 SafeArea(
                   top: false,
                   minimum: const EdgeInsets.only(bottom: 12),
@@ -430,10 +692,7 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -446,9 +705,9 @@ class _LeadCreateViewState extends State<LeadCreateView> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.check),
+                          : const Icon(Icons.save),
                       label: Text(
-                        _submitting ? 'Submitting...' : 'Create Lead',
+                        _submitting ? 'Saving...' : 'Save Lead',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -459,6 +718,134 @@ class _LeadCreateViewState extends State<LeadCreateView> {
           ),
         );
       }),
+    );
+  }
+
+  Widget _buildCard(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required List<Widget> children,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableCard(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required bool initiallyExpanded,
+    required List<Widget> children,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
+        title: Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          description,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        trailing: const Icon(Icons.expand_more),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChipInput(
+    BuildContext context, {
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    required List<String> chips,
+    required VoidCallback onAdd,
+    required void Function(String) onRemove,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                keyboardType: keyboardType,
+                onFieldSubmitted: (_) => onAdd(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              icon: const Icon(Icons.add),
+              onPressed: onAdd,
+            ),
+          ],
+        ),
+        if (chips.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: chips
+                .map(
+                  (c) => Chip(
+                    label: Text(c),
+                    deleteIcon: const Icon(Icons.close, size: 18),
+                    onDeleted: () => onRemove(c),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ],
     );
   }
 
@@ -501,28 +888,4 @@ class _LeadCreateViewState extends State<LeadCreateView> {
         return 'Closed – Lost';
     }
   }
-}
-
-Widget _buildSection({required String title, required List<Widget> children}) {
-  return Card(
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: BorderSide(color: Colors.grey.shade300),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          ...children,
-        ],
-      ),
-    ),
-  );
 }

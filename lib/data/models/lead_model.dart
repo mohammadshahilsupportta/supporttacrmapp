@@ -395,7 +395,13 @@ class CreateLeadInput {
   final String? phone;
   final String? whatsapp;
   final String? company;
+  final String? alternativePhone;
+  final String? businessPhone;
+  final String? companyPhone;
+  final List<String>? alternativeEmails;
   final String? address;
+  final String? homeAddress;
+  final String? businessAddress;
   final String? country;
   final String? state;
   final String? city;
@@ -408,6 +414,7 @@ class CreateLeadInput {
   final String? assignedTo;
   final List<String>? categoryIds;
   final List<String>? products;
+  final double? value;
 
   CreateLeadInput({
     required this.name,
@@ -415,7 +422,13 @@ class CreateLeadInput {
     this.phone,
     this.whatsapp,
     this.company,
+    this.alternativePhone,
+    this.businessPhone,
+    this.companyPhone,
+    this.alternativeEmails,
     this.address,
+    this.homeAddress,
+    this.businessAddress,
     this.country,
     this.state,
     this.city,
@@ -428,10 +441,11 @@ class CreateLeadInput {
     this.assignedTo,
     this.categoryIds,
     this.products,
+    this.value,
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    final map = <String, dynamic>{
       'name': name,
       'email': email,
       'phone': phone,
@@ -446,11 +460,34 @@ class CreateLeadInput {
       'field_of_work': fieldOfWork,
       'source': source != null ? LeadModel.sourceToString(source!) : null,
       'notes': notes,
-      'status': status != null ? LeadModel.statusToString(status!) : 'new',
+      'status': status != null
+          ? LeadModel.statusToString(status!)
+          : 'need_follow_up',
       'assigned_to': assignedTo,
       'products': products,
     };
+    if (alternativePhone != null) map['alternative_phone'] = alternativePhone;
+    if (businessPhone != null) map['business_phone'] = businessPhone;
+    if (companyPhone != null) map['company_phone'] = companyPhone;
+    if (alternativeEmails != null)
+      map['alternative_emails'] = alternativeEmails;
+    if (homeAddress != null) map['home_address'] = homeAddress;
+    if (businessAddress != null) map['business_address'] = businessAddress;
+    if (value != null) map['value'] = value;
+    return map;
   }
+}
+
+/// Build notes string from requirement + additional notes (website format).
+String buildLeadNotes(String? requirement, String? additionalNotes) {
+  final parts = <String>[];
+  if (requirement != null && requirement.trim().isNotEmpty) {
+    parts.add('REQUIREMENT:\n${requirement.trim()}');
+  }
+  if (additionalNotes != null && additionalNotes.trim().isNotEmpty) {
+    parts.add('ADDITIONAL NOTES:\n${additionalNotes.trim()}');
+  }
+  return parts.isEmpty ? '' : parts.join('\n\n');
 }
 
 enum LeadSortBy { name, createdAt, updatedAt, score, status }
