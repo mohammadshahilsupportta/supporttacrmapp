@@ -141,7 +141,7 @@ class _ReportsViewState extends State<ReportsView> {
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 1.4,
+                    childAspectRatio: 1.5,
                     children: [
                       StatsCardWidget(
                         title: 'Total Staff',

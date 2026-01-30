@@ -82,9 +82,9 @@ class ReportRepository {
         .gte('created_at', '${dateFrom}T00:00:00.000Z')
         .lte('created_at', '${dateTo}T23:59:59.999Z');
 
-    // Filter to only conversions (new_status = 'converted')
+    // Filter to only conversions (new_status = 'proposal_sent' - matches website)
     final conversions = (conversionsResponse as List)
-        .where((c) => (c['metadata'] as Map<String, dynamic>?)?['new_status'] == 'converted')
+        .where((c) => (c['metadata'] as Map<String, dynamic>?)?['new_status'] == 'proposal_sent')
         .toList();
 
     // Get all leads for the shop
@@ -130,13 +130,16 @@ class ReportRepository {
         }
       }
 
-      // Calculate leads by status
+      // Calculate leads by status (8 statuses - matches website)
       final leadsByStatus = LeadsByStatus(
-        newLeads: assignedLeads.where((l) => l['status'] == 'new').length,
-        contacted: assignedLeads.where((l) => l['status'] == 'contacted').length,
-        qualified: assignedLeads.where((l) => l['status'] == 'qualified').length,
-        converted: assignedLeads.where((l) => l['status'] == 'converted').length,
-        lost: assignedLeads.where((l) => l['status'] == 'lost').length,
+        willContact: assignedLeads.where((l) => l['status'] == 'will_contact').length,
+        needFollowUp: assignedLeads.where((l) => l['status'] == 'need_follow_up').length,
+        appointmentScheduled: assignedLeads.where((l) => l['status'] == 'appointment_scheduled').length,
+        proposalSent: assignedLeads.where((l) => l['status'] == 'proposal_sent').length,
+        alreadyHas: assignedLeads.where((l) => l['status'] == 'already_has').length,
+        noNeedNow: assignedLeads.where((l) => l['status'] == 'no_need_now').length,
+        closedWon: assignedLeads.where((l) => l['status'] == 'closed_won').length,
+        closedLost: assignedLeads.where((l) => l['status'] == 'closed_lost').length,
       );
 
       // Conversions this week/month
@@ -257,7 +260,7 @@ class ReportRepository {
     ];
     // Deduplicate by id (in case both statuses exist)
     final seenIds = <String>{};
-    final leads = (leadsRaw as List)
+    final leads = leadsRaw
         .cast<Map<String, dynamic>>()
         .where((l) => seenIds.add(l['id'] as String))
         .toList();

@@ -97,37 +97,49 @@ class StaffPerformanceStats {
 }
 
 class LeadsByStatus {
-  final int newLeads;
-  final int contacted;
-  final int qualified;
-  final int converted;
-  final int lost;
+  final int willContact;
+  final int needFollowUp;
+  final int appointmentScheduled;
+  final int proposalSent;
+  final int alreadyHas;
+  final int noNeedNow;
+  final int closedWon;
+  final int closedLost;
 
   LeadsByStatus({
-    required this.newLeads,
-    required this.contacted,
-    required this.qualified,
-    required this.converted,
-    required this.lost,
+    required this.willContact,
+    required this.needFollowUp,
+    required this.appointmentScheduled,
+    required this.proposalSent,
+    required this.alreadyHas,
+    required this.noNeedNow,
+    required this.closedWon,
+    required this.closedLost,
   });
 
   factory LeadsByStatus.fromJson(Map<String, dynamic> json) {
     return LeadsByStatus(
-      newLeads: json['new'] as int? ?? 0,
-      contacted: json['contacted'] as int? ?? 0,
-      qualified: json['qualified'] as int? ?? 0,
-      converted: json['converted'] as int? ?? 0,
-      lost: json['lost'] as int? ?? 0,
+      willContact: json['will_contact'] as int? ?? 0,
+      needFollowUp: json['need_follow_up'] as int? ?? 0,
+      appointmentScheduled: json['appointment_scheduled'] as int? ?? 0,
+      proposalSent: json['proposal_sent'] as int? ?? 0,
+      alreadyHas: json['already_has'] as int? ?? 0,
+      noNeedNow: json['no_need_now'] as int? ?? 0,
+      closedWon: json['closed_won'] as int? ?? 0,
+      closedLost: json['closed_lost'] as int? ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'new': newLeads,
-      'contacted': contacted,
-      'qualified': qualified,
-      'converted': converted,
-      'lost': lost,
+      'will_contact': willContact,
+      'need_follow_up': needFollowUp,
+      'appointment_scheduled': appointmentScheduled,
+      'proposal_sent': proposalSent,
+      'already_has': alreadyHas,
+      'no_need_now': noNeedNow,
+      'closed_won': closedWon,
+      'closed_lost': closedLost,
     };
   }
 }
