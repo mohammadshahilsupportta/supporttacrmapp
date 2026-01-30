@@ -468,6 +468,10 @@ class LeadFilters {
 class LeadStats {
   final int total;
   final Map<LeadStatus, int> byStatus;
+  /// Counts by raw status string from DB. Used for dashboard Lead Status Overview
+  /// to match website's 8 statuses: will_contact, need_follow_up, appointment_scheduled,
+  /// proposal_sent, already_has, no_need_now, closed_won, closed_lost.
+  final Map<String, int> byStatusString;
   final List<CategoryCount> byCategory;
   final int recentCount;
   final int assignedCount; // Count of leads assigned to user (for staff roles)
@@ -478,7 +482,8 @@ class LeadStats {
     required this.byCategory,
     required this.recentCount,
     this.assignedCount = 0, // Default to 0 if not provided
-  });
+    Map<String, int>? byStatusString,
+  }) : byStatusString = byStatusString ?? {};
 }
 
 class CategoryCount {

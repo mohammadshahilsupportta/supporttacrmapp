@@ -605,13 +605,16 @@ class LeadRepository {
 
       final total = allLeads.length;
 
-      // Count by status
+      // Count by status (raw string for dashboard 8-status overview + enum for backward compat)
       final statusData = allLeads;
       final byStatus = <LeadStatus, int>{};
+      final byStatusString = <String, int>{};
 
       for (final item in statusData) {
-        final statusStr = (item as Map<String, dynamic>)['status'] as String;
-        // Parse status string to enum
+        final statusStr = ((item as Map<String, dynamic>)['status'] as String?) ?? 'new';
+        // Raw count for dashboard (matches website: will_contact, need_follow_up, etc.)
+        byStatusString[statusStr] = (byStatusString[statusStr] ?? 0) + 1;
+        // Parse to enum for backward compat (conversion rate, etc.)
         LeadStatus status;
         switch (statusStr) {
           case 'contacted':
@@ -621,10 +624,20 @@ class LeadRepository {
             status = LeadStatus.qualified;
             break;
           case 'converted':
+          case 'closed_won':
             status = LeadStatus.converted;
             break;
           case 'lost':
+          case 'closed_lost':
+          case 'already_has':
+          case 'no_need_now':
             status = LeadStatus.lost;
+            break;
+          case 'will_contact':
+          case 'need_follow_up':
+          case 'appointment_scheduled':
+          case 'proposal_sent':
+            status = LeadStatus.contacted;
             break;
           default:
             status = LeadStatus.newLead;
@@ -667,6 +680,7 @@ class LeadRepository {
       return LeadStats(
         total: total,
         byStatus: byStatus,
+        byStatusString: byStatusString,
         byCategory: byCategory,
         recentCount: recentCount,
         assignedCount: assignedCount,

@@ -221,4 +221,77 @@ class StaffPerformanceFilters {
   }
 }
 
+/// Period for conversion leaderboard (Closed Won). Matches website API.
+enum LeaderboardPeriod {
+  allTime,
+  thisMonth,
+  thisWeek,
+  thisDay,
+}
+
+extension LeaderboardPeriodExt on LeaderboardPeriod {
+  String get value {
+    switch (this) {
+      case LeaderboardPeriod.allTime:
+        return 'all_time';
+      case LeaderboardPeriod.thisMonth:
+        return 'this_month';
+      case LeaderboardPeriod.thisWeek:
+        return 'this_week';
+      case LeaderboardPeriod.thisDay:
+        return 'this_day';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case LeaderboardPeriod.allTime:
+        return 'All time';
+      case LeaderboardPeriod.thisMonth:
+        return 'This month';
+      case LeaderboardPeriod.thisWeek:
+        return 'This week';
+      case LeaderboardPeriod.thisDay:
+        return 'This day';
+    }
+  }
+}
+
+/// Single entry in the Closed Won leaderboard. Visible to all staff.
+class LeaderboardEntry {
+  final int rank;
+  final String staffId;
+  final String staffName;
+  final String role;
+  final int conversions;
+
+  LeaderboardEntry({
+    required this.rank,
+    required this.staffId,
+    required this.staffName,
+    required this.role,
+    required this.conversions,
+  });
+
+  factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    return LeaderboardEntry(
+      rank: json['rank'] as int? ?? 0,
+      staffId: json['staff_id'] as String? ?? '',
+      staffName: json['staff_name'] as String? ?? '—',
+      role: json['role'] as String? ?? 'Staff',
+      conversions: json['conversions'] as int? ?? json['closed_won_count'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'rank': rank,
+      'staff_id': staffId,
+      'staff_name': staffName,
+      'role': role,
+      'conversions': conversions,
+    };
+  }
+}
+
 

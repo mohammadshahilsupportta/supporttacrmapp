@@ -598,6 +598,15 @@ class _HomeViewState extends State<HomeView> {
                 _notchController.jumpTo(2);
               },
             ),
+            // Leaderboard visible to ALL roles (same as website)
+            ListTile(
+              leading: const Icon(Icons.emoji_events),
+              title: const Text('Leaderboard'),
+              onTap: () {
+                Navigator.pop(context);
+                Get.toNamed(AppRoutes.leaderboard);
+              },
+            ),
             if (_canViewStaff(user))
               ListTile(
                 leading: const Icon(Icons.group),
@@ -808,12 +817,17 @@ class _HomeViewState extends State<HomeView> {
                 }
 
                 // Always show stats (even if 0 or null)
+                // Conversion rate: website uses proposal_sent; fallback to closed_won/converted
                 final totalLeads = stats?.total ?? 0;
                 final recentCount = stats?.recentCount ?? 0;
+                final conversionCount = stats != null
+                    ? (stats.byStatusString['proposal_sent'] ??
+                        stats.byStatusString['closed_won'] ??
+                        stats.byStatus[LeadStatus.converted] ??
+                        0)
+                    : 0;
                 final conversionRate = stats != null && stats.total > 0
-                    ? ((stats.byStatus[LeadStatus.converted] ?? 0) /
-                          stats.total *
-                          100)
+                    ? (conversionCount / stats.total * 100)
                     : 0.0;
 
                 return GridView.count(
@@ -871,10 +885,16 @@ class _HomeViewState extends State<HomeView> {
               }),
               const SizedBox(height: 24),
 
-              // Lead Status Overview
+              // Lead Status Overview (same visibility as website: admin when stats exist, staff when total > 0)
               Obx(() {
                 final stats = dashboardController.stats;
                 final isLoading = dashboardController.isLoading;
+                final user = authController.user;
+                final isAdmin = user != null &&
+                    (user.role == UserRole.shopOwner || user.role == UserRole.admin);
+                final shouldShowOverview = isAdmin
+                    ? (stats != null)
+                    : ((stats?.total ?? 0) > 0);
 
                 if (isLoading && stats == null) {
                   return Card(
@@ -937,8 +957,21 @@ class _HomeViewState extends State<HomeView> {
                   );
                 }
 
-                // Always show the card, even if stats are null or empty
-                final byStatus = stats?.byStatus ?? <LeadStatus, int>{};
+                if (!shouldShowOverview) return const SizedBox.shrink();
+
+                // Lead Status Overview: 8 statuses same as website (order, labels, colors)
+                final byStatusString = stats?.byStatusString ?? <String, int>{};
+                final isStaffRole = user?.role != UserRole.shopOwner &&
+                    user?.role != UserRole.admin;
+                final hasWebsiteStatuses = (byStatusString['will_contact'] ?? 0) +
+                        (byStatusString['need_follow_up'] ?? 0) +
+                        (byStatusString['appointment_scheduled'] ?? 0) +
+                        (byStatusString['proposal_sent'] ?? 0) +
+                        (byStatusString['already_has'] ?? 0) +
+                        (byStatusString['no_need_now'] ?? 0) +
+                        (byStatusString['closed_won'] ?? 0) +
+                        (byStatusString['closed_lost'] ?? 0) >
+                    0;
 
                 return Card(
                   child: Padding(
@@ -947,53 +980,140 @@ class _HomeViewState extends State<HomeView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Lead Status Overview',
+                          isStaffRole
+                              ? 'My Lead Status Overview'
+                              : 'Lead Status Overview',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Breakdown of leads by their current status',
+                          isStaffRole
+                              ? 'Your leads by status'
+                              : 'Breakdown of leads by their current status',
                           style: Theme.of(
                             context,
                           ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildStatusItem(
-                              context,
-                              'New',
-                              (byStatus[LeadStatus.newLead] ?? 0).toString(),
-                              Colors.blue,
+                        // When DB has website 8 statuses: show 8-status grid
+                        if (hasWebsiteStatuses)
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final crossCount = constraints.maxWidth > 600
+                                  ? 8
+                                  : (constraints.maxWidth > 400 ? 4 : 2);
+                              return GridView.count(
+                                crossAxisCount: crossCount,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 0.9,
+                                children: [
+                                  _buildStatusItem(
+                                    context,
+                                    'Will Contact',
+                                    (byStatusString['will_contact'] ?? 0).toString(),
+                                    Colors.blue.shade600,
+                                  ),
+                                  _buildStatusItem(
+                                    context,
+                                    'Need Follow-Up',
+                                    (byStatusString['need_follow_up'] ?? 0).toString(),
+                                    Colors.blue.shade500,
+                                  ),
+                                  _buildStatusItem(
+                                    context,
+                                    'Appt. Scheduled',
+                                    (byStatusString['appointment_scheduled'] ?? 0).toString(),
+                                    Colors.yellow.shade700,
+                                  ),
+                                  _buildStatusItem(
+                                    context,
+                                    'Proposal Sent',
+                                    (byStatusString['proposal_sent'] ?? 0).toString(),
+                                    Colors.green.shade600,
+                                  ),
+                                  _buildStatusItem(
+                                    context,
+                                    'Already Has',
+                                    (byStatusString['already_has'] ?? 0).toString(),
+                                    Colors.purple.shade600,
+                                  ),
+                                  _buildStatusItem(
+                                    context,
+                                    'No Need Now',
+                                    (byStatusString['no_need_now'] ?? 0).toString(),
+                                    Colors.orange.shade600,
+                                  ),
+                                  _buildStatusItem(
+                                    context,
+                                    'Closed – Won',
+                                    (byStatusString['closed_won'] ?? 0).toString(),
+                                    Colors.green.shade800,
+                                  ),
+                                  _buildStatusItem(
+                                    context,
+                                    'Closed – Lost',
+                                    (byStatusString['closed_lost'] ?? 0).toString(),
+                                    Colors.red.shade600,
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        // Fallback: when DB uses old 5 statuses, show legacy breakdown
+                        if (!hasWebsiteStatuses && stats != null)
+                          Wrap(
+                            spacing: 16,
+                            runSpacing: 12,
+                            children: [
+                              _buildStatusItem(
+                                context,
+                                'New',
+                                (stats.byStatus[LeadStatus.newLead] ?? 0).toString(),
+                                Colors.blue,
+                              ),
+                              _buildStatusItem(
+                                context,
+                                'Contacted',
+                                (stats.byStatus[LeadStatus.contacted] ?? 0).toString(),
+                                Colors.orange,
+                              ),
+                              _buildStatusItem(
+                                context,
+                                'Qualified',
+                                (stats.byStatus[LeadStatus.qualified] ?? 0).toString(),
+                                Colors.purple,
+                              ),
+                              _buildStatusItem(
+                                context,
+                                'Converted',
+                                (stats.byStatus[LeadStatus.converted] ?? 0).toString(),
+                                Colors.green,
+                              ),
+                              _buildStatusItem(
+                                context,
+                                'Lost',
+                                (stats.byStatus[LeadStatus.lost] ?? 0).toString(),
+                                Colors.red,
+                              ),
+                            ],
+                          ),
+                        // No leads
+                        if (!hasWebsiteStatuses && (stats?.total ?? 0) == 0)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24.0),
+                              child: Text(
+                                'No leads yet',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ),
-                            _buildStatusItem(
-                              context,
-                              'Contacted',
-                              (byStatus[LeadStatus.contacted] ?? 0).toString(),
-                              Colors.orange,
-                            ),
-                            _buildStatusItem(
-                              context,
-                              'Qualified',
-                              (byStatus[LeadStatus.qualified] ?? 0).toString(),
-                              Colors.purple,
-                            ),
-                            _buildStatusItem(
-                              context,
-                              'Converted',
-                              (byStatus[LeadStatus.converted] ?? 0).toString(),
-                              Colors.green,
-                            ),
-                            _buildStatusItem(
-                              context,
-                              'Lost',
-                              (byStatus[LeadStatus.lost] ?? 0).toString(),
-                              Colors.red,
-                            ),
-                          ],
-                        ),
+                          ),
                       ],
                     ),
                   ),

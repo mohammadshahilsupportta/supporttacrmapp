@@ -12,7 +12,8 @@ This document compares all features available in the SupporttaCRM website with t
 | **My Tasks** | ✅ | ✅ | ✅ Complete |
 | **Categories** | ✅ | ✅ | ✅ Complete |
 | **Staff Management** | ✅ | ✅ | ✅ Complete |
-| **Reports** | ✅ | ✅ | ✅ **NEWLY ADDED** |
+| **Reports** | ✅ | ✅ | ✅ Complete |
+| **Leaderboard** | ✅ | ✅ | ✅ **NEWLY ADDED** (Closed Won leaderboard, all roles) |
 | **Customers** | 🟡 (Coming Soon) | ❌ | ⏸️ Not Implemented (Website placeholder) |
 | **Settings** | ✅ | ✅ | ✅ Complete |
 | **Profile** | ✅ | ✅ | ✅ Complete |
@@ -46,16 +47,18 @@ This document compares all features available in the SupporttaCRM website with t
 - **App**: Staff CRUD, role management, category permissions
 - **Status**: ✅ Complete
 
-### ✅ Reports (NEWLY ADDED)
-- **Website**: Staff performance analytics with:
-  - Summary cards (Total Staff, Total Conversions, Avg Conversion Rate, Top Performer)
-  - Staff Performance Table with metrics (leads, conversions, rate, avg days, this month, status)
-  - Role-based access (shop_owner, admin only)
-- **App**: Same features implemented:
-  - Summary cards matching website design
-  - Staff Performance Table with all metrics
-  - Role-based access control
-  - Accessible via drawer navigation
+### ✅ Reports
+- **Website**: Staff performance analytics with summary cards and staff performance table; role-based access (shop_owner, admin only).
+- **App**: Same features; accessible via drawer.
+- **Status**: ✅ Complete
+
+### ✅ Leaderboard (NEWLY ADDED)
+- **Website**: Closed Won Leaderboard – staff ranked by Closed – Won count; period filter (All time, This month, This week, This day); visible to **all roles**.
+- **App**: Same features:
+  - Closed Won Leaderboard with period chips (All time, This month, This week, This day)
+  - Rankings table (Rank, Name, Role, Closed – Won)
+  - Visible to all staff (drawer item for everyone)
+  - Supports both DB statuses: `closed_won` (website) and `converted` (app)
 - **Status**: ✅ **NEWLY IMPLEMENTED**
 
 ### 🟡 Customers
@@ -124,8 +127,9 @@ This document compares all features available in the SupporttaCRM website with t
   - Settings
 - **Drawer Menu**:
   - All bottom nav items
+  - **Leaderboard** (all roles) - NEW
   - Categories (if not in bottom nav)
-  - **Reports** (admin/owner only) - NEW
+  - Reports (admin/owner only)
   - Profile
   - Sign Out
 
@@ -154,9 +158,10 @@ This document compares all features available in the SupporttaCRM website with t
 ## Summary
 
 ✅ **All implemented website features are now available in the mobile app**
-✅ **Reports feature has been successfully added**
+✅ **Leaderboard (Closed Won) has been added** – visible to all roles, period filter, same logic as website
+✅ **Reports** – staff performance (admin/owner only)
 ⏸️ **Customers feature pending (website placeholder)**
 
-The mobile app now has feature parity with the website for all implemented features!
+The mobile app now has feature parity with the website for all implemented features, including the Leaderboard.
 
 
