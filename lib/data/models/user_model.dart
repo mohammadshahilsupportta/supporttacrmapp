@@ -116,6 +116,39 @@ class UserModel {
     }
   }
 
+  /// Roles that can be assigned to staff (excludes shop_owner). Match website StaffAssignableRoles.
+  static const List<UserRole> staffAssignableRoles = [
+    UserRole.admin,
+    UserRole.officeStaff,
+    UserRole.freelance,
+    UserRole.marketingManager,
+    UserRole.crmCoordinator,
+  ];
+
+  /// Roles that require category assignment. Match website CATEGORY_RESTRICTED_ROLES.
+  static const List<UserRole> categoryRestrictedRoles = [
+    UserRole.freelance,
+    UserRole.officeStaff,
+  ];
+
+  /// Role description for staff form. Match website RoleDescriptions.
+  static String roleDescription(UserRole role) {
+    switch (role) {
+      case UserRole.shopOwner:
+        return 'Full access to all features and settings';
+      case UserRole.admin:
+        return 'Full access to all features including staff management';
+      case UserRole.officeStaff:
+        return 'Access to assigned category leads and customers';
+      case UserRole.freelance:
+        return 'Access to assigned category leads only';
+      case UserRole.marketingManager:
+        return 'Access to all leads and categories';
+      case UserRole.crmCoordinator:
+        return 'Add and assign leads to sales; daily target 100 leads; points and star points for conversions';
+    }
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

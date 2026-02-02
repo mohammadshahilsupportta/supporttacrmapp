@@ -551,11 +551,15 @@ class _StaffDetailViewState extends State<StaffDetailView> {
                   children: [
                     const Icon(Icons.info_outline, color: Colors.grey, size: 20),
                     const SizedBox(width: 8),
-                    Text(
-                      'No category permissions assigned',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Text(
+                        staff.role == UserRole.crmCoordinator
+                            ? 'This role does not use category assignment.'
+                            : 'No category permissions assigned',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],

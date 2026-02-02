@@ -244,7 +244,7 @@ class _StaffCreateViewState extends State<StaffCreateView> {
                 ),
                 const SizedBox(height: 16),
                 _buildSection(
-                  title: 'Contact & Role',
+                  title: 'Contact',
                   children: [
                     TextFormField(
                       controller: _phoneController,
@@ -254,19 +254,19 @@ class _StaffCreateViewState extends State<StaffCreateView> {
                       ),
                       keyboardType: TextInputType.phone,
                     ),
-                    const SizedBox(height: 12),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: 'Role & Permissions',
+                  children: [
                     DropdownButtonFormField<UserRole>(
                       value: _selectedRole,
                       decoration: const InputDecoration(
                         labelText: 'Role *',
                         prefixIcon: Icon(Icons.badge_outlined),
                       ),
-                      items: [
-                        UserRole.admin,
-                        UserRole.marketingManager,
-                        UserRole.officeStaff,
-                        UserRole.freelance,
-                      ].map((role) {
+                      items: UserModel.staffAssignableRoles.map((role) {
                         return DropdownMenuItem(
                           value: role,
                           child: Text(UserModel.roleDisplayName(role)),
@@ -276,13 +276,22 @@ class _StaffCreateViewState extends State<StaffCreateView> {
                         if (value != null) {
                           setState(() {
                             _selectedRole = value;
-                            if (value == UserRole.admin ||
-                                value == UserRole.marketingManager) {
+                            if (!UserModel.categoryRestrictedRoles
+                                .contains(value)) {
                               _selectedCategoryIds.clear();
                             }
                           });
                         }
                       },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      UserModel.roleDescription(_selectedRole),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                        height: 1.3,
+                      ),
                     ),
                   ],
                 ),
@@ -290,8 +299,8 @@ class _StaffCreateViewState extends State<StaffCreateView> {
                 _buildSection(
                   title: 'Category permissions',
                   children: [
-                    if (_selectedRole != UserRole.admin &&
-                        _selectedRole != UserRole.marketingManager) ...[
+                    if (UserModel.categoryRestrictedRoles
+                        .contains(_selectedRole)) ...[
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -321,11 +330,21 @@ class _StaffCreateViewState extends State<StaffCreateView> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.info_outline, color: Colors.blue.shade700),
+                            Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
                             const SizedBox(width: 8),
-                            const Expanded(
-                              child: Text('This role has access to all categories'),
+                            Expanded(
+                              child: Text(
+                                _selectedRole == UserRole.admin ||
+                                        _selectedRole == UserRole.marketingManager
+                                    ? 'This role has access to all categories by default.'
+                                    : 'This role does not use category assignment.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.blue.shade900,
+                                ),
+                              ),
                             ),
                           ],
                         ),
