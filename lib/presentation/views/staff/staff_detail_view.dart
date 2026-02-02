@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../controllers/staff_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
+import '../../../core/utils/helpers.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
 import '../../../data/models/staff_model.dart';
@@ -53,6 +54,8 @@ class _StaffDetailViewState extends State<StaffDetailView> {
         return Colors.blue;
       case UserRole.freelance:
         return Colors.teal;
+      case UserRole.crmCoordinator:
+        return Colors.orange;
     }
   }
 
@@ -68,15 +71,19 @@ class _StaffDetailViewState extends State<StaffDetailView> {
         return Icons.business_center;
       case UserRole.freelance:
         return Icons.person;
+      case UserRole.crmCoordinator:
+        return Icons.groups;
     }
   }
 
   String _getUserInitials(String name) {
-    final parts = name.split(' ');
-    if (parts.length > 1) {
+    final safe = Helpers.safeDisplayString(name);
+    if (safe.isEmpty) return 'S';
+    final parts = safe.split(' ');
+    if (parts.length > 1 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return name.isNotEmpty ? name[0].toUpperCase() : 'S';
+    return safe[0].toUpperCase();
   }
 
   bool _canManageStaff(UserModel? user) {
@@ -93,7 +100,8 @@ class _StaffDetailViewState extends State<StaffDetailView> {
       appBar: AppBar(
         title: Obx(() {
           final staff = _staffController.selectedStaff;
-          return Text(staff?.name ?? 'Staff Details');
+          final name = Helpers.safeDisplayString(staff?.name);
+          return Text(name.isEmpty ? 'Staff Details' : name);
         }),
         actions: canManage
             ? [
@@ -256,7 +264,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
                   ),
                   child: Center(
                     child: Text(
-                      _getUserInitials(staff.name),
+                      _getUserInitials(Helpers.safeDisplayString(staff.name)),
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -272,7 +280,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        staff.name,
+                        Helpers.safeDisplayString(staff.name),
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -388,7 +396,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
               theme,
               Icons.email_outlined,
               'Email',
-              staff.email,
+              Helpers.safeDisplayString(staff.email),
               Colors.blue,
             ),
             const SizedBox(height: 16),
@@ -589,7 +597,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          category.name,
+                          Helpers.safeDisplayString(category.name),
                           style: TextStyle(
                             color: catColor,
                             fontSize: 12,
@@ -695,7 +703,7 @@ class _StaffDetailViewState extends State<StaffDetailView> {
       AlertDialog(
         title: const Text('Delete Staff Member'),
         content: Text(
-          'Are you sure you want to permanently delete ${staff.name}? This action cannot be undone.',
+          'Are you sure you want to permanently delete ${Helpers.safeDisplayString(staff.name)}? This action cannot be undone.',
         ),
         actions: [
           TextButton(

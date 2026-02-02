@@ -113,6 +113,32 @@ class Helpers {
     if (text.isEmpty) return text;
     return text[0].toUpperCase() + text.substring(1);
   }
+
+  /// Returns a string safe for display in Text/TextSpan (well-formed UTF-16).
+  /// Replaces unpaired surrogates with U+FFFD to avoid "string is not well-formed UTF-16" errors.
+  static String safeDisplayString(String? s) {
+    if (s == null || s.isEmpty) return s ?? '';
+    final codes = s.codeUnits;
+    final buffer = <int>[];
+    for (var i = 0; i < codes.length; i++) {
+      final c = codes[i];
+      if (c < 0xD800 || c > 0xDFFF) {
+        buffer.add(c);
+      } else if (c >= 0xD800 && c <= 0xDBFF && i + 1 < codes.length) {
+        final next = codes[i + 1];
+        if (next >= 0xDC00 && next <= 0xDFFF) {
+          buffer.add(c);
+          buffer.add(next);
+          i++;
+        } else {
+          buffer.add(0xFFFD);
+        }
+      } else {
+        buffer.add(0xFFFD);
+      }
+    }
+    return String.fromCharCodes(buffer);
+  }
 }
 
 

@@ -2,7 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../viewmodels/lead_viewmodel.dart';
 import '../../data/models/lead_model.dart';
+import '../../data/models/user_model.dart';
+import '../../data/repositories/lead_repository.dart';
 import '../../core/utils/helpers.dart';
+import 'auth_controller.dart';
 
 class LeadController extends GetxController {
   final LeadViewModel _viewModel = LeadViewModel();
@@ -96,8 +99,13 @@ class LeadController extends GetxController {
         offset: _currentOffset.value,
       );
 
-      final result = await _viewModel.getLeads(shopId, filters: filtersWithPagination);
-      
+      final visibility = _buildVisibility();
+      final result = await _viewModel.getLeads(
+        shopId,
+        filters: filtersWithPagination,
+        visibility: visibility,
+      );
+
       if (reset) {
         _leads.value = result;
       } else {
@@ -146,8 +154,13 @@ class LeadController extends GetxController {
         offset: _currentOffset.value,
       );
 
-      final result = await _viewModel.getLeads(shopId, filters: filtersWithPagination);
-      
+      final visibility = _buildVisibility();
+      final result = await _viewModel.getLeads(
+        shopId,
+        filters: filtersWithPagination,
+        visibility: visibility,
+      );
+
       if (result.isEmpty) {
         _hasMore.value = false;
       } else {
@@ -163,13 +176,30 @@ class LeadController extends GetxController {
   }
 
 
+  LeadVisibilityContext? _buildVisibility() {
+    try {
+      final auth = Get.find<AuthController>();
+      final user = auth.user;
+      if (user == null) return null;
+      final isStaff = user.role != UserRole.shopOwner && user.role != UserRole.admin;
+      return LeadVisibilityContext(
+        userId: user.id,
+        role: user.roleString,
+        isStaff: isStaff,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Load lead by ID
   Future<void> loadLeadById(String leadId) async {
     _isLoading.value = true;
     _errorMessage.value = '';
 
     try {
-      final result = await _viewModel.getLeadById(leadId);
+      final visibility = _buildVisibility();
+      final result = await _viewModel.getLeadById(leadId, visibility: visibility);
       _selectedLead.value = result;
     } catch (e) {
       _errorMessage.value = Helpers.handleError(e);
@@ -205,8 +235,10 @@ class LeadController extends GetxController {
     _errorMessage.value = '';
 
     try {
-      await _viewModel.updateLead(leadId, input);
-      final updatedLead = await _viewModel.getLeadById(leadId);
+      final performer = _buildVisibility();
+      await _viewModel.updateLead(leadId, input, performer: performer);
+      final visibility = _buildVisibility();
+      final updatedLead = await _viewModel.getLeadById(leadId, visibility: visibility);
       if (updatedLead != null) {
         _selectedLead.value = updatedLead;
         
@@ -231,7 +263,16 @@ class LeadController extends GetxController {
     _errorMessage.value = '';
 
     try {
-      await _viewModel.deleteLead(leadId);
+      final auth = Get.find<AuthController>();
+      final user = auth.user;
+      final currentUserId = user?.id;
+      final isOwnerOrAdmin = user != null &&
+          (user.role == UserRole.shopOwner || user.role == UserRole.admin);
+      await _viewModel.deleteLead(
+        leadId,
+        currentUserId: currentUserId,
+        isOwnerOrAdmin: isOwnerOrAdmin,
+      );
       // Optimistically remove from list so UI updates immediately
       _leads.removeWhere((l) => l.id == leadId);
       _selectedLead.value = null;

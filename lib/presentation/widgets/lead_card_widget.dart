@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../controllers/lead_controller.dart';
 import '../controllers/staff_controller.dart';
+import '../../core/utils/helpers.dart';
 import '../../data/models/lead_model.dart';
 import '../../data/models/category_model.dart';
 
@@ -179,9 +180,10 @@ class LeadCardWidget extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        lead.name.isNotEmpty
-                            ? lead.name[0].toUpperCase()
-                            : 'L',
+                        () {
+                          final name = Helpers.safeDisplayString(lead.name);
+                          return name.isNotEmpty ? name[0].toUpperCase() : 'L';
+                        }(),
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -197,7 +199,7 @@ class LeadCardWidget extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          lead.name,
+                          Helpers.safeDisplayString(lead.name),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
@@ -352,7 +354,7 @@ class LeadCardWidget extends StatelessWidget {
                         child: _buildInfoRow(
                           context,
                           Icons.email_outlined,
-                          lead.email!,
+                          Helpers.safeDisplayString(lead.email),
                           theme.colorScheme.primary,
                         ),
                       ),
@@ -363,7 +365,7 @@ class LeadCardWidget extends StatelessWidget {
                         child: _buildInfoRow(
                           context,
                           Icons.phone_outlined,
-                          lead.phone!,
+                          Helpers.safeDisplayString(lead.phone),
                           theme.colorScheme.primary,
                         ),
                       ),
@@ -412,7 +414,7 @@ class LeadCardWidget extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            category.name,
+                            Helpers.safeDisplayString(category.name),
                             style: TextStyle(
                               color: categoryColor,
                               fontSize: 10,
@@ -550,7 +552,10 @@ class LeadCardWidget extends StatelessWidget {
     final assignedColor = lead.assignedUser != null 
         ? theme.colorScheme.primary 
         : theme.colorScheme.onSurfaceVariant;
-    final assignedName = lead.assignedUser?.name ?? 'Unassigned';
+    final rawName = lead.assignedUser?.name;
+    final assignedName = (rawName == null || rawName.isEmpty)
+        ? 'Unassigned'
+        : Helpers.safeDisplayString(rawName);
     
     return Container(
       height: 32, // Fixed height to match status widget
@@ -653,7 +658,7 @@ class LeadCardWidget extends StatelessWidget {
                       children: [
                         Icon(Icons.person, size: 16, color: theme.colorScheme.primary),
                         const SizedBox(width: 8),
-                        Text(staff.name, style: TextStyle(color: theme.colorScheme.onSurface)),
+                        Text(Helpers.safeDisplayString(staff.name), style: TextStyle(color: theme.colorScheme.onSurface)),
                       ],
                     ),
                   ),

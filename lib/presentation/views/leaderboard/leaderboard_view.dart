@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/leaderboard_controller.dart';
 import '../../controllers/auth_controller.dart';
+import '../../../core/utils/helpers.dart';
 import '../../../data/models/report_model.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
@@ -83,14 +84,14 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Closed Won Leaderboard',
+                  'Sales Accountability Leaderboard',
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Ranked by Closed – Won. Who closed the most deals — visible to all staff.',
+                  'Ranked by points (closed won × 10). Freelance & office staff only. Status and safety fund for This month.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: Colors.grey,
                   ),
@@ -147,7 +148,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'All team members ranked by Closed – Won count'
+                          'Rank, count, conversion %, points'
+                          '${_controller.period == LeaderboardPeriod.thisMonth ? '; status and safety fund' : ''}'
                           '${_controller.period != LeaderboardPeriod.allTime ? ' (${_controller.period.label})' : ''}.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.grey,
@@ -197,9 +199,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                             separatorBuilder: (_, __) => const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final entry = _controller.leaderboard[index];
+                              final showStatusAndSafety =
+                                  _controller.period == LeaderboardPeriod.thisMonth;
                               return _LeaderboardTile(
                                 entry: entry,
                                 theme: theme,
+                                showStatusAndSafety: showStatusAndSafety,
                               );
                             },
                           ),
@@ -219,10 +224,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
 class _LeaderboardTile extends StatelessWidget {
   final LeaderboardEntry entry;
   final ThemeData theme;
+  final bool showStatusAndSafety;
 
   const _LeaderboardTile({
     required this.entry,
     required this.theme,
+    this.showStatusAndSafety = false,
   });
 
   @override
@@ -240,72 +247,110 @@ class _LeaderboardTile extends StatelessWidget {
       shadowColor: Colors.black.withOpacity(0.06),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Rank badge
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: rankColor.withOpacity(0.15),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: rankColor.withOpacity(0.5),
-                  width: 1.5,
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: rankColor.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: rankColor.withOpacity(0.5),
+                      width: 1.5,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: entry.rank <= 3
+                      ? Icon(_rankIcon(entry.rank), size: 24, color: rankColor)
+                      : Text(
+                          '${entry.rank}',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: rankColor,
+                          ),
+                        ),
                 ),
-              ),
-              alignment: Alignment.center,
-              child: entry.rank <= 3
-                  ? Icon(_rankIcon(entry.rank), size: 24, color: rankColor)
-                  : Text(
-                      '${entry.rank}',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: rankColor,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        Helpers.safeDisplayString(entry.staffName),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        Helpers.safeDisplayString(entry.role).replaceAll('_', ' '),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${entry.conversions}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${entry.conversionRate.toStringAsFixed(1)}%',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${entry.points} pts',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            if (showStatusAndSafety && (entry.status != null || entry.safetyFundEligible != null)) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  if (entry.status != null)
+                    Chip(
+                      label: Text(
+                        Helpers.safeDisplayString(entry.status!),
+                        style: theme.textTheme.labelSmall,
+                      ),
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  if (entry.safetyFundEligible != null)
+                    Text(
+                      entry.safetyFundEligible!
+                          ? 'Safety: Eligible'
+                          : 'Safety: Not eligible',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-            ),
-            const SizedBox(width: 12),
-            // Name & role
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    entry.staffName,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    entry.role.replaceAll('_', ' '),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
                 ],
               ),
-            ),
-            // Closed – Won count
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${entry.conversions}',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onPrimaryContainer,
-                ),
-              ),
-            ),
+            ],
           ],
         ),
       ),

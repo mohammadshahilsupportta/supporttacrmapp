@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/helpers.dart';
 import '../../../../data/models/staff_model.dart';
 import '../../../../data/models/user_model.dart';
 
@@ -33,6 +34,8 @@ class StaffCardWidget extends StatelessWidget {
         return Colors.blue; // Same blue as used in leads screen
       case UserRole.freelance:
         return Colors.teal; // Professional teal
+      case UserRole.crmCoordinator:
+        return Colors.orange;
     }
   }
 
@@ -48,6 +51,8 @@ class StaffCardWidget extends StatelessWidget {
         return Icons.business_center;
       case UserRole.freelance:
         return Icons.person;
+      case UserRole.crmCoordinator:
+        return Icons.groups;
     }
   }
 
@@ -64,18 +69,20 @@ class StaffCardWidget extends StatelessWidget {
   }
 
   String _getUserInitials() {
-    final parts = staff.name.split(' ');
-    if (parts.length > 1) {
+    final name = Helpers.safeDisplayString(staff.name);
+    if (name.isEmpty) return 'S';
+    final parts = name.split(' ');
+    if (parts.length > 1 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return staff.name.isNotEmpty ? staff.name[0].toUpperCase() : 'S';
+    return name[0].toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final roleColor = _getRoleColor(staff.role);
-    
+
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 16),
@@ -143,7 +150,7 @@ class StaffCardWidget extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          staff.name,
+                          Helpers.safeDisplayString(staff.name),
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                             fontSize: 18,
@@ -156,7 +163,7 @@ class StaffCardWidget extends StatelessWidget {
                         _buildInfoChip(
                           context,
                           Icons.email_outlined,
-                          staff.email,
+                          Helpers.safeDisplayString(staff.email),
                           theme.colorScheme.primary,
                         ),
                         const SizedBox(height: 8),
@@ -177,7 +184,9 @@ class StaffCardWidget extends StatelessWidget {
                     PopupMenuButton<String>(
                       icon: Icon(
                         Icons.more_vert,
-                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -205,7 +214,9 @@ class StaffCardWidget extends StatelessWidget {
                                     ? Icons.toggle_on
                                     : Icons.toggle_off,
                                 size: 20,
-                                color: staff.isActive ? Colors.green : Colors.grey,
+                                color: staff.isActive
+                                    ? Colors.green
+                                    : Colors.grey,
                               ),
                               const SizedBox(width: 12),
                               Text(staff.isActive ? 'Deactivate' : 'Activate'),
@@ -228,7 +239,11 @@ class StaffCardWidget extends StatelessWidget {
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                              Icon(
+                                Icons.delete_outline,
+                                size: 20,
+                                color: Colors.red,
+                              ),
                               SizedBox(width: 12),
                               Text(
                                 'Delete',
@@ -246,7 +261,9 @@ class StaffCardWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.5),
+                  color: theme.colorScheme.surfaceContainerLowest.withValues(
+                    alpha: 0.5,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: theme.colorScheme.outline.withValues(alpha: 0.1),
@@ -277,11 +294,17 @@ class StaffCardWidget extends StatelessWidget {
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: staff.categoryPermissions.take(4).map((category) {
-                          final catColor = category.color != null &&
+                        children: staff.categoryPermissions.take(4).map((
+                          category,
+                        ) {
+                          final catColor =
+                              category.color != null &&
                                   category.color!.isNotEmpty
-                              ? Color(int.parse(
-                                  category.color!.replaceFirst('#', '0xFF')))
+                              ? Color(
+                                  int.parse(
+                                    category.color!.replaceFirst('#', '0xFF'),
+                                  ),
+                                )
                               : roleColor;
                           return Container(
                             padding: const EdgeInsets.symmetric(
@@ -309,7 +332,7 @@ class StaffCardWidget extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  category.name,
+                                  Helpers.safeDisplayString(category.name),
                                   style: TextStyle(
                                     color: catColor,
                                     fontSize: 11,
@@ -367,15 +390,11 @@ class StaffCardWidget extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 12,
-            color: color,
-          ),
+          Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
-              text,
+              Helpers.safeDisplayString(text),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -396,19 +415,12 @@ class StaffCardWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: roleColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: roleColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: roleColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            _getRoleIcon(staff.role),
-            size: 14,
-            color: roleColor,
-          ),
+          Icon(_getRoleIcon(staff.role), size: 14, color: roleColor),
           const SizedBox(width: 6),
           Text(
             UserModel.roleDisplayName(staff.role),
@@ -432,10 +444,7 @@ class StaffCardWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: statusColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: statusColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

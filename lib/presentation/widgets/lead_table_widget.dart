@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../controllers/lead_controller.dart';
 import '../controllers/staff_controller.dart';
+import '../../core/utils/helpers.dart';
 import '../../data/models/lead_model.dart';
 import '../../app/routes/app_routes.dart';
 
@@ -79,7 +80,7 @@ class LeadTableWidget extends StatelessWidget {
             border: Border.all(color: categoryColor.withValues(alpha: 0.3), width: 1),
           ),
           child: Text(
-            cat.name,
+            Helpers.safeDisplayString(cat.name),
             style: TextStyle(
               color: categoryColor,
               fontSize: 10,
@@ -257,19 +258,19 @@ class LeadTableWidget extends StatelessWidget {
                     );
                   },
                   child: Text(
-                    lead.name,
+                    Helpers.safeDisplayString(lead.name),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
               DataCell(
                 lead.phone != null
-                    ? Text(lead.phone!)
+                    ? Text(Helpers.safeDisplayString(lead.phone!))
                     : const Text('—', style: TextStyle(color: Colors.grey)),
               ),
               DataCell(
                 lead.email != null
-                    ? Text(lead.email!)
+                    ? Text(Helpers.safeDisplayString(lead.email!))
                     : const Text('—', style: TextStyle(color: Colors.grey)),
               ),
               DataCell(_buildStatusDropdown(lead, leadController)),

@@ -5,6 +5,24 @@ import '../../core/services/supabase_service.dart';
 import '../../core/utils/helpers.dart';
 import 'lead_repository_helper.dart';
 
+/// Visibility context for lead list/detail (matches website API rules).
+/// When set, staff with restricted roles only see leads they created or are assigned to.
+class LeadVisibilityContext {
+  final String userId;
+  final String role;
+  final bool isStaff;
+  LeadVisibilityContext({
+    required this.userId,
+    required this.role,
+    required this.isStaff,
+  });
+}
+
+// Roles that only see leads they created or are assigned to (website: CATEGORY_RESTRICTED_ROLES)
+const _visibilityRestrictedRoles = ['freelance', 'office_staff'];
+// Coordinators see only leads they created (website: COORDINATOR_ROLE)
+const _coordinatorRole = 'crm_coordinator';
+
 class LeadRepository {
   // Get unique location values (country, state, city, district) for dropdown filters
   // Mirrors the website logic (distinct values from DB with cascading filters).
@@ -66,10 +84,12 @@ class LeadRepository {
     }
   }
 
-  // Get all leads with filters (server-side filtering and pagination)
+  // Get all leads with filters (server-side filtering and pagination).
+  // [visibility] when set applies website rules: freelance/office_staff see only created_by or assigned_to; crm_coordinator only created_by.
   Future<List<LeadWithRelationsModel>> findAll(
     String shopId, {
     LeadFilters? filters,
+    LeadVisibilityContext? visibility,
   }) async {
     try {
       // DEBUG: Print filters received in repository
@@ -281,43 +301,44 @@ class LeadRepository {
       
       if (assignedToIds.isNotEmpty) {
         try {
-          // Try fetching from both tables in parallel
-          final staffResults = await SupabaseService.from('staff')
-              .select('id, name, email')
-              .inFilter('id', assignedToIds) as List<dynamic>? ?? [];
-          
           final usersResults = await SupabaseService.from('users')
               .select('id, name, email')
               .inFilter('id', assignedToIds) as List<dynamic>? ?? [];
-          
-          // Create lookup maps (prefer staff over users if both exist)
-          for (final user in staffResults) {
+          final staffResults = await SupabaseService.from('staff')
+              .select('id, name, email')
+              .inFilter('id', assignedToIds) as List<dynamic>? ?? [];
+          // Prefer users over staff (match website API)
+          for (final user in usersResults) {
             final userMap = user as Map<String, dynamic>;
             assignedUsersMap[userMap['id'] as String] = userMap;
           }
-          for (final user in usersResults) {
+          for (final user in staffResults) {
             final userMap = user as Map<String, dynamic>;
-            final userId = userMap['id'] as String;
-            // Only add if not already in map (staff takes precedence)
-            if (!assignedUsersMap.containsKey(userId)) {
-              assignedUsersMap[userId] = userMap;
-            }
+            final uid = userMap['id'] as String;
+            if (!assignedUsersMap.containsKey(uid)) assignedUsersMap[uid] = userMap;
           }
         } catch (e) {
           debugPrint('🔍 [REPOSITORY] Error fetching assigned users: $e');
         }
       }
       
-      // Fetch created by users
+      // Fetch created_by from both users and staff (match website)
       if (createdByIds.isNotEmpty) {
         try {
           final usersResults = await SupabaseService.from('users')
               .select('id, name')
               .inFilter('id', createdByIds) as List<dynamic>? ?? [];
-          
+          final staffResults = await SupabaseService.from('staff')
+              .select('id, name')
+              .inFilter('id', createdByIds) as List<dynamic>? ?? [];
           for (final user in usersResults) {
             final userMap = user as Map<String, dynamic>;
             createdByUsersMap[userMap['id'] as String] = userMap;
+          }
+          for (final user in staffResults) {
+            final userMap = user as Map<String, dynamic>;
+            final uid = userMap['id'] as String;
+            if (!createdByUsersMap.containsKey(uid)) createdByUsersMap[uid] = userMap;
           }
         } catch (e) {
           debugPrint('🔍 [REPOSITORY] Error fetching created_by users: $e');
@@ -359,7 +380,6 @@ class LeadRepository {
       }).toList();
 
       // Filter by categories server-side (if categoryIds filter is provided)
-      // Note: This requires a join, so we filter client-side after fetching
       if (filters != null && filters.categoryIds != null && filters.categoryIds!.isNotEmpty) {
         leads = leads.where((lead) {
           return lead.categories.any(
@@ -368,14 +388,24 @@ class LeadRepository {
         }).toList();
       }
 
+      // Apply visibility rules (match website API)
+      if (visibility != null && visibility.isStaff) {
+        final myId = visibility.userId;
+        if (_visibilityRestrictedRoles.contains(visibility.role)) {
+          leads = leads.where((l) => l.createdBy == myId || l.assignedTo == myId).toList();
+        } else if (visibility.role == _coordinatorRole) {
+          leads = leads.where((l) => l.createdBy == myId).toList();
+        }
+      }
+
       return leads;
     } catch (e) {
       throw Helpers.handleError(e);
     }
   }
 
-  // Get lead by ID
-  Future<LeadWithRelationsModel?> findById(String leadId) async {
+  // Get lead by ID. [visibility] when set enforces website rules (staff see only allowed leads).
+  Future<LeadWithRelationsModel?> findById(String leadId, {LeadVisibilityContext? visibility}) async {
     try {
       Map<String, dynamic>? lead;
       try {
@@ -426,24 +456,25 @@ class LeadRepository {
             final createdBy = lead['created_by'] as String?;
             
             if (assignedTo != null) {
-              // Try staff table first, then fallback to users table
-              var assignedUser = await SupabaseService.from('staff')
+              // Prefer users over staff (match website)
+              var assignedUser = await SupabaseService.from('users')
                   .select('id, name, email')
                   .eq('id', assignedTo)
                   .maybeSingle();
-              if (assignedUser == null) {
-                assignedUser = await SupabaseService.from('users')
-                    .select('id, name, email')
-                    .eq('id', assignedTo)
-                    .maybeSingle();
-              }
+              assignedUser ??= await SupabaseService.from('staff')
+                  .select('id, name, email')
+                  .eq('id', assignedTo)
+                  .maybeSingle();
               if (assignedUser != null) {
                 lead['assigned_user'] = assignedUser;
               }
             }
-            
             if (createdBy != null) {
-              final createdByUser = await SupabaseService.from('users')
+              var createdByUser = await SupabaseService.from('users')
+                  .select('id, name')
+                  .eq('id', createdBy)
+                  .maybeSingle();
+              createdByUser ??= await SupabaseService.from('staff')
                   .select('id, name')
                   .eq('id', createdBy)
                   .maybeSingle();
@@ -467,10 +498,21 @@ class LeadRepository {
               .toList() ??
           [];
 
-      return LeadWithRelationsModel.fromJson({
+      final result = LeadWithRelationsModel.fromJson({
         ...lead,
         'categories': categories.map((c) => c.toJson()).toList(),
       });
+
+      // Visibility: staff with restricted/coordinator role can only see allowed leads
+      if (visibility != null && visibility.isStaff) {
+        final myId = visibility.userId;
+        if (_visibilityRestrictedRoles.contains(visibility.role)) {
+          if (result.createdBy != myId && result.assignedTo != myId) return null;
+        } else if (visibility.role == _coordinatorRole) {
+          if (result.createdBy != myId) return null;
+        }
+      }
+      return result;
     } catch (e) {
       throw Helpers.handleError(e);
     }
@@ -512,28 +554,121 @@ class LeadRepository {
     }
   }
 
-  // Update lead
-  Future<LeadModel> update(String leadId, CreateLeadInput input) async {
+  // Update lead. [performer] used for visibility and business rules (match website API).
+  Future<LeadModel> update(
+    String leadId,
+    CreateLeadInput input, {
+    LeadVisibilityContext? performer,
+  }) async {
     try {
+      // Fetch existing lead for validation and status change tracking
+      final existing = await SupabaseService.from('leads')
+          .select('id, status, shop_id, created_by, assigned_to')
+          .eq('id', leadId)
+          .maybeSingle();
+
+      if (existing == null) {
+        throw Exception('Lead not found or access denied');
+      }
+
+      final oldStatus = existing['status'] as String?;
+      final shopId = existing['shop_id'] as String? ?? '';
+
+      if (performer != null && performer.isStaff) {
+        final myId = performer.userId;
+        if (_visibilityRestrictedRoles.contains(performer.role)) {
+          if (existing['created_by'] != myId && existing['assigned_to'] != myId) {
+            throw Exception('Lead not found or access denied');
+          }
+        } else if (performer.role == _coordinatorRole) {
+          if (existing['created_by'] != myId) {
+            throw Exception('Lead not found or access denied');
+          }
+          if (input.assignedTo == myId) {
+            throw Exception(
+              'Coordinators cannot assign leads to themselves. Assign to a sales team member.',
+            );
+          }
+        }
+      }
+
+      final newStatusStr = input.status != null ? LeadModel.statusToString(input.status!) : null;
+      final canChangeClosedWon = performer != null &&
+          ['shop_owner', 'admin', 'marketing_manager'].contains(performer.role);
+      if (oldStatus == 'closed_won' &&
+          newStatusStr != null &&
+          newStatusStr != oldStatus &&
+          !canChangeClosedWon) {
+        throw Exception(
+          'Only shop owner, admin, or marketing manager can change the status of a closed-won lead.',
+        );
+      }
+
+      final newPhone = input.phone != null ? input.phone!.trim() : null;
+      if (newPhone != null && newPhone.isNotEmpty) {
+        try {
+          final rpcResult = await SupabaseService.rpc(
+            'check_lead_phone_exists_global',
+            params: {'p_phone': newPhone, 'p_exclude_id': leadId},
+          );
+          final list = rpcResult as List<dynamic>?;
+          if (list != null && list.isNotEmpty) {
+            throw Exception(
+              'This phone number is already used for another lead. Phone numbers are unique across all accounts.',
+            );
+          }
+        } catch (e) {
+          if (e is Exception && e.toString().contains('phone number')) rethrow;
+          // RPC might not exist in some setups; continue
+        }
+      }
+
       final categoryIds = input.categoryIds;
       final updateData = input.toJson();
-      // Remove categoryIds from updateData as it's not a column in leads table
       updateData.remove('category_ids');
+      if (updateData['phone'] != null && updateData['phone'] is String) {
+        updateData['phone'] = (updateData['phone'] as String).trim();
+      }
+      if (updateData['whatsapp'] != null && updateData['whatsapp'] is String) {
+        updateData['whatsapp'] = (updateData['whatsapp'] as String).trim();
+      }
+      updateData['updated_at'] = DateTime.now().toIso8601String();
 
       final data = await SupabaseService.from('leads')
-          .update({
-            ...updateData,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .update(updateData)
           .eq('id', leadId)
           .select()
           .single();
 
       final lead = LeadModel.fromJson(data);
+      final newStatus = data['status'] as String? ?? oldStatus;
 
-      // Update categories if provided
       if (categoryIds != null) {
         await _assignCategories(lead.id, categoryIds);
+      }
+
+      if (oldStatus != newStatus && performer != null && shopId.isNotEmpty) {
+        try {
+          await SupabaseService.from('lead_activities').insert({
+            'lead_id': leadId,
+            'shop_id': shopId,
+            'activity_type': 'status_change',
+            'title': 'Status changed from $oldStatus to $newStatus',
+            'description': newStatus == 'proposal_sent'
+                ? 'Proposal sent to lead'
+                : 'Lead status updated to $newStatus',
+            'performed_by': performer.userId,
+            'metadata': {
+              'old_status': oldStatus,
+              'new_status': newStatus,
+              'changed_at': DateTime.now().toIso8601String(),
+            },
+            'created_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        } catch (_) {
+          // Non-critical; don't fail the update
+        }
       }
 
       return lead;
@@ -542,28 +677,40 @@ class LeadRepository {
     }
   }
 
-  // Delete lead (hard delete - matches website behavior)
-  Future<void> delete(String leadId) async {
+  // Delete lead (hard delete - matches website). [currentUserId] and [isOwnerOrAdmin] for permission check.
+  Future<void> delete(
+    String leadId, {
+    String? currentUserId,
+    bool isOwnerOrAdmin = false,
+  }) async {
     try {
-      // Use select() to get the deleted row - if RLS blocks, this returns empty
+      if (currentUserId != null && !isOwnerOrAdmin) {
+        final existing = await SupabaseService.from('leads')
+            .select('id, created_by')
+            .eq('id', leadId)
+            .maybeSingle();
+        if (existing != null && existing['created_by'] != currentUserId) {
+          throw Exception(
+            'You can only delete leads you created. Shop owners and admins can delete any lead.',
+          );
+        }
+      }
+
       final result = await SupabaseService.from('leads')
           .delete()
           .eq('id', leadId)
           .select('id');
-      
-      // Check if any row was actually deleted
+
       if ((result as List).isEmpty) {
-        // Check if the lead still exists (RLS might have blocked delete)
         final check = await SupabaseService.from('leads')
             .select('id')
             .eq('id', leadId)
             .maybeSingle();
-        
         if (check != null) {
-          // Lead still exists - delete was blocked by RLS
-          throw Exception('You do not have permission to delete this lead. Only shop owners, admins, or the lead creator can delete.');
+          throw Exception(
+            'You do not have permission to delete this lead. Only shop owners, admins, or the lead creator can delete.',
+          );
         }
-        // Lead doesn't exist - it was deleted or never existed
       }
     } catch (e) {
       throw Helpers.handleError(e);

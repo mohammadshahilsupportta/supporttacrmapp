@@ -549,3 +549,30 @@ class UpdateActivityInput {
     }
   }
 }
+
+/// Grouped My Tasks response (match website API: overdue, today, upcoming, no_date + counts).
+class MyTasksGrouped {
+  final List<LeadActivity> tasks;
+  final List<LeadActivity> overdue;
+  final List<LeadActivity> today;
+  final List<LeadActivity> upcoming;
+  final List<LeadActivity> noDate;
+  final int total;
+  final int overdueCount;
+  final int todayCount;
+  final int upcomingCount;
+  final int noDateCount;
+
+  MyTasksGrouped({
+    required this.tasks,
+    required this.overdue,
+    required this.today,
+    required this.upcoming,
+    required this.noDate,
+    required this.total,
+    required this.overdueCount,
+    required this.todayCount,
+    required this.upcomingCount,
+    required this.noDateCount,
+  });
+}

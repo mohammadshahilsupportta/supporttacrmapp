@@ -759,4 +759,50 @@ class ActivityRepository {
       throw Helpers.handleError(e);
     }
   }
+
+  /// Get My Tasks grouped by overdue, today, upcoming, no_date (match website API).
+  Future<MyTasksGrouped> findMyTasksGrouped(
+    String shopId,
+    String userId, {
+    bool includeCompleted = false,
+  }) async {
+    final tasks = await findMyTasks(shopId, userId, includeCompleted: includeCompleted);
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day, 0, 0, 0, 0);
+    final tomorrowStart = todayStart.add(const Duration(days: 1));
+
+    final overdue = <LeadActivity>[];
+    final today = <LeadActivity>[];
+    final upcoming = <LeadActivity>[];
+    final noDate = <LeadActivity>[];
+
+    for (final task in tasks) {
+      if (task.dueDate == null) {
+        noDate.add(task);
+      } else {
+        final due = task.dueDate!;
+        final dueDateOnly = DateTime(due.year, due.month, due.day);
+        if (dueDateOnly.isBefore(todayStart)) {
+          overdue.add(task);
+        } else if (dueDateOnly.isBefore(tomorrowStart)) {
+          today.add(task);
+        } else {
+          upcoming.add(task);
+        }
+      }
+    }
+
+    return MyTasksGrouped(
+      tasks: tasks,
+      overdue: overdue,
+      today: today,
+      upcoming: upcoming,
+      noDate: noDate,
+      total: tasks.length,
+      overdueCount: overdue.length,
+      todayCount: today.length,
+      upcomingCount: upcoming.length,
+      noDateCount: noDate.length,
+    );
+  }
 }

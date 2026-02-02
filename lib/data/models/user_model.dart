@@ -6,6 +6,7 @@ enum UserRole {
   officeStaff,
   freelance,
   marketingManager,
+  crmCoordinator,
 }
 
 class UserModel {
@@ -57,6 +58,8 @@ class UserModel {
         return UserRole.freelance;
       case 'marketing_manager':
         return UserRole.marketingManager;
+      case 'crm_coordinator':
+        return UserRole.crmCoordinator;
       default:
         return UserRole.officeStaff;
     }
@@ -74,6 +77,8 @@ class UserModel {
         return 'freelance';
       case UserRole.marketingManager:
         return 'marketing_manager';
+      case UserRole.crmCoordinator:
+        return 'crm_coordinator';
     }
   }
 
@@ -89,6 +94,8 @@ class UserModel {
         return 'freelance';
       case UserRole.marketingManager:
         return 'marketing_manager';
+      case UserRole.crmCoordinator:
+        return 'crm_coordinator';
     }
   }
 
@@ -104,6 +111,8 @@ class UserModel {
         return 'Freelance';
       case UserRole.marketingManager:
         return 'Marketing Manager';
+      case UserRole.crmCoordinator:
+        return 'CRM Coordinator';
     }
   }
 

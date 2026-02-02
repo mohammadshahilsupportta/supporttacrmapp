@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/helpers.dart';
 import '../../data/models/activity_model.dart';
 import 'package:intl/intl.dart';
 
@@ -196,7 +197,7 @@ class ActivityCardWidget extends StatelessWidget {
                     // Main content text
                     if (displayText.isNotEmpty) ...[
                       Text(
-                        displayText,
+                        Helpers.safeDisplayString(displayText),
                         style: Theme.of(context).textTheme.bodyMedium,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
@@ -214,7 +215,7 @@ class ActivityCardWidget extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                activity.meetingLocation!,
+                                Helpers.safeDisplayString(activity.meetingLocation!),
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: Colors.grey[600],
                                       fontSize: 12,
@@ -282,7 +283,7 @@ class ActivityCardWidget extends StatelessWidget {
                                 ),
                               ),
                               child: Text(
-                                activity.taskStatusString!.replaceAll('_', ' ').toUpperCase(),
+                                Helpers.safeDisplayString(activity.taskStatusString!).replaceAll('_', ' ').toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -301,7 +302,7 @@ class ActivityCardWidget extends StatelessWidget {
                           Icon(Icons.person, size: 12, color: Colors.grey[600]),
                           const SizedBox(width: 4),
                           Text(
-                            activity.performedByUser!.name,
+                            Helpers.safeDisplayString(activity.performedByUser!.name),
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Colors.grey[600],
                                   fontSize: 11,

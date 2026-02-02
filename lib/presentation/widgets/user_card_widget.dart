@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/helpers.dart';
 import '../../data/models/user_model.dart';
 
 class UserCardWidget extends StatelessWidget {
@@ -11,12 +12,15 @@ class UserCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final userInitials = user.name
-        .split(' ')
-        .map((n) => n.isNotEmpty ? n[0] : '')
-        .join('')
-        .toUpperCase()
-        .substring(0, user.name.split(' ').length > 1 ? 2 : 1);
+    final safeName = Helpers.safeDisplayString(user.name);
+    final parts = safeName.split(' ');
+    final userInitials = parts.isEmpty
+        ? 'U'
+        : (parts.length > 1 && parts[0].isNotEmpty && parts[1].isNotEmpty)
+            ? (parts[0][0] + parts[1][0]).toUpperCase()
+            : safeName.isNotEmpty
+                ? safeName[0].toUpperCase()
+                : 'U';
 
     return Card(
       elevation: 2,
@@ -110,7 +114,7 @@ class UserCardWidget extends StatelessWidget {
                 context,
                 Icons.person,
                 'Name',
-                user.name,
+                safeName,
                 Colors.blue,
               ),
               const SizedBox(height: 16),
@@ -120,7 +124,7 @@ class UserCardWidget extends StatelessWidget {
                 context,
                 Icons.email,
                 'Email',
-                user.email,
+                Helpers.safeDisplayString(user.email),
                 Colors.orange,
               ),
               const SizedBox(height: 16),
@@ -177,7 +181,7 @@ class UserCardWidget extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                value,
+                Helpers.safeDisplayString(value),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,

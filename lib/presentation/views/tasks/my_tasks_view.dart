@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../controllers/auth_controller.dart';
+import '../../../core/utils/helpers.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/error_widget.dart' as error_widget;
 import '../../../data/models/activity_model.dart';
@@ -24,6 +25,7 @@ class _MyTasksViewState extends State<MyTasksView> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
 
   List<LeadActivity> _allTasks = [];
+  MyTasksGrouped? _groupedTasks;
   bool _isLoading = true;
   String? _errorMessage;
   bool _initialLoadAttempted = false;
@@ -94,13 +96,14 @@ class _MyTasksViewState extends State<MyTasksView> {
     });
 
     try {
-      final tasks = await _activityRepository.findMyTasks(
+      final grouped = await _activityRepository.findMyTasksGrouped(
         authController.shop!.id,
         authController.user!.id,
       );
       if (mounted) {
         setState(() {
-          _allTasks = tasks;
+          _allTasks = grouped.tasks;
+          _groupedTasks = grouped;
           _isLoading = false;
         });
       }
@@ -450,6 +453,41 @@ class _MyTasksViewState extends State<MyTasksView> {
                         ],
                       ),
                     ),
+                    if (_groupedTasks != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              'Overdue: ${_groupedTasks!.overdueCount}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'Today: ${_groupedTasks!.todayCount}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Text(
+                              'Upcoming: ${_groupedTasks!.upcomingCount}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Text(
+                              'No date: ${_groupedTasks!.noDateCount}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -694,7 +732,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  task.title ?? 'Untitled Task',
+                                  Helpers.safeDisplayString(task.title ?? 'Untitled Task'),
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     height: 1.3,
@@ -705,7 +743,7 @@ class _MyTasksViewState extends State<MyTasksView> {
                                 if (task.description?.isNotEmpty == true) ...[
                                   const SizedBox(height: 4),
                                   Text(
-                                    task.description!,
+                                    Helpers.safeDisplayString(task.description!),
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -747,14 +785,14 @@ class _MyTasksViewState extends State<MyTasksView> {
                                     ),
                                     child: _buildChip(
                                       Icons.person_rounded,
-                                      task.lead!.name,
+                                      Helpers.safeDisplayString(task.lead!.name),
                                       colorScheme.primary,
                                     ),
                                   ),
                                 if (task.assignedToUser != null)
                                   _buildChip(
                                     Icons.arrow_forward_rounded,
-                                    task.assignedToUser!.name,
+                                    Helpers.safeDisplayString(task.assignedToUser!.name),
                                     colorScheme.tertiary,
                                   ),
                                 Container(
@@ -821,26 +859,33 @@ class _MyTasksViewState extends State<MyTasksView> {
     Color color, {
     bool filled = false,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: filled ? color.withValues(alpha: 0.12) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: filled ? FontWeight.w600 : FontWeight.w500,
-              color: color,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 180),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: filled ? color.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: filled ? FontWeight.w600 : FontWeight.w500,
+                  color: color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

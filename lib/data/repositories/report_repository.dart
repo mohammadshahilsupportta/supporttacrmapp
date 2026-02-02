@@ -1,6 +1,14 @@
 import '../models/report_model.dart';
 import '../../core/services/supabase_service.dart';
 
+// Match website lib/leaderboard-constants.ts
+const _leaderboardVisibleRoles = ['freelance', 'office_staff'];
+const _pointEligibleRoles = ['freelance', 'office_staff'];
+const _minClosesPerforming = 15; // Elite Closers
+const _minClosesOnTrack = 12; // On Track (12–14)
+const _minClosesSafetyFund = 3;
+const _pointsPerClosedWon = 10;
+
 /// Date range for leaderboard period. Matches website getDateRange().
 ({String dateFrom, String dateTo}) _getLeaderboardDateRange(LeaderboardPeriod period) {
   final now = DateTime.now();
@@ -230,8 +238,8 @@ class ReportRepository {
     );
   }
 
-  /// Get conversion leaderboard (Closed Won count by staff). Visible to all roles.
-  /// Matches website API logic: period filter and fallback computation.
+  /// Get conversion leaderboard (Sales Accountability). Visible to all roles.
+  /// Matches website API: only freelance/office_staff, points, status, safety fund.
   Future<List<LeaderboardEntry>> getConversionLeaderboard(
     String shopId, {
     LeaderboardPeriod period = LeaderboardPeriod.allTime,
@@ -242,130 +250,174 @@ class ReportRepository {
     final isAllTime = dateFrom == '1970-01-01';
     final fromTs = DateTime.parse('${dateFrom}T00:00:00.000Z').millisecondsSinceEpoch;
     final toTs = DateTime.parse('${dateTo}T23:59:59.999Z').millisecondsSinceEpoch;
+    final now = DateTime.now();
+    final monthFrom = DateTime(now.year, now.month, 1);
+    final monthTo = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+    final monthFromTs = monthFrom.millisecondsSinceEpoch;
+    final monthToTs = monthTo.millisecondsSinceEpoch;
 
-    // 1. Current closed_won/converted leads (not deleted). Support both website (closed_won) and app (converted).
-    final leadsClosedWon = await SupabaseService.from('leads')
-        .select('id, assigned_to')
-        .eq('shop_id', shopId)
-        .eq('status', 'closed_won')
-        .isFilter('deleted_at', null);
-    final leadsConverted = await SupabaseService.from('leads')
-        .select('id, assigned_to')
-        .eq('shop_id', shopId)
-        .eq('status', 'converted')
-        .isFilter('deleted_at', null);
-    final leadsRaw = [
-      ...(leadsClosedWon as List),
-      ...(leadsConverted as List),
-    ];
-    // Deduplicate by id (in case both statuses exist)
-    final seenIds = <String>{};
-    final leads = leadsRaw
-        .cast<Map<String, dynamic>>()
-        .where((l) => seenIds.add(l['id'] as String))
-        .toList();
-    final leadIds = leads.map((l) => l['id'] as String).toList();
-
-    if (leadIds.isEmpty) {
-      // No closed_won leads; return all people with 0 count
-      final staffRes = await SupabaseService.from('staff')
-          .select('id, name, role')
-          .eq('shop_id', shopId);
-      final usersRes = await SupabaseService.from('users')
-          .select('id, name, role')
-          .eq('shop_id', shopId);
-      final people = <Map<String, dynamic>>[
-        ...(staffRes as List).cast<Map<String, dynamic>>(),
-        ...(usersRes as List).cast<Map<String, dynamic>>(),
-      ];
-      return people.asMap().entries.map((e) {
-        final p = e.value;
-        return LeaderboardEntry(
-          rank: e.key + 1,
-          staffId: p['id'] as String,
-          staffName: p['name'] as String? ?? '—',
-          role: p['role'] as String? ?? 'Staff',
-          conversions: 0,
-        );
-      }).toList();
-    }
-
-    // 2. Latest status_change to closed_won per lead (need metadata to filter new_status)
-    final activitiesWithMeta = await SupabaseService.from('lead_activities')
-        .select('lead_id, performed_by, created_at, metadata')
-        .eq('shop_id', shopId)
-        .eq('activity_type', 'status_change')
-        .inFilter('lead_id', leadIds);
-
-    final activitiesList = (activitiesWithMeta as List).cast<Map<String, dynamic>>();
-    // Count both closed_won (website) and converted (app) status changes
-    final closedWonActivities = activitiesList
-        .where((a) {
-          final newStatus = (a['metadata'] as Map<String, dynamic>?)?['new_status'] as String?;
-          return newStatus == 'closed_won' || newStatus == 'converted';
-        })
-        .toList();
-
-    final latestByLead = <String, ({String performedBy, String createdAt})>{};
-    for (final a in closedWonActivities) {
-      final leadId = a['lead_id'] as String?;
-      final performedBy = a['performed_by'] as String?;
-      final createdAt = a['created_at'] as String?;
-      if (leadId == null || performedBy == null || createdAt == null) continue;
-      final existing = latestByLead[leadId];
-      if (existing == null || createdAt.compareTo(existing.createdAt) > 0) {
-        latestByLead[leadId] = (performedBy: performedBy, createdAt: createdAt);
-      }
-    }
-
-    final closedByCount = <String, int>{};
-    for (final lead in leads) {
-      final leadId = lead['id'] as String;
-      final latest = latestByLead[leadId];
-      final closedBy = latest?.performedBy ?? lead['assigned_to'] as String?;
-      if (closedBy == null) continue;
-      final closedAtStr = latest?.createdAt;
-      final closedAt = closedAtStr != null ? DateTime.tryParse(closedAtStr)?.millisecondsSinceEpoch : null;
-      final inRange = isAllTime
-          ? (closedAt == null || (closedAt >= fromTs && closedAt <= toTs))
-          : (closedAt != null && closedAt >= fromTs && closedAt <= toTs);
-      if (inRange) {
-        closedByCount[closedBy] = (closedByCount[closedBy] ?? 0) + 1;
-      }
-    }
-
-    // 3. All people (staff + users) for shop
+    // 1. All people (staff + users) for shop; only visible roles (freelance, office_staff)
     final staffRes = await SupabaseService.from('staff')
         .select('id, name, role')
         .eq('shop_id', shopId);
     final usersRes = await SupabaseService.from('users')
         .select('id, name, role')
         .eq('shop_id', shopId);
-    final people = <Map<String, dynamic>>[
+    final allPeople = <Map<String, dynamic>>[
       ...(staffRes as List).cast<Map<String, dynamic>>(),
       ...(usersRes as List).cast<Map<String, dynamic>>(),
     ];
+    final people = allPeople
+        .where((p) => _leaderboardVisibleRoles.contains(p['role'] as String? ?? ''))
+        .toList();
 
-    final withCount = people.map((p) {
+    if (people.isEmpty) return [];
+
+    // 2. Leads: assigned_to, status (for aggregation)
+    final leadsData = await SupabaseService.from('leads')
+        .select('assigned_to, status')
+        .eq('shop_id', shopId)
+        .isFilter('deleted_at', null) as List<dynamic>? ?? [];
+    final leadsList = leadsData.cast<Map<String, dynamic>>();
+    final assignedAgg = <String, ({int total, int proposalSent, int closedWon})>{};
+    for (final p in people) {
       final id = p['id'] as String;
-      return (
-        id: id,
-        name: p['name'] as String? ?? '—',
-        role: p['role'] as String? ?? 'Staff',
-        closedWonCount: closedByCount[id] ?? 0,
+      assignedAgg[id] = (total: 0, proposalSent: 0, closedWon: 0);
+    }
+    for (final lead in leadsList) {
+      final id = lead['assigned_to'] as String?;
+      if (id == null || !assignedAgg.containsKey(id)) continue;
+      final agg = assignedAgg[id]!;
+      assignedAgg[id] = (
+        total: agg.total + 1,
+        proposalSent: agg.proposalSent + (lead['status'] == 'proposal_sent' ? 1 : 0),
+        closedWon: agg.closedWon + (lead['status'] == 'closed_won' ? 1 : 0),
+      );
+    }
+
+    // 3. Closed won leads and status_change activities for period / this month
+    final leadsClosedWon = await SupabaseService.from('leads')
+        .select('id, assigned_to')
+        .eq('shop_id', shopId)
+        .eq('status', 'closed_won')
+        .isFilter('deleted_at', null) as List<dynamic>? ?? [];
+    final leadIds = leadsClosedWon.cast<Map<String, dynamic>>().map((l) => l['id'] as String).toList();
+    Map<String, int> closedInPeriod = {};
+    Map<String, int> closedThisMonth = {};
+    for (final p in people) {
+      closedInPeriod[p['id'] as String] = 0;
+      closedThisMonth[p['id'] as String] = 0;
+    }
+    if (leadIds.isNotEmpty) {
+      final activitiesWithMeta = await SupabaseService.from('lead_activities')
+          .select('lead_id, performed_by, created_at, metadata')
+          .eq('shop_id', shopId)
+          .eq('activity_type', 'status_change')
+          .inFilter('lead_id', leadIds) as List<dynamic>? ?? [];
+      final activitiesList = activitiesWithMeta.cast<Map<String, dynamic>>();
+      final closedWonActivities = activitiesList
+          .where((a) {
+            final newStatus = (a['metadata'] as Map<String, dynamic>?)?['new_status'] as String?;
+            return newStatus == 'closed_won' || newStatus == 'converted';
+          })
+          .toList();
+      final latestByLead = <String, ({String performedBy, String createdAt})>{};
+      for (final a in closedWonActivities) {
+        final lid = a['lead_id'] as String?;
+        final performedBy = a['performed_by'] as String?;
+        final createdAt = a['created_at'] as String?;
+        if (lid == null || performedBy == null || createdAt == null) continue;
+        final existing = latestByLead[lid];
+        if (existing == null || createdAt.compareTo(existing.createdAt) > 0) {
+          latestByLead[lid] = (performedBy: performedBy, createdAt: createdAt);
+        }
+      }
+      final leadsListCw = leadsClosedWon.cast<Map<String, dynamic>>();
+      for (final lead in leadsListCw) {
+        final lid = lead['id'] as String;
+        final latest = latestByLead[lid];
+        final closedBy = latest?.performedBy ?? lead['assigned_to'] as String?;
+        if (closedBy == null || !closedInPeriod.containsKey(closedBy)) continue;
+        final closedAtStr = latest?.createdAt;
+        final closedAt = closedAtStr != null ? DateTime.tryParse(closedAtStr)?.millisecondsSinceEpoch : null;
+        final inPeriod = isAllTime
+            ? (closedAt == null || (closedAt >= fromTs && closedAt <= toTs))
+            : (closedAt != null && closedAt >= fromTs && closedAt <= toTs);
+        final inMonth = closedAt != null && closedAt >= monthFromTs && closedAt <= monthToTs;
+        if (inPeriod) closedInPeriod[closedBy] = closedInPeriod[closedBy]! + 1;
+        if (inMonth) closedThisMonth[closedBy] = closedThisMonth[closedBy]! + 1;
+      }
+    }
+
+    // 4. Build rows (match website)
+    final rows = people.map((p) {
+      final id = p['id'] as String;
+      final role = p['role'] as String? ?? 'Staff';
+      final agg = assignedAgg[id]!;
+      final totalAssigned = agg.total;
+      final proposalSent = agg.proposalSent;
+      final closedWonAllTime = agg.closedWon;
+      final closedWonPeriod = closedInPeriod[id] ?? 0;
+      final closedWonThisMonth = closedThisMonth[id] ?? 0;
+      final conversionRate = totalAssigned == 0
+          ? 0.0
+          : ((proposalSent + closedWonAllTime) / totalAssigned * 1000).round() / 10;
+      final points = _getPoints(closedWonPeriod, role);
+      final status = _getPerformanceStatus(closedWonThisMonth, role);
+      final safetyFundEligible = _isSafetyFundEligible(closedWonThisMonth, role);
+      return LeaderboardEntry(
+        rank: 0,
+        staffId: id,
+        staffName: p['name'] as String? ?? '—',
+        role: role,
+        conversions: closedWonPeriod,
+        totalAssignedLeads: totalAssigned,
+        proposalSent: proposalSent,
+        conversionRate: conversionRate,
+        points: points,
+        status: status,
+        safetyFundEligible: safetyFundEligible,
       );
     }).toList();
-    withCount.sort((a, b) => b.closedWonCount.compareTo(a.closedWonCount));
 
-    return withCount.asMap().entries.map((e) {
+    rows.sort((a, b) {
+      if (b.points != a.points) return b.points.compareTo(a.points);
+      if (b.conversions != a.conversions) return b.conversions.compareTo(a.conversions);
+      return b.conversionRate.compareTo(a.conversionRate);
+    });
+    return rows.asMap().entries.map((e) {
+      final r = e.value;
       return LeaderboardEntry(
         rank: e.key + 1,
-        staffId: e.value.id,
-        staffName: e.value.name,
-        role: e.value.role,
-        conversions: e.value.closedWonCount,
+        staffId: r.staffId,
+        staffName: r.staffName,
+        role: r.role,
+        conversions: r.conversions,
+        totalAssignedLeads: r.totalAssignedLeads,
+        proposalSent: r.proposalSent,
+        conversionRate: r.conversionRate,
+        points: r.points,
+        status: r.status,
+        safetyFundEligible: r.safetyFundEligible,
       );
     }).toList();
+  }
+
+  static int _getPoints(int closedWon, String role) {
+    if (!_pointEligibleRoles.contains(role)) return 0;
+    return closedWon * _pointsPerClosedWon;
+  }
+
+  static String? _getPerformanceStatus(int closedWonThisMonth, String role) {
+    if (!_pointEligibleRoles.contains(role)) return null;
+    if (closedWonThisMonth >= _minClosesPerforming) return 'Elite Closers';
+    if (closedWonThisMonth >= _minClosesOnTrack) return 'On Track';
+    return 'Needs Improvement';
+  }
+
+  static bool? _isSafetyFundEligible(int closedWonThisMonth, String role) {
+    if (!_pointEligibleRoles.contains(role)) return null;
+    return closedWonThisMonth >= _minClosesSafetyFund;
   }
 }
 

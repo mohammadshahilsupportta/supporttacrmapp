@@ -269,13 +269,26 @@ extension LeaderboardPeriodExt on LeaderboardPeriod {
   }
 }
 
-/// Single entry in the Closed Won leaderboard. Visible to all staff.
+/// Performance status (match website leaderboard-constants).
+typedef LeaderboardPerformanceStatus = String;
+const String kStatusEliteClosers = 'Elite Closers';
+const String kStatusOnTrack = 'On Track';
+const String kStatusNeedsImprovement = 'Needs Improvement';
+
+/// Single entry in the Sales Accountability / Closed Won leaderboard. Visible to all staff.
+/// Matches website: total_assigned_leads, proposal_sent, closed_won, conversion_rate, points, status, safety_fund.
 class LeaderboardEntry {
   final int rank;
   final String staffId;
   final String staffName;
   final String role;
   final int conversions;
+  final int totalAssignedLeads;
+  final int proposalSent;
+  final double conversionRate;
+  final int points;
+  final String? status;
+  final bool? safetyFundEligible;
 
   LeaderboardEntry({
     required this.rank,
@@ -283,6 +296,12 @@ class LeaderboardEntry {
     required this.staffName,
     required this.role,
     required this.conversions,
+    this.totalAssignedLeads = 0,
+    this.proposalSent = 0,
+    this.conversionRate = 0,
+    this.points = 0,
+    this.status,
+    this.safetyFundEligible,
   });
 
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
@@ -291,7 +310,13 @@ class LeaderboardEntry {
       staffId: json['staff_id'] as String? ?? '',
       staffName: json['staff_name'] as String? ?? '—',
       role: json['role'] as String? ?? 'Staff',
-      conversions: json['conversions'] as int? ?? json['closed_won_count'] as int? ?? 0,
+      conversions: json['conversions'] as int? ?? json['closed_won'] as int? ?? json['closed_won_count'] as int? ?? 0,
+      totalAssignedLeads: json['total_assigned_leads'] as int? ?? 0,
+      proposalSent: json['proposal_sent'] as int? ?? 0,
+      conversionRate: (json['conversion_rate'] as num?)?.toDouble() ?? 0,
+      points: json['points'] as int? ?? 0,
+      status: json['status'] as String?,
+      safetyFundEligible: json['safety_fund_eligible'] as bool?,
     );
   }
 
@@ -302,6 +327,12 @@ class LeaderboardEntry {
       'staff_name': staffName,
       'role': role,
       'conversions': conversions,
+      'total_assigned_leads': totalAssignedLeads,
+      'proposal_sent': proposalSent,
+      'conversion_rate': conversionRate,
+      'points': points,
+      'status': status,
+      'safety_fund_eligible': safetyFundEligible,
     };
   }
 }

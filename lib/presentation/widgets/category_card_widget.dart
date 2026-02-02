@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/helpers.dart';
 import '../../data/models/category_model.dart';
 
 class CategoryCardWidget extends StatelessWidget {
@@ -69,7 +70,7 @@ class CategoryCardWidget extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          category.name,
+                          Helpers.safeDisplayString(category.name),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: theme.colorScheme.onSurface,
@@ -81,7 +82,7 @@ class CategoryCardWidget extends StatelessWidget {
                         Text(
                           (category.description != null &&
                                   category.description!.isNotEmpty)
-                              ? category.description!
+                              ? Helpers.safeDisplayString(category.description)
                               : 'No description',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,

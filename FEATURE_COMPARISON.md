@@ -164,4 +164,38 @@ This document compares all features available in the SupporttaCRM website with t
 
 The mobile app now has feature parity with the website for all implemented features, including the Leaderboard.
 
+---
+
+## App–Website Logic Sync (Latest)
+
+The app has been aligned with the website’s business logic and APIs:
+
+### Lead visibility (website rules)
+- **Freelance / office_staff**: only leads they created or are assigned to.
+- **crm_coordinator**: only leads they created.
+- **Shop owner, admin, marketing_manager**: all leads in the shop.
+- **assigned_user / created_by_user**: resolved from both `users` and `staff`; **users preferred over staff** (matches website).
+
+### Lead update
+- **Coordinators** cannot assign leads to themselves (validation + error message).
+- **Closed-won status change**: only shop_owner, admin, or marketing_manager can change status when lead is closed_won.
+- **Phone uniqueness**: optional RPC `check_lead_phone_exists_global` before update (skipped if RPC missing).
+- **Status change tracking**: on status change, a `status_change` activity is inserted in `lead_activities` (for reports/leaderboard).
+
+### Lead delete
+- **Shop owner / admin**: can delete any lead.
+- **Others**: can delete only leads they created (validation before delete).
+
+### Conversion leaderboard (Sales Accountability)
+- **Visible roles**: only **freelance** and **office_staff** (same as website `LEADERBOARD_VISIBLE_ROLES`).
+- **Metrics**: total_assigned_leads, proposal_sent, closed_won (in period), conversion_rate, points (closed_won × 10 for eligible roles).
+- **This month**: performance status (Elite Closers / On Track / Needs Improvement) and safety fund eligibility (from website `leaderboard-constants`).
+
+### My Tasks
+- **Grouped response**: tasks grouped into **overdue**, **today**, **upcoming**, **no_date** with counts (matches website `/api/tasks`).
+- **UI**: counts shown (Overdue: n, Today: n, Upcoming: n, No date: n).
+
+### Roles
+- **crm_coordinator** role added to the app (UserModel and display names).
+
 
