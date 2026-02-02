@@ -29,13 +29,15 @@ class _CategoriesViewState extends State<CategoriesView> {
   }
 
   bool _canAddCategories(UserModel? user) {
-    // Staff can add categories but not edit/delete
+    // Only shop_owner and admin can add categories (match website permission)
     if (user == null) return false;
-    return user.role == UserRole.shopOwner ||
-        user.role == UserRole.admin ||
-        user.role == UserRole.officeStaff ||
-        user.role == UserRole.marketingManager ||
-        user.role == UserRole.freelance;
+    return user.role == UserRole.shopOwner || user.role == UserRole.admin;
+  }
+
+  bool _hasPagePermission(UserModel? user) {
+    // Match website: only shop_owner and admin can access Categories page
+    if (user == null) return false;
+    return user.role == UserRole.shopOwner || user.role == UserRole.admin;
   }
 
   void _loadDataIfNeeded(
@@ -234,10 +236,11 @@ class _CategoriesViewState extends State<CategoriesView> {
     final categoryController = Get.find<CategoryController>();
 
     return Obx(() {
-      // Allow all authenticated users to view categories
-      // Only restrict if user is not authenticated
-      if (!authController.isAuthenticated || authController.user == null) {
-        // Show loading if still checking auth, otherwise show error
+      // Check if user has permission (shop owner or admin) - match website
+      if (!authController.isAuthenticated ||
+          authController.user == null ||
+          !_hasPagePermission(authController.user)) {
+        // Show loading if still checking auth, otherwise show permission denied
         if (authController.isLoading) {
           return const LoadingWidget();
         }
@@ -293,7 +296,7 @@ class _CategoriesViewState extends State<CategoriesView> {
 
       // Check if we're being used as a standalone route (needs Scaffold) or in IndexedStack (no Scaffold needed)
       final isStandaloneRoute = Get.currentRoute == AppRoutes.categories;
-      
+
       final content = RefreshIndicator(
         onRefresh: () async {
           if (authController.shop != null) {
@@ -306,7 +309,9 @@ class _CategoriesViewState extends State<CategoriesView> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Material(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
                 child: TextField(
                   controller: _searchController,
@@ -420,7 +425,7 @@ class _CategoriesViewState extends State<CategoriesView> {
       // Wrap in Scaffold only if accessed as standalone route
       if (isStandaloneRoute) {
         return Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.background,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           appBar: AppBar(
             title: const Text('Categories'),
             elevation: 0,
@@ -439,7 +444,7 @@ class _CategoriesViewState extends State<CategoriesView> {
 
       // When used in IndexedStack, wrap in Container with background (HomeView provides Scaffold)
       return Container(
-        color: Theme.of(context).colorScheme.background,
+        color: Theme.of(context).colorScheme.surface,
         child: content,
       );
     });

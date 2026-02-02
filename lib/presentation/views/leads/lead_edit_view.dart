@@ -212,8 +212,12 @@ class _LeadEditViewState extends State<LeadEditView> {
     final effectiveName = name.isNotEmpty ? name : company;
 
     final notes = buildLeadNotes(
-      _requirementController.text.trim().isNotEmpty ? _requirementController.text.trim() : null,
-      _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+      _requirementController.text.trim().isNotEmpty
+          ? _requirementController.text.trim()
+          : null,
+      _notesController.text.trim().isNotEmpty
+          ? _notesController.text.trim()
+          : null,
     );
 
     final valueText = _valueController.text.trim();
@@ -221,9 +225,15 @@ class _LeadEditViewState extends State<LeadEditView> {
 
     final input = CreateLeadInput(
       name: effectiveName,
-      phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
-      email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
-      whatsapp: _whatsappController.text.trim().isNotEmpty ? _whatsappController.text.trim() : null,
+      phone: _phoneController.text.trim().isNotEmpty
+          ? _phoneController.text.trim()
+          : null,
+      email: _emailController.text.trim().isNotEmpty
+          ? _emailController.text.trim()
+          : null,
+      whatsapp: _whatsappController.text.trim().isNotEmpty
+          ? _whatsappController.text.trim()
+          : null,
       company: company.isNotEmpty ? company : null,
       alternativePhone: _alternativePhoneController.text.trim().isNotEmpty
           ? _alternativePhoneController.text.trim()
@@ -234,7 +244,9 @@ class _LeadEditViewState extends State<LeadEditView> {
       companyPhone: _companyPhoneController.text.trim().isNotEmpty
           ? _companyPhoneController.text.trim()
           : null,
-      alternativeEmails: _alternativeEmails.isNotEmpty ? _alternativeEmails : null,
+      alternativeEmails: _alternativeEmails.isNotEmpty
+          ? _alternativeEmails
+          : null,
       occupation: _occupationController.text.trim().isNotEmpty
           ? _occupationController.text.trim()
           : null,
@@ -266,7 +278,9 @@ class _LeadEditViewState extends State<LeadEditView> {
       notes: notes.isNotEmpty ? notes : null,
       status: _selectedStatus,
       assignedTo: _selectedAssignedTo,
-      categoryIds: _selectedCategoryIds.isNotEmpty ? _selectedCategoryIds : null,
+      categoryIds: _selectedCategoryIds.isNotEmpty
+          ? _selectedCategoryIds
+          : null,
       products: _products.isNotEmpty ? _products : null,
       value: value,
     );
@@ -311,8 +325,10 @@ class _LeadEditViewState extends State<LeadEditView> {
   Widget build(BuildContext context) {
     final categoryController = Get.find<CategoryController>();
     final authController = Get.find<AuthController>();
-    final isAdmin = authController.user?.role == UserRole.shopOwner ||
-        authController.user?.role == UserRole.admin;
+    final isAdmin =
+        authController.user?.role == UserRole.shopOwner ||
+        authController.user?.role == UserRole.admin ||
+        authController.user?.role == UserRole.marketingManager;
 
     if (_loading) {
       return Scaffold(
@@ -336,12 +352,15 @@ class _LeadEditViewState extends State<LeadEditView> {
         ),
       ),
       body: Obx(() {
-        if (categoryController.isLoading && categoryController.categories.isEmpty) {
+        if (categoryController.isLoading &&
+            categoryController.categories.isEmpty) {
           return const LoadingWidget();
         }
 
         final categories = categoryController.categories;
-        final staffList = isAdmin ? Get.find<StaffController>().staffList : <dynamic>[];
+        final staffList = isAdmin
+            ? Get.find<StaffController>().staffList
+            : <dynamic>[];
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -364,7 +383,9 @@ class _LeadEditViewState extends State<LeadEditView> {
                         prefixIcon: Icon(Icons.phone_outlined),
                       ),
                       keyboardType: TextInputType.phone,
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Phone is required' : null,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Phone is required'
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -396,8 +417,8 @@ class _LeadEditViewState extends State<LeadEditView> {
                     Text(
                       'At least one of Company name or Owner/Contact name is required.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -590,7 +611,7 @@ class _LeadEditViewState extends State<LeadEditView> {
                   initiallyExpanded: false,
                   children: [
                     DropdownButtonFormField<LeadSource>(
-                      value: _selectedSource,
+                      initialValue: _selectedSource,
                       decoration: const InputDecoration(
                         labelText: 'Source',
                         prefixIcon: Icon(Icons.filter_alt_outlined),
@@ -618,18 +639,20 @@ class _LeadEditViewState extends State<LeadEditView> {
                         hintText: '0',
                         prefixIcon: Icon(Icons.currency_rupee),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'How valuable this lead is. Optional.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<LeadStatus>(
-                      value: _selectedStatus,
+                      initialValue: _selectedStatus,
                       decoration: const InputDecoration(
                         labelText: 'Status',
                         prefixIcon: Icon(Icons.flag_outlined),
@@ -650,7 +673,7 @@ class _LeadEditViewState extends State<LeadEditView> {
                     if (isAdmin && staffList.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String?>(
-                        value: _selectedAssignedTo,
+                        initialValue: _selectedAssignedTo,
                         decoration: const InputDecoration(
                           labelText: 'Assigned To',
                           prefixIcon: Icon(Icons.person_outline),
@@ -668,7 +691,8 @@ class _LeadEditViewState extends State<LeadEditView> {
                             ),
                           ),
                         ],
-                        onChanged: (val) => setState(() => _selectedAssignedTo = val),
+                        onChanged: (val) =>
+                            setState(() => _selectedAssignedTo = val),
                       ),
                     ],
                     if (categories.isNotEmpty) ...[
@@ -676,45 +700,46 @@ class _LeadEditViewState extends State<LeadEditView> {
                       Text(
                         'Categories',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: categories
-                            .map(
-                              (CategoryModel cat) {
-                                final isSelected = _selectedCategoryIds.contains(cat.id);
-                                final theme = Theme.of(context);
-                                return FilterChip(
-                                  label: Text(
-                                    cat.name,
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? theme.colorScheme.onPrimary
-                                          : theme.colorScheme.onSurface,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                    ),
-                                  ),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    setState(() {
-                                      if (selected) {
-                                        _selectedCategoryIds.add(cat.id);
-                                      } else {
-                                        _selectedCategoryIds.remove(cat.id);
-                                      }
-                                    });
-                                  },
-                                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                                  selectedColor: theme.colorScheme.primary,
-                                  checkmarkColor: theme.colorScheme.onPrimary,
-                                );
-                              },
-                            )
-                            .toList(),
+                        children: categories.map((CategoryModel cat) {
+                          final isSelected = _selectedCategoryIds.contains(
+                            cat.id,
+                          );
+                          final theme = Theme.of(context);
+                          return FilterChip(
+                            label: Text(
+                              cat.name,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? theme.colorScheme.onPrimary
+                                    : theme.colorScheme.onSurface,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedCategoryIds.add(cat.id);
+                                } else {
+                                  _selectedCategoryIds.remove(cat.id);
+                                }
+                              });
+                            },
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            selectedColor: theme.colorScheme.primary,
+                            checkmarkColor: theme.colorScheme.onPrimary,
+                          );
+                        }).toList(),
                       ),
                     ],
                   ],
@@ -758,7 +783,10 @@ class _LeadEditViewState extends State<LeadEditView> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -806,14 +834,16 @@ class _LeadEditViewState extends State<LeadEditView> {
           children: [
             Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
               description,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             ...children,
@@ -840,13 +870,15 @@ class _LeadEditViewState extends State<LeadEditView> {
         initiallyExpanded: initiallyExpanded,
         title: Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           description,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         trailing: const Icon(Icons.expand_more),
         children: [
@@ -877,7 +909,9 @@ class _LeadEditViewState extends State<LeadEditView> {
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         Row(
@@ -888,17 +922,17 @@ class _LeadEditViewState extends State<LeadEditView> {
                 decoration: InputDecoration(
                   hintText: hint,
                   border: const OutlineInputBorder(),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
                 keyboardType: keyboardType,
                 onFieldSubmitted: (_) => onAdd(),
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
-              icon: const Icon(Icons.add),
-              onPressed: onAdd,
-            ),
+            IconButton.filled(icon: const Icon(Icons.add), onPressed: onAdd),
           ],
         ),
         if (chips.isNotEmpty) ...[
