@@ -13,15 +13,9 @@ class LoginView extends StatelessWidget {
     if (!Get.isRegistered<AuthController>()) {
       Get.put(AuthController());
     }
-    
+
     final authController = Get.find<AuthController>();
-    
-    return Scaffold(
-      body: SafeArea(
-        child: LoginFormWidget(controller: authController),
-      ),
-    );
+
+    return Scaffold(body: LoginFormWidget(controller: authController));
   }
 }
-
-
