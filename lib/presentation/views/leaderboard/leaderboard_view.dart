@@ -68,7 +68,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           return const LoadingWidget();
         }
 
-        if (_controller.errorMessage.isNotEmpty && _controller.leaderboard.isEmpty) {
+        if (_controller.errorMessage.isNotEmpty &&
+            _controller.leaderboard.isEmpty) {
           return error_widget.ErrorDisplayWidget(
             message: _controller.errorMessage,
             onRetry: _loadLeaderboard,
@@ -111,7 +112,9 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                           color: isSelected
                               ? theme.colorScheme.onPrimary
                               : theme.colorScheme.onSurface,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                       selected: isSelected,
@@ -119,7 +122,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                         _controller.setPeriod(p);
                         _loadLeaderboard();
                       },
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       selectedColor: theme.colorScheme.primary,
                       checkmarkColor: theme.colorScheme.onPrimary,
                     );
@@ -136,7 +140,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.trending_up, color: theme.colorScheme.primary),
+                            Icon(
+                              Icons.trending_up,
+                              color: theme.colorScheme.primary,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Rankings',
@@ -156,7 +163,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        if (_controller.isLoading && _controller.leaderboard.isNotEmpty)
+                        if (_controller.isLoading &&
+                            _controller.leaderboard.isNotEmpty)
                           const Padding(
                             padding: EdgeInsets.all(24.0),
                             child: Center(child: CircularProgressIndicator()),
@@ -196,11 +204,13 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: _controller.leaderboard.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final entry = _controller.leaderboard[index];
                               final showStatusAndSafety =
-                                  _controller.period == LeaderboardPeriod.thisMonth;
+                                  _controller.period ==
+                                  LeaderboardPeriod.thisMonth;
                               return _LeaderboardTile(
                                 entry: entry,
                                 theme: theme,
@@ -246,16 +256,17 @@ class _LeaderboardTile extends StatelessWidget {
       elevation: isDark ? 0 : 1,
       shadowColor: Colors.black.withOpacity(0.06),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Row 1: Rank + Name & Role only
             Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: rankColor.withOpacity(0.15),
                     shape: BoxShape.circle,
@@ -266,7 +277,7 @@ class _LeaderboardTile extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: entry.rank <= 3
-                      ? Icon(_rankIcon(entry.rank), size: 24, color: rankColor)
+                      ? Icon(_rankIcon(entry.rank), size: 26, color: rankColor)
                       : Text(
                           '${entry.rank}',
                           style: theme.textTheme.titleMedium?.copyWith(
@@ -275,7 +286,7 @@ class _LeaderboardTile extends StatelessWidget {
                           ),
                         ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,8 +300,11 @@ class _LeaderboardTile extends StatelessWidget {
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2),
                       Text(
-                        Helpers.safeDisplayString(entry.role).replaceAll('_', ' '),
+                        Helpers.safeDisplayString(
+                          entry.role,
+                        ).replaceAll('_', ' '),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -299,32 +313,68 @@ class _LeaderboardTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                Text(
-                  '${entry.conversions}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${entry.conversionRate.toStringAsFixed(1)}%',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${entry.points} pts',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
               ],
             ),
-            if (showStatusAndSafety && (entry.status != null || entry.safetyFundEligible != null)) ...[
-              const SizedBox(height: 8),
+            const SizedBox(height: 14),
+            // Metrics in a 2x2 grid so they don’t crowd one row
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color:
+                    (isDark
+                            ? theme.colorScheme.surface
+                            : theme.colorScheme.surfaceContainerHighest)
+                        .withOpacity(0.7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetric(
+                          theme,
+                          'Total Leads',
+                          '${entry.totalAssignedLeads}',
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildMetric(
+                          theme,
+                          'Closed Won',
+                          '${entry.conversions}',
+                          bold: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetric(
+                          theme,
+                          'Conversion %',
+                          '${entry.conversionRate.toStringAsFixed(1)}%',
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildMetric(
+                          theme,
+                          'Points',
+                          '${entry.points}',
+                          bold: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (showStatusAndSafety &&
+                (entry.status != null || entry.safetyFundEligible != null)) ...[
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
@@ -354,6 +404,36 @@ class _LeaderboardTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMetric(
+    ThemeData theme,
+    String label,
+    String value, {
+    bool bold = false,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+      ],
     );
   }
 
