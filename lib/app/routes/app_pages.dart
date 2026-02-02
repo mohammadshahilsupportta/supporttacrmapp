@@ -17,6 +17,7 @@ import '../../presentation/views/staff/staff_list_view.dart';
 import '../../presentation/views/staff/staff_create_view.dart';
 import '../../presentation/views/staff/staff_detail_view.dart';
 import '../../presentation/views/categories/categories_view.dart';
+import '../../presentation/views/customers/customers_view.dart';
 import '../../presentation/views/settings/settings_view.dart';
 import '../../presentation/views/settings/shop_information_view.dart';
 import '../../presentation/views/settings/help_support_view.dart';
@@ -102,6 +103,10 @@ class AppPages {
       name: AppRoutes.categories,
       page: () => const CategoriesView(),
       binding: CategoryBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.customers,
+      page: () => const CustomersView(),
     ),
     GetPage(name: AppRoutes.settings, page: () => const SettingsView()),
     GetPage(name: AppRoutes.profile, page: () => const ProfileView()),

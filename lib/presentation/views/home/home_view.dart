@@ -123,12 +123,19 @@ class _HomeViewState extends State<HomeView> {
 
   bool _canViewCategories(UserModel? user) {
     if (user == null) return false;
-    // Shop owners, admins, and staff can view categories
+    // Match website: Categories only for shop_owner, admin, marketing_manager
+    return user.role == UserRole.shopOwner ||
+        user.role == UserRole.admin ||
+        user.role == UserRole.marketingManager;
+  }
+
+  /// Match website: Customers for shop_owner, admin, office_staff, marketing_manager
+  bool _canViewCustomers(UserModel? user) {
+    if (user == null) return false;
     return user.role == UserRole.shopOwner ||
         user.role == UserRole.admin ||
         user.role == UserRole.officeStaff ||
-        user.role == UserRole.marketingManager ||
-        user.role == UserRole.freelance;
+        user.role == UserRole.marketingManager;
   }
 
   bool _isStaffRole(UserModel? user) {
@@ -640,15 +647,22 @@ class _HomeViewState extends State<HomeView> {
                   Navigator.pop(context);
                   final canViewStaff = _canViewStaff(user);
                   if (canViewStaff) {
-                    // Categories is not in bottom bar for admin, navigate via route
                     Get.toNamed(AppRoutes.categories);
                   } else {
-                    // Categories is at index 3 when Staff is not visible
                     setState(() {
                       _currentIndex = 3;
                     });
                     _notchController.jumpTo(3);
                   }
+                },
+              ),
+            if (_canViewCustomers(user))
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text('Customers'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.customers);
                 },
               ),
             if (_canViewStaff(user))

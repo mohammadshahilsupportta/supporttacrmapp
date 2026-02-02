@@ -10,6 +10,7 @@ abstract class AppRoutes {
   static const leadCreate = '/leads/create';
   static const leadEdit = '/leads/:id/edit';
   static const categories = '/categories';
+  static const customers = '/customers';
   static const staff = '/staff';
   static const staffCreate = '/staff/create';
   static const staffDetail = '/staff/:id';
