@@ -26,7 +26,9 @@ import '../bindings/staff_binding.dart';
 import '../bindings/activity_binding.dart';
 import '../bindings/report_binding.dart';
 import '../bindings/leaderboard_binding.dart';
+import '../bindings/coordinator_leaderboard_binding.dart';
 import '../../presentation/views/leaderboard/leaderboard_view.dart';
+import '../../presentation/views/leaderboard/coordinator_leaderboard_view.dart';
 
 class AppPages {
   static const initial = AppRoutes.splash;
@@ -118,6 +120,10 @@ class AppPages {
       page: () => const LeaderboardView(),
       binding: LeaderboardBinding(),
     ),
-    // Add more routes here as needed
+    GetPage(
+      name: AppRoutes.coordinatorLeaderboard,
+      page: () => const CoordinatorLeaderboardView(),
+      binding: CoordinatorLeaderboardBinding(),
+    ),
   ];
 }

@@ -1,6 +1,12 @@
 import '../models/report_model.dart';
 import '../../core/services/supabase_service.dart';
 
+const _coordinatorRole = 'crm_coordinator';
+const _goalDaily = 100;
+const _goalWeekly = 600;
+const _goalMonthly = 2400;
+const _starPointsPerConversion = 10;
+
 // Match website lib/leaderboard-constants.ts
 const _leaderboardVisibleRoles = ['freelance', 'office_staff'];
 const _pointEligibleRoles = ['freelance', 'office_staff'];
@@ -418,6 +424,167 @@ class ReportRepository {
   static bool? _isSafetyFundEligible(int closedWonThisMonth, String role) {
     if (!_pointEligibleRoles.contains(role)) return null;
     return closedWonThisMonth >= _minClosesSafetyFund;
+  }
+
+  // ——— Coordinator (crm_coordinator) ———
+
+  static ({String from, String to}) _getCoordinatorDayRange() {
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month, now.day, 0, 0, 0, 0);
+    final to = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+    return (from: from.toIso8601String(), to: to.toIso8601String());
+  }
+
+  static ({String from, String to}) _getCoordinatorWeekRange() {
+    final now = DateTime.now();
+    final day = now.weekday; // 1 = Monday, 7 = Sunday
+    final mondayOffset = 1 - day;
+    final monday = DateTime(now.year, now.month, now.day + mondayOffset, 0, 0, 0, 0);
+    final sunday = DateTime(monday.year, monday.month, monday.day + 6, 23, 59, 59, 999);
+    return (from: monday.toIso8601String(), to: sunday.toIso8601String());
+  }
+
+  static ({String from, String to}) _getCoordinatorMonthRange() {
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month, 1, 0, 0, 0, 0);
+    final to = DateTime(now.year, now.month + 1, 0, 23, 59, 59, 999);
+    return (from: from.toIso8601String(), to: to.toIso8601String());
+  }
+
+  /// Coordinator stats: goals (100/600/2400), points per period, star points.
+  /// Only valid when current user is crm_coordinator. Matches website coordinator-stats API.
+  Future<CoordinatorStats> getCoordinatorStats(String shopId, String coordinatorId) async {
+    final day = _getCoordinatorDayRange();
+    final week = _getCoordinatorWeekRange();
+    final month = _getCoordinatorMonthRange();
+
+    final dailyList = await SupabaseService.from('leads').select('id').eq('shop_id', shopId).eq('created_by', coordinatorId).isFilter('deleted_at', null).gte('created_at', day.from).lte('created_at', day.to) as List<dynamic>? ?? [];
+    final weeklyList = await SupabaseService.from('leads').select('id').eq('shop_id', shopId).eq('created_by', coordinatorId).isFilter('deleted_at', null).gte('created_at', week.from).lte('created_at', week.to) as List<dynamic>? ?? [];
+    final monthlyList = await SupabaseService.from('leads').select('id').eq('shop_id', shopId).eq('created_by', coordinatorId).isFilter('deleted_at', null).gte('created_at', month.from).lte('created_at', month.to) as List<dynamic>? ?? [];
+    final allTimeList = await SupabaseService.from('leads').select('id').eq('shop_id', shopId).eq('created_by', coordinatorId).isFilter('deleted_at', null) as List<dynamic>? ?? [];
+    final convertedList = await SupabaseService.from('leads').select('id').eq('shop_id', shopId).eq('created_by', coordinatorId).eq('status', 'closed_won').isFilter('deleted_at', null) as List<dynamic>? ?? [];
+
+    final dailyCount = dailyList.length;
+    final weeklyCount = weeklyList.length;
+    final monthlyCount = monthlyList.length;
+    final allTimeCount = allTimeList.length;
+    final converted = convertedList.length;
+
+    final starPoints = converted * _starPointsPerConversion;
+    final dailyPercent = _goalDaily > 0 ? (dailyCount / _goalDaily * 100).round().clamp(0, 100) : 0;
+    final weeklyPercent = _goalWeekly > 0 ? (weeklyCount / _goalWeekly * 100).round().clamp(0, 100) : 0;
+    final monthlyPercent = _goalMonthly > 0 ? (monthlyCount / _goalMonthly * 100).round().clamp(0, 100) : 0;
+
+    return CoordinatorStats(
+      goals: {'daily': _goalDaily, 'weekly': _goalWeekly, 'monthly': _goalMonthly},
+      points: {'daily': dailyCount, 'weekly': weeklyCount, 'monthly': monthlyCount, 'allTime': allTimeCount},
+      percent: {'daily': dailyPercent, 'weekly': weeklyPercent, 'monthly': monthlyPercent},
+      converted: converted,
+      starPoints: starPoints,
+    );
+  }
+
+  /// Coordinator leaderboard: staff with role crm_coordinator, ranked by ordinary points (leads added).
+  /// Matches website GET /api/reports/coordinator-leaderboard. Only coordinators see this.
+  Future<List<CoordinatorLeaderboardEntry>> getCoordinatorLeaderboard(
+    String shopId, {
+    CoordinatorLeaderboardPeriod period = CoordinatorLeaderboardPeriod.monthly,
+  }) async {
+    final coordinatorsRes = await SupabaseService.from('staff')
+        .select('id, name')
+        .eq('shop_id', shopId)
+        .eq('role', _coordinatorRole);
+    final coordinators = (coordinatorsRes as List).cast<Map<String, dynamic>>();
+    if (coordinators.isEmpty) return [];
+
+    final coordinatorIds = coordinators.map((c) => c['id'] as String).toList();
+    final nameById = {for (final c in coordinators) c['id'] as String: c['name'] as String? ?? '—'};
+
+    String? from;
+    String? to;
+    switch (period) {
+      case CoordinatorLeaderboardPeriod.allTime:
+        from = '1970-01-01T00:00:00.000Z';
+        to = DateTime.now().toIso8601String();
+        break;
+      case CoordinatorLeaderboardPeriod.daily:
+        final r = _getCoordinatorDayRange();
+        from = r.from;
+        to = r.to;
+        break;
+      case CoordinatorLeaderboardPeriod.weekly:
+        final r = _getCoordinatorWeekRange();
+        from = r.from;
+        to = r.to;
+        break;
+      case CoordinatorLeaderboardPeriod.monthly:
+        final r = _getCoordinatorMonthRange();
+        from = r.from;
+        to = r.to;
+        break;
+    }
+
+    final leadsInPeriod = await SupabaseService.from('leads')
+        .select('created_by')
+        .eq('shop_id', shopId)
+        .inFilter('created_by', coordinatorIds)
+        .isFilter('deleted_at', null)
+        .gte('created_at', from)
+        .lte('created_at', to) as List<dynamic>? ?? [];
+    final ordinaryByCreator = <String, int>{};
+    for (final id in coordinatorIds) {
+      ordinaryByCreator[id] = 0;
+    }
+    for (final row in leadsInPeriod.cast<Map<String, dynamic>>()) {
+      final createdBy = row['created_by'] as String?;
+      if (createdBy != null && ordinaryByCreator.containsKey(createdBy)) {
+        ordinaryByCreator[createdBy] = ordinaryByCreator[createdBy]! + 1;
+      }
+    }
+
+    final closedLeads = await SupabaseService.from('leads')
+        .select('created_by')
+        .eq('shop_id', shopId)
+        .eq('status', 'closed_won')
+        .isFilter('deleted_at', null)
+        .inFilter('created_by', coordinatorIds) as List<dynamic>? ?? [];
+    final convertedByCreator = <String, int>{};
+    for (final id in coordinatorIds) {
+      convertedByCreator[id] = 0;
+    }
+    for (final row in closedLeads.cast<Map<String, dynamic>>()) {
+      final createdBy = row['created_by'] as String?;
+      if (createdBy != null && convertedByCreator.containsKey(createdBy)) {
+        convertedByCreator[createdBy] = convertedByCreator[createdBy]! + 1;
+      }
+    }
+
+    final rows = coordinatorIds.map((id) {
+      final ordinary = ordinaryByCreator[id] ?? 0;
+      final converted = convertedByCreator[id] ?? 0;
+      return CoordinatorLeaderboardEntry(
+        rank: 0,
+        staffId: id,
+        staffName: nameById[id] ?? '—',
+        totalLeads: ordinary,
+        converted: converted,
+        starPoints: converted * _starPointsPerConversion,
+        ordinaryPoints: ordinary,
+      );
+    }).toList();
+    rows.sort((a, b) => b.ordinaryPoints.compareTo(a.ordinaryPoints));
+    return rows.asMap().entries.map((e) {
+      final r = e.value;
+      return CoordinatorLeaderboardEntry(
+        rank: e.key + 1,
+        staffId: r.staffId,
+        staffName: r.staffName,
+        totalLeads: r.totalLeads,
+        converted: r.converted,
+        starPoints: r.starPoints,
+        ordinaryPoints: r.ordinaryPoints,
+      );
+    }).toList();
   }
 }
 

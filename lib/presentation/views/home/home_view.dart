@@ -600,7 +600,7 @@ class _HomeViewState extends State<HomeView> {
                 _notchController.jumpTo(2);
               },
             ),
-            // Leaderboard visible to ALL roles (same as website)
+            // Leaderboard (Sales Accountability) — visible to all roles, including crm_coordinator (same as website)
             ListTile(
               leading: const Icon(Icons.emoji_events),
               title: const Text('Leaderboard'),
@@ -609,6 +609,16 @@ class _HomeViewState extends State<HomeView> {
                 Get.toNamed(AppRoutes.leaderboard);
               },
             ),
+            // Coordinator Leaderboard — visible only to crm_coordinator (same as website)
+            if (user?.role == UserRole.crmCoordinator)
+              ListTile(
+                leading: const Icon(Icons.groups),
+                title: const Text('Coordinator Leaderboard'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.coordinatorLeaderboard);
+                },
+              ),
             if (_canViewStaff(user))
               ListTile(
                 leading: const Icon(Icons.group),
@@ -700,25 +710,87 @@ class _HomeViewState extends State<HomeView> {
     });
   }
 
+  Widget _buildCoordinatorGoalCard(BuildContext context, String title, int points, int goal, int percent) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                ),
+                Icon(Icons.flag_outlined, size: 18, color: theme.colorScheme.onSurfaceVariant),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('$points / $goal', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text('$percent% of ${title.toLowerCase()} target', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(value: (percent / 100).clamp(0.0, 1.0), backgroundColor: theme.colorScheme.surfaceContainerHighest, minHeight: 6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoordinatorStarCard(BuildContext context, int starPoints, int converted) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Star Points', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                Icon(Icons.star, size: 18, color: Colors.amber.shade700),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('$starPoints', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.amber.shade700)),
+            const SizedBox(height: 2),
+            Text('$converted leads converted (10 pts each)', style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey), maxLines: 2, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDashboardContent(
     AuthController authController,
     DashboardController dashboardController,
   ) {
     return Obx(() {
       final stats = dashboardController.stats;
+      final coordinatorStats = dashboardController.coordinatorStats;
       final isLoading = dashboardController.isLoading;
       final shop = authController.shop;
+      final user = authController.user;
+      final isCoordinator = user?.role == UserRole.crmCoordinator;
 
-      // Trigger load when shop becomes available and stats are null
-      if (shop != null && stats == null && !isLoading) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            dashboardController.loadStats();
-          }
-        });
+      // Trigger load when shop becomes available and no data yet
+      if (shop != null && !isLoading) {
+        if (isCoordinator ? coordinatorStats == null : stats == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) dashboardController.loadStats();
+          });
+        }
       }
 
-      if (authController.isLoading || (isLoading && stats == null)) {
+      if (authController.isLoading || (isLoading && (isCoordinator ? coordinatorStats == null : stats == null))) {
         return const DashboardShimmer();
       }
 
@@ -795,12 +867,76 @@ class _HomeViewState extends State<HomeView> {
                 return const SizedBox.shrink();
               }),
 
-              // Quick Stats - 4 Cards
+              // Coordinator Dashboard: goals, %, star points (crm_coordinator only)
+              Obx(() {
+                final user = authController.user;
+                final isCoordinator = user?.role == UserRole.crmCoordinator;
+                if (!isCoordinator) return const SizedBox.shrink();
+
+                final cs = dashboardController.coordinatorStats;
+                final isLoading = dashboardController.isLoading;
+                if (isLoading && cs == null) {
+                  return GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.05,
+                    children: List.generate(4, (_) => const DashboardStatsCardShimmer()),
+                  );
+                }
+
+                final goals = cs?.goals ?? {};
+                final points = cs?.points ?? {};
+                final percent = cs?.percent ?? {};
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.05,
+                      children: [
+                        _buildCoordinatorGoalCard(context, 'Daily Goal', points['daily'] ?? 0, goals['daily'] ?? 100, percent['daily'] ?? 0),
+                        _buildCoordinatorGoalCard(context, 'Weekly Goal', points['weekly'] ?? 0, goals['weekly'] ?? 600, percent['weekly'] ?? 0),
+                        _buildCoordinatorGoalCard(context, 'Monthly Goal', points['monthly'] ?? 0, goals['monthly'] ?? 2400, percent['monthly'] ?? 0),
+                        _buildCoordinatorStarCard(context, cs?.starPoints ?? 0, cs?.converted ?? 0),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('My Leads Added', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
+                            Text('Leads you added — assign them to the sales team', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                            const SizedBox(height: 8),
+                            Text('${points['allTime'] ?? 0}', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+              const SizedBox(height: 24),
+
+              // Quick Stats - 4 Cards (non-coordinator)
               Obx(() {
                 final stats = dashboardController.stats;
                 final isLoading = dashboardController.isLoading;
                 final activeStaff = dashboardController.activeStaffCount;
                 final user = authController.user;
+                final isCoordinator = user?.role == UserRole.crmCoordinator;
+                if (isCoordinator) return const SizedBox.shrink();
+
                 final isStaffRole =
                     user?.role != UserRole.shopOwner &&
                     user?.role != UserRole.admin;
@@ -900,11 +1036,13 @@ class _HomeViewState extends State<HomeView> {
               }),
               const SizedBox(height: 24),
 
-              // Lead Status Overview (same visibility as website: admin when stats exist, staff when total > 0)
+              // Lead Status Overview (non-coordinator only; coordinators see coordinator dashboard)
               Obx(() {
                 final stats = dashboardController.stats;
                 final isLoading = dashboardController.isLoading;
                 final user = authController.user;
+                final isCoordinator = user?.role == UserRole.crmCoordinator;
+                if (isCoordinator) return const SizedBox.shrink();
                 final isAdmin =
                     user != null &&
                     (user.role == UserRole.shopOwner ||

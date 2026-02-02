@@ -337,4 +337,106 @@ class LeaderboardEntry {
   }
 }
 
+// ——— Coordinator (crm_coordinator) ———
+
+/// Coordinator stats: goals progress, points, star points. Only for crm_coordinator.
+/// Matches website GET /api/reports/coordinator-stats.
+class CoordinatorStats {
+  final Map<String, int> goals; // daily: 100, weekly: 600, monthly: 2400
+  final Map<String, int> points; // daily, weekly, monthly, allTime
+  final Map<String, int> percent; // daily, weekly, monthly (0–100)
+  final int converted; // leads created by coordinator that are closed_won
+  final int starPoints; // converted * 10
+
+  CoordinatorStats({
+    required this.goals,
+    required this.points,
+    required this.percent,
+    required this.converted,
+    required this.starPoints,
+  });
+
+  factory CoordinatorStats.fromJson(Map<String, dynamic> json) {
+    final g = json['goals'] as Map<String, dynamic>? ?? {};
+    final p = json['points'] as Map<String, dynamic>? ?? {};
+    final pc = json['percent'] as Map<String, dynamic>? ?? {};
+    return CoordinatorStats(
+      goals: {'daily': g['daily'] as int? ?? 100, 'weekly': g['weekly'] as int? ?? 600, 'monthly': g['monthly'] as int? ?? 2400},
+      points: {'daily': p['daily'] as int? ?? 0, 'weekly': p['weekly'] as int? ?? 0, 'monthly': p['monthly'] as int? ?? 0, 'allTime': p['allTime'] as int? ?? 0},
+      percent: {'daily': pc['daily'] as int? ?? 0, 'weekly': pc['weekly'] as int? ?? 0, 'monthly': pc['monthly'] as int? ?? 0},
+      converted: json['converted'] as int? ?? 0,
+      starPoints: json['starPoints'] as int? ?? 0,
+    );
+  }
+}
+
+/// Period for coordinator leaderboard. Matches website API.
+enum CoordinatorLeaderboardPeriod {
+  daily,
+  weekly,
+  monthly,
+  allTime,
+}
+
+extension CoordinatorLeaderboardPeriodExt on CoordinatorLeaderboardPeriod {
+  String get value {
+    switch (this) {
+      case CoordinatorLeaderboardPeriod.daily:
+        return 'daily';
+      case CoordinatorLeaderboardPeriod.weekly:
+        return 'weekly';
+      case CoordinatorLeaderboardPeriod.monthly:
+        return 'monthly';
+      case CoordinatorLeaderboardPeriod.allTime:
+        return 'all_time';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case CoordinatorLeaderboardPeriod.daily:
+        return 'Daily';
+      case CoordinatorLeaderboardPeriod.weekly:
+        return 'Weekly';
+      case CoordinatorLeaderboardPeriod.monthly:
+        return 'Monthly';
+      case CoordinatorLeaderboardPeriod.allTime:
+        return 'All time';
+    }
+  }
+}
+
+/// Single entry in Coordinator Leaderboard. Matches website coordinator-leaderboard API.
+class CoordinatorLeaderboardEntry {
+  final int rank;
+  final String staffId;
+  final String staffName;
+  final int totalLeads;
+  final int converted;
+  final int starPoints;
+  final int ordinaryPoints;
+
+  CoordinatorLeaderboardEntry({
+    required this.rank,
+    required this.staffId,
+    required this.staffName,
+    required this.totalLeads,
+    required this.converted,
+    required this.starPoints,
+    required this.ordinaryPoints,
+  });
+
+  factory CoordinatorLeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    return CoordinatorLeaderboardEntry(
+      rank: json['rank'] as int? ?? 0,
+      staffId: json['staff_id'] as String? ?? '',
+      staffName: json['staff_name'] as String? ?? '—',
+      totalLeads: json['total_leads'] as int? ?? 0,
+      converted: json['converted'] as int? ?? 0,
+      starPoints: json['star_points'] as int? ?? 0,
+      ordinaryPoints: json['ordinary_points'] as int? ?? 0,
+    );
+  }
+}
+
 

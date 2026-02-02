@@ -19,4 +19,5 @@ abstract class AppRoutes {
   static const settings = '/settings';
   static const reports = '/reports';
   static const leaderboard = '/leaderboard';
+  static const coordinatorLeaderboard = '/leaderboard/coordinators';
 }
